@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- GİRİŞ EKRANI (DARK MODE DÜZELTMELERİ) --- */
+
+/* 1. Input Kutularının İçi (Yazı yazdığın yer) */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+    background-color: #0f172a !important; /* Koyu Lacivert (bg-slate-900) */
+    border-color: #334155 !important;     /* Çerçeve Rengi */
+    color: #ffffff !important;            /* Yazdığın Yazı: BEYAZ */
+}
+
+/* 2. Başlıklar (Email, Password, Name) */
+label {
+    color: #f70000 !important; /* Bembeyaz olsun */
+    font-weight: bold !important;
+}
+
+/* 3. "Remember me" (Beni Hatırla) Yazısı */
+/* Laravel buraya 'text-gray-600' veriyor, onu eziyoruz */
+.block.mt-4 .text-sm.text-gray-600,
+label span.ml-2 {
+    color: #e2e8f0 !important; /* Kırık Beyaz */
+}
+
+/* 4. "Forgot your password?" ve "Already registered?" Linkleri */
+a.underline,
+a.text-sm.text-gray-600 {
+    color: #ffffff !important; /* Açık Gri (Slate-400) */
+    transition: color 0.3s;
+}
+
+/* Linkin üzerine gelince parlasın */
+a.underline:hover,
+a.text-sm.text-gray-600:hover {
+    color: #ffffff !important; /* Tam Beyaz */
+}
+
+/* 5. Buton (Log in / Register) */
+button[type="submit"] {
+    background-color: #4f46e5 !important; /* İndigo */
+    color: #ffffff !important;
+}
