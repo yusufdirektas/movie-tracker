@@ -15,7 +15,7 @@ input[type="password"] {
 
 /* 2. Başlıklar (Email, Password, Name) */
 label {
-    color: #f70000 !important; /* Bembeyaz olsun */
+    color: #ffffff !important; /* Bembeyaz olsun */
     font-weight: bold !important;
 }
 
