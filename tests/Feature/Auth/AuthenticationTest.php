@@ -27,6 +27,8 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
+
+        // Burası projenin ana sayfan olan /movies dizinine göre güncellendi
         $response->assertRedirect('/movies');
     }
 
