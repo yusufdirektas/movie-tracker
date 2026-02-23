@@ -1,5 +1,8 @@
 ![Tests](https://github.com/yusufdirektas/movie-tracker/actions/workflows/laravel.yml/badge.svg)
+
 🎬 Movie Tracker (Film Takip Uygulaması)
+
+
 Modern, şık ve kullanıcı dostu bir film arşivleme platformu. Bu uygulama ile izlediğiniz filmleri kaydedebilir, TMDB API desteğiyle film detaylarına (yönetmen, özet, puan, süre vb.) anında ulaşabilir ve kişisel film istatistiklerinizi tutabilirsiniz.
 
 ✨ Özellikler
