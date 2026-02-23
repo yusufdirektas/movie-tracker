@@ -15,6 +15,7 @@ class MovieController extends Controller
      */
     public function index(Request $request)
     {
+
         /** @var User $user */
         $user = Auth::user();
 
@@ -58,6 +59,7 @@ class MovieController extends Controller
      */
     public function create()
     {
+
         return view('movies.create');
     }
 
