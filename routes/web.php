@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Route;
 
 // Toplu İçe Aktarma Sayfası
 Route::get('/movies/import-list', [MovieController::class, 'import'])
-    //->middleware(['auth'])
+    ->middleware(['auth'])
     ->name('movies.import');
 
 // Canlı Arama API'si (Import sayfasındaki "Analiz Et" butonu için şart)

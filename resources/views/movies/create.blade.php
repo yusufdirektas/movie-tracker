@@ -2,7 +2,9 @@
 
 @section('title', 'Yeni Film Keşfet')
 
+
 @section('content')
+
     <div class="max-w-2xl mx-auto" x-data="{
         query: '',
         results: [],
@@ -27,9 +29,31 @@
                 });
         }
     }">
+        @if (session('success'))
+            <div x-data="{ show: true }" x-show="show"
+                class="bg-emerald-500/10 border border-emerald-500/50 text-emerald-400 px-6 py-4 rounded-2xl mb-6 flex justify-between items-center shadow-lg backdrop-blur-sm">
+                <div class="font-bold">
+                    <i class="fas fa-check-circle mr-2 text-xl"></i> {{ session('success') }}
+                </div>
+                <button @click="show = false" class="text-emerald-400 hover:text-white transition-colors"><i
+                        class="fas fa-times text-lg"></i></button>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div x-data="{ show: true }" x-show="show"
+                class="bg-red-500/10 border border-red-500/50 text-red-400 px-6 py-4 rounded-2xl mb-6 flex justify-between items-center shadow-lg backdrop-blur-sm">
+                <div class="font-bold">
+                    <i class="fas fa-exclamation-triangle mr-2 text-xl"></i> {{ session('error') }}
+                </div>
+                <button @click="show = false" class="text-red-400 hover:text-white transition-colors"><i
+                        class="fas fa-times text-lg"></i></button>
+            </div>
+        @endif
         <div class="flex items-center justify-between mb-8">
             <h1 class="text-3xl font-black text-white italic">Yeni Film <span class="text-indigo-500">Keşfet</span></h1>
-            <a href="{{ route('movies.index') }}" class="text-slate-500 hover:text-white transition-colors text-sm font-bold">
+            <a href="{{ route('movies.index') }}"
+                class="text-slate-500 hover:text-white transition-colors text-sm font-bold">
                 <i class="fas fa-arrow-left mr-2"></i> Listeme Dön
             </a>
         </div>
