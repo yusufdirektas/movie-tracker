@@ -27,6 +27,11 @@ Route::get('/movies/api-search', [MovieController::class, 'apiSearch'])
     ->middleware(['auth'])
     ->name('movies.api_search');
 
+// Sana Özel Öneriler Sayfası (YENİ EKLENEN ROTA)
+Route::get('/movies/recommendations', [MovieController::class, 'recommendations'])
+    ->middleware(['auth'])
+    ->name('movies.recommendations');
+
 
 // --- 2. GENEL SAYFA ROTALARI ---
 

@@ -5,8 +5,6 @@
 @section('content')
     <div class="container mx-auto" x-data="{
         searchTerm: '',
-        // Esnek Arama Mantığı (Senin tercih ettiğin yapı)
-        // index.blade.php içindeki x-data kısmında bulunan fonksiyonu şununla değiştir:
         turkishToEnglish(text) {
             return text.toString().toLocaleLowerCase('tr-TR')
                 .replace(/ğ/g, 'g')
@@ -35,7 +33,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-
                 <div
                     class="bg-slate-800/50 border border-slate-700 p-6 rounded-3xl shadow-lg backdrop-blur-sm flex items-center gap-4 hover:border-indigo-500/30 transition-colors">
                     <div class="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400">
