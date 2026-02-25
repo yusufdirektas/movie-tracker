@@ -38,6 +38,9 @@
                     <x-nav-link :href="route('movies.recommendations')" :active="request()->routeIs('movies.recommendations')">
                         {{ __('Sana Özel Öneriler') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('movies.now_playing')" :active="request()->routeIs('movies.now_playing')">
+                        {{ __('Vizyondakiler') }}
+                    </x-nav-link>
                 </div>
             </div>
 

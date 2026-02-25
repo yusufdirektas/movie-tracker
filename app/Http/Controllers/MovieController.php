@@ -217,4 +217,32 @@ class MovieController extends Controller
 
         return view('movies.recommendations', compact('recommendations', 'lastMovie'));
     }
+    /**
+     * Vizyondaki Filmler Sayfasını Gösterir.
+     */
+    public function nowPlaying()
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        // Kullanıcının mevcut filmlerini alalım ki vizyondakilerden eleyelim
+        $myMovieIds = $user->movies()->pluck('tmdb_id')->toArray();
+        $nowPlaying = [];
+
+        // TMDB 'now_playing' uç noktasına istek atıyoruz (region=TR ile Türkiye vizyonu)
+        $response = \Illuminate\Support\Facades\Http::withToken(config('services.tmdb.token'))
+            ->get("https://api.themoviedb.org/3/movie/now_playing", [
+                'language' => 'tr-TR',
+                'region' => 'TR',
+            ]);
+
+        if ($response->successful()) {
+            $allResults = collect($response->json()['results']);
+
+            // Arşivinde olmayanları süz ve 12 tane al
+            $nowPlaying = $allResults->whereNotIn('id', $myMovieIds)->take(12);
+        }
+
+        return view('movies.now_playing', compact('nowPlaying'));
+    }
 }

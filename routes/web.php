@@ -31,7 +31,10 @@ Route::get('/movies/api-search', [MovieController::class, 'apiSearch'])
 Route::get('/movies/recommendations', [MovieController::class, 'recommendations'])
     ->middleware(['auth'])
     ->name('movies.recommendations');
-
+// Vizyondaki Filmler Sayfası
+Route::get('/movies/now-playing', [MovieController::class, 'nowPlaying'])
+    ->middleware(['auth'])
+    ->name('movies.now_playing');
 
 // --- 2. GENEL SAYFA ROTALARI ---
 
