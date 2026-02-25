@@ -87,38 +87,37 @@ class MovieController extends Controller
     /**
      * Seçilen filmi ve süresini kaydeder.
      */
+    /**
+     * Seçilen filmi ve süresini kaydeder.
+     */
     public function store(Request $request)
     {
         $request->validate([
             'tmdb_id' => 'required',
         ]);
 
+        /** @var User $user */
         $user = Auth::user();
 
         // FİLM ZATEN EKLİ Mİ KONTROLÜ
         $alreadyExists = $user->movies()->where('tmdb_id', $request->tmdb_id)->exists();
 
         if ($alreadyExists) {
-            // Eğer istek arkaplandan (AJAX/JSON) geliyorsa:
+            // Arka plandan (Fetch API) geliyorsa sadece JSON gönder
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Bu film zaten arşivinde mevcut!'
-                ]);
+                ], 400); // 400 Bad Request (Hata kodu)
             }
-            // Normal form ile geliyorsa:
+            // Normal form ile geliyorsa sayfayı yenile
             return back()->with('error', 'Bu film zaten arşivinde mevcut!');
         }
 
         $token = config('services.tmdb.token');
-        $request->validate([
-            'tmdb_id' => 'required',
-        ]);
-
-        $token = config('services.tmdb.token');
 
         // 'append_to_response=credits' ekleyerek yönetmen bilgisini de istiyoruz
-        $response = Http::withToken($token)
+        $response = \Illuminate\Support\Facades\Http::withToken($token)
             ->get("https://api.themoviedb.org/3/movie/{$request->tmdb_id}", [
                 'language' => 'tr-TR',
                 'append_to_response' => 'credits'
@@ -127,33 +126,44 @@ class MovieController extends Controller
         if ($response->successful()) {
             $movieData = $response->json();
 
-            // Yönetmeni bulalım (Crew dizisi içinde job'ı 'Director' olan kişi)
+            // Yönetmeni bulalım
             $director = collect($movieData['credits']['crew'] ?? [])
                 ->firstWhere('job', 'Director')['name'] ?? 'Bilinmiyor';
 
-            $user = Auth::user();
             $isWatched = $request->boolean('is_watched');
 
             $user->movies()->create([
                 'tmdb_id'      => $movieData['id'],
                 'title'        => $movieData['title'],
-                'director'     => $director, // Artık veritabanına kaydolacak
+                'director'     => $director,
                 'poster_path'  => $movieData['poster_path'],
                 'rating'       => $movieData['vote_average'],
                 'runtime'      => $movieData['runtime'],
-                // Eğer özet boş gelirse veritabanına null olarak kaydet, böylece arayüzdeki "Özet yok" yazısı çalışsın
                 'overview'     => empty($movieData['overview']) ? null : $movieData['overview'],
                 'release_date' => $movieData['release_date'],
                 'is_watched'   => $isWatched,
             ]);
 
             $message = $isWatched ? 'Film listeye eklendi!' : 'Film izleneceklere eklendi!';
+
+            // BÜYÜ BURADA BAŞLIYOR: Arka plandan geliyorsa sadece JSON gönder
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message
+                ]);
+            }
+
+            // Normal form ise sayfayı yenile
             return redirect()->route('movies.index')->with('success', $message);
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => false, 'message' => 'Film bilgileri alınamadı.'], 500);
         }
 
         return back()->with('error', 'Film bilgileri alınamadı.');
     }
-
     public function show(Movie $movie)
     {
         return redirect()->route('movies.index');

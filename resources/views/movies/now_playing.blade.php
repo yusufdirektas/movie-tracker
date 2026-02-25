@@ -98,14 +98,53 @@
 
                                         <div class="mt-auto pt-6 border-t border-slate-800 flex flex-col sm:flex-row gap-3">
 
-                                            <form action="{{ route('movies.store') }}" method="POST" class="flex-1">
-                                                @csrf
-                                                <input type="hidden" name="tmdb_id" value="{{ $movie['id'] }}">
-                                                <input type="hidden" name="is_watched" value="0">
-                                                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-2xl text-sm font-black transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
-                                                    <i class="fas fa-plus"></i> Listeme Ekle
-                                                </button>
-                                            </form>
+                                            <div class="flex-1" x-data="{ isLoading: false, isAdded: false, errorMessage: '' }">
+    <button
+        type="button"
+        @click="
+            isLoading = true;
+            errorMessage = '';
+            fetch('{{ route('movies.store') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    tmdb_id: {{ $movie['id'] }},
+                    is_watched: 0
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                isLoading = false;
+                if(data.success) {
+                    isAdded = true;
+                } else {
+                    errorMessage = data.message;
+                }
+            })
+            .catch(error => {
+                isLoading = false;
+                errorMessage = 'Bir hata oluştu.';
+            });
+        "
+        :disabled="isLoading || isAdded"
+        :class="isAdded ? 'bg-slate-700 text-emerald-400 hover:bg-slate-600 shadow-slate-700/20' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'"
+        class="w-full px-4 py-3 rounded-2xl text-sm font-black transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-100 disabled:cursor-not-allowed">
+
+        <i x-show="isLoading" class="fas fa-spinner fa-spin" style="display: none;"></i>
+
+        <i x-show="isAdded && !isLoading" class="fas fa-check" style="display: none;"></i>
+
+        <i x-show="!isAdded && !isLoading" class="fas fa-plus"></i>
+
+        <span x-text="isLoading ? 'Ekleniyor...' : (isAdded ? 'Eklendi' : 'Listeme Ekle')"></span>
+    </button>
+
+    <p x-show="errorMessage" x-text="errorMessage" style="display: none;" class="text-[10px] text-red-400 font-bold mt-2 text-center uppercase tracking-wider"></p>
+</div>
 
                                             <a href="https://www.youtube.com/results?search_query={{ urlencode($movie['title'] . ' resmi fragman') }}" target="_blank" class="flex-1 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 hover:border-red-600 px-4 py-3 rounded-2xl text-sm font-black transition-all flex items-center justify-center gap-2">
                                                 <i class="fab fa-youtube text-lg"></i> Fragman İzle

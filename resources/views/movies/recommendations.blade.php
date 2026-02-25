@@ -24,14 +24,14 @@
                 </p>
             </div>
         </div>
-        
+
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
             @foreach($recommendations as $rec)
-                
+
                 <div x-data="{ modalOpen: false }" class="h-full">
-                    
+
                     <div @click="modalOpen = true" class="group relative bg-slate-900 border border-slate-800/50 rounded-3xl overflow-hidden transition-all hover:scale-105 hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-500/30 flex flex-col h-full cursor-pointer">
-                        
+
                         <div class="aspect-[2/3] relative overflow-hidden bg-slate-800 shrink-0">
                             @if(isset($rec['poster_path']) && $rec['poster_path'])
                                 <img src="https://image.tmdb.org/t/p/w500{{ $rec['poster_path'] }}" alt="{{ $rec['title'] }}" class="w-full h-full object-cover">
@@ -40,7 +40,7 @@
                                     <i class="fas fa-image text-4xl"></i>
                                 </div>
                             @endif
-                            
+
                             <div class="absolute top-3 left-3 z-10">
                                 <div class="bg-black/80 backdrop-blur-md text-white px-2 py-1 rounded-lg flex items-center gap-1 border border-white/10 shadow-lg">
                                     <i class="fas fa-star text-yellow-400 text-[10px]"></i>
@@ -48,7 +48,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="p-4 flex flex-col flex-grow justify-center text-center">
                             <h4 class="text-white font-bold text-sm line-clamp-2" title="{{ $rec['title'] }}">
                                 {{ $rec['title'] }}
@@ -61,9 +61,9 @@
 
                     <template x-teleport="body">
                         <div x-show="modalOpen" class="fixed inset-0 z-[99] flex items-center justify-center px-4 bg-slate-950/90 backdrop-blur-sm" @keydown.escape.window="modalOpen = false" x-transition.opacity style="display: none;">
-                            
+
                             <div @click.away="modalOpen = false" class="bg-slate-900 border border-slate-800 w-full max-w-3xl rounded-[2.5rem] overflow-hidden shadow-2xl relative">
-                                
+
                                 <button @click="modalOpen = false" class="absolute top-4 right-4 z-20 bg-slate-800/80 hover:bg-slate-700 text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors">
                                     <i class="fas fa-times"></i>
                                 </button>
@@ -97,20 +97,59 @@
                                         </p>
 
                                         <div class="mt-auto pt-6 border-t border-slate-800 flex flex-col sm:flex-row gap-3">
-                                            
-                                            <form action="{{ route('movies.store') }}" method="POST" class="flex-1">
-                                                @csrf
-                                                <input type="hidden" name="tmdb_id" value="{{ $rec['id'] }}">
-                                                <input type="hidden" name="is_watched" value="0">
-                                                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 rounded-2xl text-sm font-black transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2">
-                                                    <i class="fas fa-plus"></i> Listeme Ekle
-                                                </button>
-                                            </form>
+
+                                            <div class="flex-1" x-data="{ isLoading: false, isAdded: false, errorMessage: '' }">
+    <button
+        type="button"
+        @click="
+            isLoading = true;
+            errorMessage = '';
+            fetch('{{ route('movies.store') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    tmdb_id: {{ $rec['id'] }},
+                    is_watched: 0
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                isLoading = false;
+                if(data.success) {
+                    isAdded = true;
+                } else {
+                    errorMessage = data.message;
+                }
+            })
+            .catch(error => {
+                isLoading = false;
+                errorMessage = 'Bir hata oluştu.';
+            });
+        "
+        :disabled="isLoading || isAdded"
+        :class="isAdded ? 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'"
+        class="w-full text-white px-4 py-3 rounded-2xl text-sm font-black transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-80 disabled:cursor-not-allowed">
+
+        <i x-show="isLoading" class="fas fa-spinner fa-spin" style="display: none;"></i>
+
+        <i x-show="isAdded && !isLoading" class="fas fa-check" style="display: none;"></i>
+
+        <i x-show="!isAdded && !isLoading" class="fas fa-plus"></i>
+
+        <span x-text="isLoading ? 'Ekleniyor...' : (isAdded ? 'Eklendi' : 'Listeme Ekle')"></span>
+    </button>
+
+    <p x-show="errorMessage" x-text="errorMessage" style="display: none;" class="text-[10px] text-red-400 font-bold mt-2 text-center uppercase tracking-wider"></p>
+</div>
 
                                             <a href="https://www.youtube.com/results?search_query={{ urlencode($rec['title'] . ' resmi fragman') }}" target="_blank" class="flex-1 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 hover:border-red-600 px-4 py-3 rounded-2xl text-sm font-black transition-all flex items-center justify-center gap-2">
                                                 <i class="fab fa-youtube text-lg"></i> Fragman İzle
                                             </a>
-                                            
+
                                         </div>
                                     </div>
                                 </div>
