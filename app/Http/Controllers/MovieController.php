@@ -2,80 +2,95 @@
 
 namespace App\Http\Controllers;
 
-
 use App\Models\Movie;
 use App\Models\User;
+use App\Services\TmdbService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache; // SİHİRLİ DOKUNUŞ 1: Cache sınıfını içeri aldık!
 
 class MovieController extends Controller
 {
-    /**
-     * Kullanıcının film arşivini ve istatistiklerini listeler.
-     */
+    protected $tmdb;
+
+    public function __construct(TmdbService $tmdb)
+    {
+        $this->tmdb = $tmdb;
+    }
+
+    // 1. ODA: SADECE İZLENENLER (Film Arşivim)
+    // 1. ODA: SADECE İZLENENLER (Film Arşivim)
     public function index(Request $request)
     {
         /** @var User $user */
         $user = Auth::user();
 
-        // 1. Arama Filtresi
-        $search = mb_strtolower($request->input('search'), 'UTF-8');
+        // İSTATİSTİKLERİ SAYFALANDIRMADAN BAĞIMSIZ, TÜM VERİTABANINDAN ÇEKİYORUZ
+        $totalMovies = $user->movies()->count();
+        $baseWatchedQuery = $user->movies()->where('is_watched', true);
 
-        // 2. Kullanıcının Tüm Filmlerini Çek
-        $movies = $user->movies()->latest()->get();
-
-        // --- İSTATİSTİK HESAPLAMALARI ---
-        $totalMovies = $movies->count();
-        $watchedCount = $movies->where('is_watched', true)->count();
-
-        $totalMinutes = $movies->where('is_watched', true)->sum(function ($movie) {
-            return (int) ($movie->runtime ?? 0);
-        });
-
+        $watchedCount = $baseWatchedQuery->count();
+        $totalMinutes = $baseWatchedQuery->sum('runtime');
         $totalHours = floor($totalMinutes / 60);
         $remainingMinutes = $totalMinutes % 60;
+        $highestRated = clone $baseWatchedQuery->orderByDesc('rating')->first();
 
-        $highestRated = $movies->sortByDesc('rating')->first();
+        // FİLM LİSTELEME VE ARAMA SORGUSU
+        $query = $user->movies()->where('is_watched', true)->orderBy('updated_at', 'desc');
 
-        // SADECE movies.index'e yönlendiriyoruz
+        $filter = $request->input('filter', 'all');
+        $search = mb_strtolower($request->input('search'), 'UTF-8');
+
+        if ($filter === 'favorites') {
+            $query->where('personal_rating', '>=', 4);
+        }
+
+        if ($search) {
+            $query->where('title', 'like', '%' . $search . '%');
+        }
+
+        // BÜYÜK DOKUNUŞ: get() yerine paginate(20) kullanıyoruz.
+        // withQueryString() ise sayfa değiştirirken arama kelimesini kaybetmememizi sağlar.
+        $movies = $query->paginate(20)->withQueryString();
+
         return view('movies.index', compact(
-            'movies',
-            'search',
-            'totalMovies',
-            'watchedCount',
-            'totalHours',
-            'remainingMinutes',
-            'highestRated'
+            'movies', 'search', 'filter', 'totalMovies', 'watchedCount',
+            'totalHours', 'remainingMinutes', 'highestRated'
         ));
     }
 
-    /**
-     * Yeni film keşfetme sayfasını gösterir.
-     */
+    // 2. ODA: SADECE İZLENMEYECEKLER (İzleme Listem)
+    public function watchlist(Request $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $query = $user->movies()->where('is_watched', false)->orderBy('updated_at', 'desc');
+        $search = mb_strtolower($request->input('search'), 'UTF-8');
+
+        if ($search) {
+            $query->where('title', 'like', '%' . $search . '%');
+        }
+
+        // Burada da 20'li sayfalandırma yapıyoruz
+        $movies = $query->paginate(20)->withQueryString();
+        $totalMovies = $user->movies()->where('is_watched', false)->count();
+
+        return view('movies.watchlist', compact('movies', 'search', 'totalMovies'));
+    }
+
     public function create()
     {
-
         return view('movies.create');
     }
 
-    /**
-     * TMDB'den anlık arama yapan API fonksiyonu.
-     */
     public function apiSearch(Request $request)
     {
         $query = mb_strtolower($request->input('query'), 'UTF-8');
-
         if (!$query) return response()->json([]);
 
-        $token = config('services.tmdb.token');
-
-        $response = Http::withToken($token)
-            ->get('https://api.themoviedb.org/3/search/movie', [
-                'query' => $query,
-                'language' => 'tr-TR',
-                'include_adult' => false,
-            ]);
+        // Arama kısmı anlık olmalı, burayı cache'lemiyoruz.
+        $response = $this->tmdb->searchMovies($query);
 
         if ($response->successful()) {
             return response()->json(collect($response->json()['results'])->take(6));
@@ -84,52 +99,26 @@ class MovieController extends Controller
         return response()->json([]);
     }
 
-    /**
-     * Seçilen filmi ve süresini kaydeder.
-     */
-    /**
-     * Seçilen filmi ve süresini kaydeder.
-     */
     public function store(Request $request)
     {
-        $request->validate([
-            'tmdb_id' => 'required',
-        ]);
+        $request->validate(['tmdb_id' => 'required']);
 
         /** @var User $user */
         $user = Auth::user();
-
-        // FİLM ZATEN EKLİ Mİ KONTROLÜ
         $alreadyExists = $user->movies()->where('tmdb_id', $request->tmdb_id)->exists();
 
         if ($alreadyExists) {
-            // Arka plandan (Fetch API) geliyorsa sadece JSON gönder
             if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bu film zaten arşivinde mevcut!'
-                ], 400); // 400 Bad Request (Hata kodu)
+                return response()->json(['success' => false, 'message' => 'Bu film zaten arşivinde mevcut!'], 400);
             }
-            // Normal form ile geliyorsa sayfayı yenile
             return back()->with('error', 'Bu film zaten arşivinde mevcut!');
         }
 
-        $token = config('services.tmdb.token');
-
-        // 'append_to_response=credits' ekleyerek yönetmen bilgisini de istiyoruz
-        $response = \Illuminate\Support\Facades\Http::withToken($token)
-            ->get("https://api.themoviedb.org/3/movie/{$request->tmdb_id}", [
-                'language' => 'tr-TR',
-                'append_to_response' => 'credits'
-            ]);
+        $response = $this->tmdb->getMovieDetails($request->tmdb_id);
 
         if ($response->successful()) {
             $movieData = $response->json();
-
-            // Yönetmeni bulalım
-            $director = collect($movieData['credits']['crew'] ?? [])
-                ->firstWhere('job', 'Director')['name'] ?? 'Bilinmiyor';
-
+            $director = collect($movieData['credits']['crew'] ?? [])->firstWhere('job', 'Director')['name'] ?? 'Bilinmiyor';
             $isWatched = $request->boolean('is_watched');
 
             $user->movies()->create([
@@ -142,28 +131,23 @@ class MovieController extends Controller
                 'overview'     => empty($movieData['overview']) ? null : $movieData['overview'],
                 'release_date' => $movieData['release_date'],
                 'is_watched'   => $isWatched,
+                'watched_at'   => $isWatched ? now() : null,
             ]);
 
             $message = $isWatched ? 'Film listeye eklendi!' : 'Film izleneceklere eklendi!';
 
-            // BÜYÜ BURADA BAŞLIYOR: Arka plandan geliyorsa sadece JSON gönder
             if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => $message
-                ]);
+                return response()->json(['success' => true, 'message' => $message]);
             }
-
-            // Normal form ise sayfayı yenile
             return redirect()->route('movies.index')->with('success', $message);
         }
 
         if ($request->wantsJson()) {
             return response()->json(['success' => false, 'message' => 'Film bilgileri alınamadı.'], 500);
         }
-
         return back()->with('error', 'Film bilgileri alınamadı.');
     }
+
     public function show(Movie $movie)
     {
         return redirect()->route('movies.index');
@@ -171,55 +155,69 @@ class MovieController extends Controller
 
     public function update(Request $request, Movie $movie)
     {
-        if ($movie->user_id !== Auth::id()) {
-            abort(403);
+        if ($movie->user_id !== Auth::id()) abort(403);
+
+        if ($request->has('personal_rating')) {
+            $movie->update([
+                'personal_rating' => $request->personal_rating
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Puan kaydedildi.']);
+            }
+            return back();
         }
 
+        $newWatchedStatus = !$movie->is_watched;
         $movie->update([
-            'is_watched' => !$movie->is_watched
+            'is_watched' => $newWatchedStatus,
+            'watched_at' => $newWatchedStatus ? ($movie->watched_at ?? now()) : null
         ]);
 
-        return back()->with('success', 'Durum güncellendi.');
+        return back()->with('success', 'Film durumu güncellendi.');
     }
 
     public function destroy(Movie $movie)
     {
-        if ($movie->user_id !== Auth::id()) {
-            abort(403);
-        }
-
+        if ($movie->user_id !== Auth::id()) abort(403);
         $movie->delete();
-
         return back()->with('success', 'Film silindi.');
     }
+
     public function import()
     {
         return view('movies.import');
     }
-    /**
-     * Sana Özel Öneriler Sayfasını Gösterir.
-     */
+
+    // SİHİRLİ DOKUNUŞ 2: Öneriler sayfası artık TMDB'yi beklemeyecek!
     public function recommendations()
     {
         /** @var User $user */
         $user = Auth::user();
-
         $movies = $user->movies()->latest()->get();
-        $lastMovie = $movies->first(); // En son eklenen film
+        $lastMovie = $movies->first();
         $recommendations = [];
 
         if ($lastMovie && $lastMovie->tmdb_id) {
-            $response = Http::withToken(config('services.tmdb.token'))
-                ->get("https://api.themoviedb.org/3/movie/{$lastMovie->tmdb_id}/recommendations", [
-                    'language' => 'tr-TR',
-                ]);
 
-            if ($response->successful()) {
-                $allRecs = collect($response->json()['results']);
+            // TMDB'den gelen önerileri o filme özel 24 saat (86400 saniye) hafızada tutuyoruz
+            $cacheKey = 'movie_recommendations_' . $lastMovie->tmdb_id;
+
+            $results = Cache::remember($cacheKey, now()->addHours(24), function () use ($lastMovie) {
+                $response = $this->tmdb->getRecommendations($lastMovie->tmdb_id);
+                $res = $response->successful() ? ($response->json()['results'] ?? []) : [];
+
+                if (empty($res)) {
+                    $fallbackResponse = $this->tmdb->getSimilar($lastMovie->tmdb_id);
+                    $res = $fallbackResponse->successful() ? ($fallbackResponse->json()['results'] ?? []) : [];
+                }
+                return $res;
+            });
+
+            if (!empty($results)) {
                 $myMovieIds = $movies->pluck('tmdb_id')->toArray();
-
-                // Tam sayfa olduğu için artık 6 değil, 12 film çekiyoruz!
-                $recommendations = $allRecs->whereNotIn('id', $myMovieIds)
+                $recommendations = collect($results)
+                    ->whereNotIn('id', $myMovieIds)
                     ->shuffle()
                     ->take(12);
             }
@@ -227,30 +225,25 @@ class MovieController extends Controller
 
         return view('movies.recommendations', compact('recommendations', 'lastMovie'));
     }
-    /**
-     * Vizyondaki Filmler Sayfasını Gösterir.
-     */
+
+    // SİHİRLİ DOKUNUŞ 3: Vizyondakiler sayfası ışık hızında açılacak!
     public function nowPlaying()
     {
         /** @var User $user */
         $user = Auth::user();
-
-        // Kullanıcının mevcut filmlerini alalım ki vizyondakilerden eleyelim
         $myMovieIds = $user->movies()->pluck('tmdb_id')->toArray();
         $nowPlaying = [];
 
-        // TMDB 'now_playing' uç noktasına istek atıyoruz (region=TR ile Türkiye vizyonu)
-        $response = \Illuminate\Support\Facades\Http::withToken(config('services.tmdb.token'))
-            ->get("https://api.themoviedb.org/3/movie/now_playing", [
-                'language' => 'tr-TR',
-                'region' => 'TR',
-            ]);
+        // Vizyondaki filmleri her defasında çekmek yerine 12 saat hafızada tutuyoruz
+        $results = Cache::remember('movies_now_playing', now()->addHours(12), function () {
+            $response = $this->tmdb->getNowPlaying();
+            return $response->successful() ? ($response->json()['results'] ?? []) : [];
+        });
 
-        if ($response->successful()) {
-            $allResults = collect($response->json()['results']);
-
-            // Arşivinde olmayanları süz ve 12 tane al
-            $nowPlaying = $allResults->whereNotIn('id', $myMovieIds)->take(12);
+        if (!empty($results)) {
+            $nowPlaying = collect($results)
+                ->whereNotIn('id', $myMovieIds)
+                ->take(12);
         }
 
         return view('movies.now_playing', compact('nowPlaying'));

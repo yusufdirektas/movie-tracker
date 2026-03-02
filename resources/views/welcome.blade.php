@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movie Tracker - Hoş Geldiniz</title>
+    <title>YSD SOFT - Hoş Geldiniz</title>
+
+    {{-- İşte eklediğimiz sihirli Favicon kodu --}}
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%231e1b4b%22/><path d=%22M35 30 L75 50 L35 70 Z%22 fill=%22%236366f1%22/></svg>">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>

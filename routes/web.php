@@ -60,4 +60,5 @@ require __DIR__.'/auth.php';
 
 // --- 4. STANDART CRUD ROTALARI (En Alta) ---
 // index, create, store, show, edit, update, destroy rotalarını otomatik oluşturur.
+Route::get('/movies/watchlist', [App\Http\Controllers\MovieController::class, 'watchlist'])->name('movies.watchlist');
 Route::resource('movies', MovieController::class)->middleware(['auth']);

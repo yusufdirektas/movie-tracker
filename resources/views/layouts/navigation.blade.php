@@ -31,14 +31,24 @@
                         class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors">
                         {{ __('Film Arşivim') }}
                     </x-nav-link>
+
+                    <x-nav-link :href="route('movies.watchlist')" :active="request()->routeIs('movies.watchlist')"
+                        class="text-slate-300 hover:text-white hover:border-amber-500 focus:text-white focus:border-amber-500 transition-colors">
+                        {{ __('İzleme Listem') }}
+                    </x-nav-link>
+
                     <x-nav-link :href="route('movies.create')" :active="request()->routeIs('movies.create')"
                         class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors">
                         {{ __('Film Ekle') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('movies.recommendations')" :active="request()->routeIs('movies.recommendations')">
+
+                    <x-nav-link :href="route('movies.recommendations')" :active="request()->routeIs('movies.recommendations')"
+                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors">
                         {{ __('Sana Özel Öneriler') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('movies.now_playing')" :active="request()->routeIs('movies.now_playing')">
+
+                    <x-nav-link :href="route('movies.now_playing')" :active="request()->routeIs('movies.now_playing')"
+                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors">
                         {{ __('Vizyondakiler') }}
                     </x-nav-link>
                 </div>
@@ -101,9 +111,25 @@
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
                 {{ __('Film Arşivim') }}
             </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('movies.watchlist')" :active="request()->routeIs('movies.watchlist')"
+                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-amber-500">
+                {{ __('İzleme Listem') }}
+            </x-responsive-nav-link>
+
             <x-responsive-nav-link :href="route('movies.create')" :active="request()->routeIs('movies.create')"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
                 {{ __('Film Ekle') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('movies.recommendations')" :active="request()->routeIs('movies.recommendations')"
+                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
+                {{ __('Sana Özel Öneriler') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('movies.now_playing')" :active="request()->routeIs('movies.now_playing')"
+                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
+                {{ __('Vizyondakiler') }}
             </x-responsive-nav-link>
         </div>
 

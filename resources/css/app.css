@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -43,4 +44,107 @@ a.text-sm.text-gray-600:hover {
 button[type="submit"] {
     background-color: #4f46e5 !important; /* İndigo */
     color: #ffffff !important;
+}
+.filter-nav-wrapper {
+  display: inline-flex;
+  position: relative;
+}
+
+.filter-nav {
+  font-family: 'Outfit', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  border-radius: 20px;
+  background: rgba(5, 7, 20, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04) inset,
+    0 20px 60px rgba(0,0,0,0.6),
+    0 4px 16px rgba(0,0,0,0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+}
+
+.filter-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 50%);
+  border-radius: 20px;
+  pointer-events: none;
+}
+
+.filter-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  color: rgba(148, 163, 184, 0.7);
+  transition: color 0.25s ease, background 0.25s ease;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+/* YAZI VE İKONUN YEŞİL KUTUNUN ÜSTÜNE ÇIKMASINI SAĞLAYAN SİHİRLİ KOD */
+.filter-btn .btn-icon,
+.filter-btn .btn-label {
+  position: relative;
+  z-index: 10;
+}
+
+.filter-btn:hover:not(.active) {
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.05);
+}
+
+.filter-btn .btn-icon {
+  font-size: 12px;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.filter-btn:hover .btn-icon {
+  transform: scale(1.15);
+}
+
+/* Aktif Durum Arka Planları */
+.filter-btn.active-all { color: #fff; }
+.filter-btn.active-all::before {
+  content: ''; position: absolute; inset: 0; border-radius: 14px; z-index: 0;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.5), 0 0 40px rgba(99, 102, 241, 0.2), 0 4px 12px rgba(79, 70, 229, 0.4);
+}
+
+.filter-btn.active-watched { color: #fff; }
+.filter-btn.active-watched::before {
+  content: ''; position: absolute; inset: 0; border-radius: 14px; z-index: 0;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5), 0 0 40px rgba(16, 185, 129, 0.2), 0 4px 12px rgba(5, 150, 105, 0.4);
+}
+
+.filter-btn.active-unwatched { color: #fff; }
+.filter-btn.active-unwatched::before {
+  content: ''; position: absolute; inset: 0; border-radius: 14px; z-index: 0;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.5), 0 0 40px rgba(245, 158, 11, 0.2), 0 4px 12px rgba(217, 119, 6, 0.4);
+}
+
+.filter-btn.active-favorites { color: #fff; }
+.filter-btn.active-favorites::before {
+  content: ''; position: absolute; inset: 0; border-radius: 14px; z-index: 0;
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.5), 0 0 40px rgba(244, 63, 94, 0.2), 0 4px 12px rgba(225, 29, 72, 0.4);
+}
+
+.filter-divider {
+  width: 1px; height: 24px; background: rgba(255,255,255,0.07); margin: 0 4px; flex-shrink: 0;
 }
