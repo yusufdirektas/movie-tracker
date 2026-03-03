@@ -113,21 +113,30 @@
         {{-- Yeni Şık Filtreleme Butonları --}}
         <div class="mb-8 flex justify-center md:justify-start">
             <div class="inline-flex bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800 shadow-inner">
-                {{-- Tümü Butonu --}}
-                <a href="{{ route('movies.index', ['filter' => 'all']) }}"
-                    class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 {{ request('filter', 'all') === 'all' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50' }}">
-                    <i class="fas fa-layer-group"></i> Tümü
-                </a>
 
-                {{-- Favorilerim Butonu --}}
-                <a href="{{ route('movies.index', ['filter' => 'favorites']) }}"
-                    class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 {{ request('filter') === 'favorites' ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50' }}">
-                    <i class="fas fa-heart {{ request('filter') === 'favorites' ? 'text-white' : 'text-pink-500/70' }}"></i>
-                    Favorilerim
-                </a>
+               {{-- Tümü --}}
+    <a href="{{ route('movies.index', ['filter' => 'all']) }}"
+       role="tab"
+       aria-selected="{{ request('filter', 'all') === 'all' ? 'true' : 'false' }}"
+       class="filter-btn {{ request('filter', 'all') === 'all' ? 'active-all active' : '' }}">
+      <span class="btn-icon"><i class="fas fa-layer-group"></i></span>
+      <span class="btn-label">Tümü</span>
+      {{-- Opsiyonel sayaç: <span class="filter-badge">128</span> --}}
+    </a>
+
+    <div class="filter-divider" aria-hidden="true"></div>
+
+    {{-- Favorilerim --}}
+    <a href="{{ route('movies.index', ['filter' => 'favorites']) }}"
+       role="tab"
+       aria-selected="{{ request('filter') === 'favorites' ? 'true' : 'false' }}"
+       class="filter-btn {{ request('filter') === 'favorites' ? 'active-favorites active' : '' }}">
+      <span class="btn-icon"><i class="fas fa-heart"></i></span>
+      <span class="btn-label">Favorilerim</span>
+    </a>
+
             </div>
         </div>
-
         @if ($movies->isEmpty())
             <div class="bg-slate-900 border-2 border-dashed border-slate-800 rounded-[2.5rem] p-20 text-center">
                 <div class="bg-slate-800 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
