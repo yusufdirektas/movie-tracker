@@ -73,8 +73,13 @@
                         body: formData
                     });
 
-                    if(res.ok) {
+                    let data = await res.json();
+
+                    if (data.success) {
                         item.status = 'saved';
+                    } else if (res.status === 400) {
+                        // 400 = film zaten mevcut, bu bir hata değil
+                        item.status = 'duplicate';
                     } else {
                         item.status = 'error';
                     }
@@ -131,6 +136,7 @@
                      :class="{
                         'border-slate-800': item.status === 'pending',
                         'border-emerald-500/50 bg-emerald-500/10': item.status === 'saved',
+                        'border-amber-500/50 bg-amber-500/10': item.status === 'duplicate',
                         'border-red-500/50 opacity-70': item.status === 'error' || !item.found
                      }">
 
@@ -145,6 +151,9 @@
                         <div x-show="item.status === 'saved'" class="absolute inset-0 bg-emerald-900/80 flex items-center justify-center">
                             <i class="fas fa-check text-white"></i>
                         </div>
+                        <div x-show="item.status === 'duplicate'" class="absolute inset-0 bg-amber-900/80 flex items-center justify-center">
+                            <i class="fas fa-bookmark text-white"></i>
+                        </div>
                     </div>
 
                     <div class="flex-1 min-w-0">
@@ -152,7 +161,8 @@
                             <div>
                                 <h4 class="text-white text-sm font-bold truncate" x-text="item.title"></h4>
                                 <p class="text-slate-500 text-xs" x-text="item.year"></p>
-                                <p class="text-indigo-400 text-[10px] truncate" x-text="'Aranan: ' + item.original"></p>
+                                <p x-show="item.status === 'duplicate'" class="text-amber-400 text-[10px] font-bold uppercase tracking-wider">Zaten arşivinde var</p>
+                                <p x-show="item.status !== 'duplicate'" class="text-indigo-400 text-[10px] truncate" x-text="'Aranan: ' + item.original"></p>
                             </div>
                         </template>
                         <template x-if="!item.found">

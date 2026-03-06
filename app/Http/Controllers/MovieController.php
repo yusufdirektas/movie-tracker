@@ -19,7 +19,6 @@ class MovieController extends Controller
     }
 
     // 1. ODA: SADECE İZLENENLER (Film Arşivim)
-    // 1. ODA: SADECE İZLENENLER (Film Arşivim)
     public function index(Request $request)
     {
         /** @var User $user */
@@ -33,7 +32,7 @@ class MovieController extends Controller
         $totalMinutes = $baseWatchedQuery->sum('runtime');
         $totalHours = floor($totalMinutes / 60);
         $remainingMinutes = $totalMinutes % 60;
-        $highestRated = clone $baseWatchedQuery->orderByDesc('rating')->first();
+        $highestRated = $baseWatchedQuery->orderByDesc('rating')->first();
 
         // FİLM LİSTELEME VE ARAMA SORGUSU
         $query = $user->movies()->where('is_watched', true)->orderBy('updated_at', 'desc');
@@ -150,6 +149,7 @@ class MovieController extends Controller
 
     public function show(Movie $movie)
     {
+        if ($movie->user_id !== Auth::id()) abort(403);
         return redirect()->route('movies.index');
     }
 
@@ -158,6 +158,10 @@ class MovieController extends Controller
         if ($movie->user_id !== Auth::id()) abort(403);
 
         if ($request->has('personal_rating')) {
+            $request->validate([
+                'personal_rating' => 'required|integer|min:1|max:5',
+            ]);
+
             $movie->update([
                 'personal_rating' => $request->personal_rating
             ]);

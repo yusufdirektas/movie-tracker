@@ -122,8 +122,14 @@
                                     <div class="overflow-y-auto custom-scrollbar flex-1 w-full">
                                         <div class="flex flex-col md:hidden">
                                             <div class="relative w-full h-64 shrink-0 bg-slate-950">
-                                                <img src="https://image.tmdb.org/t/p/w500{{ $movie->poster_path }}"
-                                                    class="w-full h-full object-cover object-top" loading="lazy">
+                                                @if ($movie->poster_path)
+                                                    <img src="https://image.tmdb.org/t/p/w500{{ $movie->poster_path }}"
+                                                        class="w-full h-full object-cover object-top" loading="lazy">
+                                                @else
+                                                    <div class="w-full h-full flex items-center justify-center text-slate-700 bg-slate-950">
+                                                        <i class="fas fa-image text-4xl"></i>
+                                                    </div>
+                                                @endif
                                                 <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
                                             </div>
 
@@ -152,8 +158,14 @@
 
                                         <div class="hidden md:flex flex-row h-full">
                                             <div class="w-2/5 shrink-0 bg-slate-950 relative">
-                                                <img src="https://image.tmdb.org/t/p/w500{{ $movie->poster_path }}"
-                                                    class="w-full h-full object-cover" loading="lazy">
+                                                @if ($movie->poster_path)
+                                                    <img src="https://image.tmdb.org/t/p/w500{{ $movie->poster_path }}"
+                                                        class="w-full h-full object-cover" loading="lazy">
+                                                @else
+                                                    <div class="w-full h-full flex items-center justify-center text-slate-700 bg-slate-950">
+                                                        <i class="fas fa-image text-4xl"></i>
+                                                    </div>
+                                                @endif
                                                 <div class="absolute inset-0 bg-gradient-to-r from-transparent to-slate-900/50"></div>
                                             </div>
 
@@ -206,7 +218,7 @@
                                             </button>
                                         </form>
 
-                                    </div>  
+                                    </div>
 
                                 </div>
                             </div>
