@@ -108,21 +108,24 @@
                                             </div>
                                             <div class="flex items-center gap-3 flex-wrap mb-6">
 
-    {{-- YENİ EKLENEN: Modal İçi Vizyon Tarihi Rozeti --}}
-    @if(!empty($movie['release_date']))
-        <span class="bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-lg font-bold text-xs border border-emerald-500/20 flex items-center gap-2 shadow-sm">
-            <i class="fas fa-calendar-check"></i>
-            Vizyon: {{ \Carbon\Carbon::parse($movie['release_date'])->format('d.m.Y') }}
-        </span>
-    @else
-        <span class="bg-slate-800 text-slate-400 px-3 py-1.5 rounded-lg font-bold text-xs border border-slate-700 flex items-center gap-2">
-            <i class="fas fa-calendar-times"></i> Tarih Belirsiz
-        </span>
-    @endif
+                                                {{-- YENİ EKLENEN: Modal İçi Vizyon Tarihi Rozeti --}}
+                                                @if (!empty($movie['release_date']))
+                                                    <span
+                                                        class="bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-lg font-bold text-xs border border-emerald-500/20 flex items-center gap-2 shadow-sm">
+                                                        <i class="fas fa-calendar-check"></i>
+                                                        Vizyon:
+                                                        {{ \Carbon\Carbon::parse($movie['release_date'])->format('d.m.Y') }}
+                                                    </span>
+                                                @else
+                                                    <span
+                                                        class="bg-slate-800 text-slate-400 px-3 py-1.5 rounded-lg font-bold text-xs border border-slate-700 flex items-center gap-2">
+                                                        <i class="fas fa-calendar-times"></i> Tarih Belirsiz
+                                                    </span>
+                                                @endif
 
 
 
-</div>
+                                            </div>
 
                                             <h3
                                                 class="text-slate-500 font-black mb-2 uppercase text-[10px] tracking-widest">
