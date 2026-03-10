@@ -41,9 +41,15 @@ class MovieController extends Controller
 
         $filter = $request->input('filter', 'all');
         $search = mb_strtolower($request->input('search'), 'UTF-8');
+        $genre = $request->input('genre');
 
         if ($filter === 'favorites') {
             $query->where('personal_rating', '>=', 4);
+        }
+
+        if ($genre) {
+            // JSON sütununda tür araması: genres içinde "Aksiyon" var mı?
+            $query->whereJsonContains('genres', $genre);
         }
 
         if ($search) {
@@ -54,9 +60,19 @@ class MovieController extends Controller
         // withQueryString() ise sayfa değiştirirken arama kelimesini kaybetmememizi sağlar.
         $movies = $query->paginate(20)->withQueryString();
 
+        // Kullanıcının izlediği filmlerdeki tüm türleri topla (filtre dropdown için)
+        $availableGenres = $user->movies()
+            ->where('is_watched', true)
+            ->whereNotNull('genres')
+            ->pluck('genres')    // Her satırdan genres array'ini al
+            ->flatten()          // Tüm array'leri düzleştir: ["Aksiyon","Dram","Aksiyon","Bilim Kurgu"]
+            ->unique()           // Tekrarları kaldır
+            ->sort()             // Alfabetik sırala
+            ->values();          // Index'leri sıfırla
+
         return view('movies.index', compact(
-            'movies', 'search', 'filter', 'totalMovies', 'watchedCount',
-            'totalHours', 'remainingMinutes', 'highestRated'
+            'movies', 'search', 'filter', 'genre', 'availableGenres',
+            'totalMovies', 'watchedCount', 'totalHours', 'remainingMinutes', 'highestRated'
         ));
     }
 
@@ -68,16 +84,29 @@ class MovieController extends Controller
 
         $query = $user->movies()->where('is_watched', false)->orderBy('updated_at', 'desc');
         $search = mb_strtolower($request->input('search'), 'UTF-8');
+        $genre = $request->input('genre');
+
+        if ($genre) {
+            $query->whereJsonContains('genres', $genre);
+        }
 
         if ($search) {
             $query->where('title', 'like', '%' . $search . '%');
         }
 
-        // Burada da 20'li sayfalandırma yapıyoruz
         $movies = $query->paginate(20)->withQueryString();
         $totalMovies = $user->movies()->where('is_watched', false)->count();
 
-        return view('movies.watchlist', compact('movies', 'search', 'totalMovies'));
+        $availableGenres = $user->movies()
+            ->where('is_watched', false)
+            ->whereNotNull('genres')
+            ->pluck('genres')
+            ->flatten()
+            ->unique()
+            ->sort()
+            ->values();
+
+        return view('movies.watchlist', compact('movies', 'search', 'genre', 'availableGenres', 'totalMovies'));
     }
 
     public function create()
@@ -120,10 +149,15 @@ class MovieController extends Controller
             $director = collect($movieData['credits']['crew'] ?? [])->firstWhere('job', 'Director')['name'] ?? 'Bilinmiyor';
             $isWatched = $request->boolean('is_watched');
 
+            // TMDB'den gelen genre objeleri: [{"id":28,"name":"Aksiyon"}, ...]
+            // Sadece isimleri alıyoruz: ["Aksiyon", "Bilim Kurgu", "Gerilim"]
+            $genres = collect($movieData['genres'] ?? [])->pluck('name')->toArray();
+
             $user->movies()->create([
                 'tmdb_id'      => $movieData['id'],
                 'title'        => $movieData['title'],
                 'director'     => $director,
+                'genres'       => $genres,
                 'poster_path'  => $movieData['poster_path'],
                 'rating'       => $movieData['vote_average'],
                 'runtime'      => $movieData['runtime'],

@@ -15,20 +15,21 @@ class Movie extends Model
         'tmdb_id',
         'title',
         'director',
+        'genres',
         'poster_path',
         'rating',
-        'personal_rating', // YENİ EKLENDİ
+        'personal_rating',
         'runtime',
         'overview',
         'release_date',
         'is_watched',
-        'watched_at', // YENİ EKLENDİ
+        'watched_at',
     ];
 
-    // Bu ayar sayesinde veritabanındaki tarih metnini, Laravel otomatik olarak bir Tarih Nesnesine çevirir.
     protected $casts = [
         'is_watched' => 'boolean',
         'watched_at' => 'date',
+        'genres'     => 'array', // JSON → PHP array otomatik dönüşüm
     ];
 
     public function user(): BelongsTo
