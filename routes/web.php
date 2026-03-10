@@ -24,7 +24,7 @@ Route::get('/movies/import-list', [MovieController::class, 'import'])
 
 // Canlı Arama API'si (Import sayfasındaki "Analiz Et" butonu için şart)
 Route::get('/movies/api-search', [MovieController::class, 'apiSearch'])
-    ->middleware(['auth'])
+    ->middleware(['auth', 'throttle:api-search'])
     ->name('movies.api_search');
 
 // Sana Özel Öneriler Sayfası (YENİ EKLENEN ROTA)
@@ -61,4 +61,5 @@ require __DIR__.'/auth.php';
 // --- 4. STANDART CRUD ROTALARI (En Alta) ---
 // index, create, store, show, edit, update, destroy rotalarını otomatik oluşturur.
 Route::get('/movies/watchlist', [App\Http\Controllers\MovieController::class, 'watchlist'])->middleware(['auth'])->name('movies.watchlist');
-Route::resource('movies', MovieController::class)->middleware(['auth']);
+Route::post('/movies', [MovieController::class, 'store'])->middleware(['auth', 'throttle:store-movie'])->name('movies.store');
+Route::resource('movies', MovieController::class)->middleware(['auth'])->except(['store']);
