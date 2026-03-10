@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Movie;
 use App\Models\User;
+use App\Http\Requests\StoreMovieRequest;
+use App\Http\Requests\UpdateMovieRequest;
 use App\Services\TmdbService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache; // SİHİRLİ DOKUNUŞ 1: Cache sınıfını içeri aldık!
+use Illuminate\Support\Facades\Cache;
 
 class MovieController extends Controller
 {
@@ -98,10 +100,8 @@ class MovieController extends Controller
         return response()->json([]);
     }
 
-    public function store(Request $request)
+    public function store(StoreMovieRequest $request)
     {
-        $request->validate(['tmdb_id' => 'required']);
-
         /** @var User $user */
         $user = Auth::user();
         $alreadyExists = $user->movies()->where('tmdb_id', $request->tmdb_id)->exists();
@@ -153,15 +153,11 @@ class MovieController extends Controller
         return redirect()->route('movies.index');
     }
 
-    public function update(Request $request, Movie $movie)
+    public function update(UpdateMovieRequest $request, Movie $movie)
     {
         $this->authorize('update', $movie);
 
         if ($request->has('personal_rating')) {
-            $request->validate([
-                'personal_rating' => 'required|integer|min:1|max:5',
-            ]);
-
             $movie->update([
                 'personal_rating' => $request->personal_rating
             ]);
