@@ -149,13 +149,13 @@ class MovieController extends Controller
 
     public function show(Movie $movie)
     {
-        if ($movie->user_id !== Auth::id()) abort(403);
+        $this->authorize('view', $movie);
         return redirect()->route('movies.index');
     }
 
     public function update(Request $request, Movie $movie)
     {
-        if ($movie->user_id !== Auth::id()) abort(403);
+        $this->authorize('update', $movie);
 
         if ($request->has('personal_rating')) {
             $request->validate([
@@ -183,7 +183,7 @@ class MovieController extends Controller
 
     public function destroy(Movie $movie)
     {
-        if ($movie->user_id !== Auth::id()) abort(403);
+        $this->authorize('delete', $movie);
         $movie->delete();
         return back()->with('success', 'Film silindi.');
     }
