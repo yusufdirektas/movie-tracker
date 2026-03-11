@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MovieController;
+use App\Http\Controllers\WatchlistController;
+use App\Http\Controllers\RecommendationController;
+use App\Http\Controllers\NowPlayingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,11 +31,11 @@ Route::get('/movies/api-search', [MovieController::class, 'apiSearch'])
     ->name('movies.api_search');
 
 // Sana Özel Öneriler Sayfası (YENİ EKLENEN ROTA)
-Route::get('/movies/recommendations', [MovieController::class, 'recommendations'])
+Route::get('/movies/recommendations', [RecommendationController::class, 'index'])
     ->middleware(['auth'])
     ->name('movies.recommendations');
 // Vizyondaki Filmler Sayfası
-Route::get('/movies/now-playing', [MovieController::class, 'nowPlaying'])
+Route::get('/movies/now-playing', [NowPlayingController::class, 'index'])
     ->middleware(['auth'])
     ->name('movies.now_playing');
 
@@ -60,6 +63,6 @@ require __DIR__.'/auth.php';
 
 // --- 4. STANDART CRUD ROTALARI (En Alta) ---
 // index, create, store, show, edit, update, destroy rotalarını otomatik oluşturur.
-Route::get('/movies/watchlist', [App\Http\Controllers\MovieController::class, 'watchlist'])->middleware(['auth'])->name('movies.watchlist');
+Route::get('/movies/watchlist', [WatchlistController::class, 'index'])->middleware(['auth'])->name('movies.watchlist');
 Route::post('/movies', [MovieController::class, 'store'])->middleware(['auth', 'throttle:store-movie'])->name('movies.store');
 Route::resource('movies', MovieController::class)->middleware(['auth'])->except(['store']);

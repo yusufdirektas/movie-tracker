@@ -99,52 +99,7 @@ class MovieController extends Controller
         ));
     }
 
-    // 2. ODA: SADECE İZLENMEYECEKLER (İzleme Listem)
-    public function watchlist(Request $request)
-    {
-        /** @var User $user */
-        $user = Auth::user();
 
-        $query = $user->movies()->where('is_watched', false);
-        $search = mb_strtolower($request->input('search'), 'UTF-8');
-        $genre = $request->input('genre');
-
-        // Aynı whitelist yaklaşımı (güvenlik için)
-        $allowedSorts = [
-            'updated_at'   => 'desc',
-            'title'        => 'asc',
-            'rating'       => 'desc',
-            'release_date' => 'desc',
-            'runtime'      => 'desc',
-        ];
-        $sort = $request->input('sort', 'updated_at');
-        if (!array_key_exists($sort, $allowedSorts)) {
-            $sort = 'updated_at';
-        }
-        $query->orderBy($sort, $allowedSorts[$sort]);
-
-        if ($genre) {
-            $query->whereJsonContains('genres', $genre);
-        }
-
-        if ($search) {
-            $query->where('title', 'like', '%' . $search . '%');
-        }
-
-        $movies = $query->paginate(20)->withQueryString();
-        $totalMovies = $user->movies()->where('is_watched', false)->count();
-
-        $availableGenres = $user->movies()
-            ->where('is_watched', false)
-            ->whereNotNull('genres')
-            ->pluck('genres')
-            ->flatten()
-            ->unique()
-            ->sort()
-            ->values();
-
-        return view('movies.watchlist', compact('movies', 'search', 'genre', 'availableGenres', 'totalMovies', 'sort'));
-    }
 
     public function create()
     {
@@ -289,63 +244,5 @@ class MovieController extends Controller
         return view('movies.import');
     }
 
-    // SİHİRLİ DOKUNUŞ 2: Öneriler sayfası artık TMDB'yi beklemeyecek!
-    public function recommendations()
-    {
-        /** @var User $user */
-        $user = Auth::user();
-        $movies = $user->movies()->latest()->get();
-        $lastMovie = $movies->first();
-        $recommendations = [];
 
-        if ($lastMovie && $lastMovie->tmdb_id) {
-
-            // TMDB'den gelen önerileri o filme özel 24 saat (86400 saniye) hafızada tutuyoruz
-            $cacheKey = 'movie_recommendations_' . $lastMovie->tmdb_id;
-
-            $results = Cache::remember($cacheKey, now()->addHours(24), function () use ($lastMovie) {
-                $response = $this->tmdb->getRecommendations($lastMovie->tmdb_id);
-                $res = $response?->successful() ? ($response->json()['results'] ?? []) : [];
-
-                if (empty($res)) {
-                    $fallbackResponse = $this->tmdb->getSimilar($lastMovie->tmdb_id);
-                    $res = $fallbackResponse?->successful() ? ($fallbackResponse->json()['results'] ?? []) : [];
-                }
-                return $res;
-            });
-
-            if (!empty($results)) {
-                $myMovieIds = $movies->pluck('tmdb_id')->toArray();
-                $recommendations = collect($results)
-                    ->whereNotIn('id', $myMovieIds)
-                    ->shuffle()
-                    ->take(12);
-            }
-        }
-
-        return view('movies.recommendations', compact('recommendations', 'lastMovie'));
-    }
-
-    // SİHİRLİ DOKUNUŞ 3: Vizyondakiler sayfası ışık hızında açılacak!
-    public function nowPlaying()
-    {
-        /** @var User $user */
-        $user = Auth::user();
-        $myMovieIds = $user->movies()->pluck('tmdb_id')->toArray();
-        $nowPlaying = [];
-
-        // Vizyondaki filmleri her defasında çekmek yerine 12 saat hafızada tutuyoruz
-        $results = Cache::remember('movies_now_playing', now()->addHours(12), function () {
-            $response = $this->tmdb->getNowPlaying();
-            return $response?->successful() ? ($response->json()['results'] ?? []) : [];
-        });
-
-        if (!empty($results)) {
-            $nowPlaying = collect($results)
-                ->whereNotIn('id', $myMovieIds)
-                ->take(12);
-        }
-
-        return view('movies.now_playing', compact('nowPlaying'));
-    }
 }
