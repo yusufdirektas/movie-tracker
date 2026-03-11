@@ -157,10 +157,17 @@ class MovieController extends Controller
         if (!$query) return response()->json([]);
 
         // Arama kısmı anlık olmalı, burayı cache'lemiyoruz.
+        /**
+         * 📚 NULL-SAFE OPERATOR (?->):
+         * TmdbService artık hata durumunda null dönebiliyor.
+         * $response->successful() yerine $response?->successful() kullanıyoruz.
+         * Eğer $response null ise, ?-> otomatik olarak false döner
+         * ve uygulama çökmez.
+         */
         $response = $this->tmdb->searchMovies($query);
 
-        if ($response->successful()) {
-            return response()->json(collect($response->json()['results'])->take(6));
+        if ($response?->successful()) {
+            return response()->json(collect($response->json()['results'] ?? [])->take(6));
         }
 
         return response()->json([]);
@@ -181,7 +188,7 @@ class MovieController extends Controller
 
         $response = $this->tmdb->getMovieDetails($request->tmdb_id);
 
-        if ($response->successful()) {
+        if ($response?->successful()) {
             $movieData = $response->json();
             $director = collect($movieData['credits']['crew'] ?? [])->firstWhere('job', 'Director')['name'] ?? 'Bilinmiyor';
             $isWatched = $request->boolean('is_watched');
@@ -238,7 +245,7 @@ class MovieController extends Controller
             $cacheKey = 'movie_similar_' . $movie->tmdb_id;
             $similarMovies = Cache::remember($cacheKey, now()->addHours(24), function () use ($movie) {
                 $response = $this->tmdb->getSimilar($movie->tmdb_id);
-                return $response->successful() ? ($response->json()['results'] ?? []) : [];
+                return $response?->successful() ? ($response->json()['results'] ?? []) : [];
             });
             $similarMovies = collect($similarMovies)->take(6);
         }
@@ -298,11 +305,11 @@ class MovieController extends Controller
 
             $results = Cache::remember($cacheKey, now()->addHours(24), function () use ($lastMovie) {
                 $response = $this->tmdb->getRecommendations($lastMovie->tmdb_id);
-                $res = $response->successful() ? ($response->json()['results'] ?? []) : [];
+                $res = $response?->successful() ? ($response->json()['results'] ?? []) : [];
 
                 if (empty($res)) {
                     $fallbackResponse = $this->tmdb->getSimilar($lastMovie->tmdb_id);
-                    $res = $fallbackResponse->successful() ? ($fallbackResponse->json()['results'] ?? []) : [];
+                    $res = $fallbackResponse?->successful() ? ($fallbackResponse->json()['results'] ?? []) : [];
                 }
                 return $res;
             });
@@ -330,7 +337,7 @@ class MovieController extends Controller
         // Vizyondaki filmleri her defasında çekmek yerine 12 saat hafızada tutuyoruz
         $results = Cache::remember('movies_now_playing', now()->addHours(12), function () {
             $response = $this->tmdb->getNowPlaying();
-            return $response->successful() ? ($response->json()['results'] ?? []) : [];
+            return $response?->successful() ? ($response->json()['results'] ?? []) : [];
         });
 
         if (!empty($results)) {
