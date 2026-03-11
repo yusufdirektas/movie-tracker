@@ -37,18 +37,44 @@ class MovieController extends Controller
         $highestRated = $baseWatchedQuery->orderByDesc('rating')->first();
 
         // FİLM LİSTELEME VE ARAMA SORGUSU
-        $query = $user->movies()->where('is_watched', true)->orderBy('updated_at', 'desc');
+        $query = $user->movies()->where('is_watched', true);
 
         $filter = $request->input('filter', 'all');
         $search = mb_strtolower($request->input('search'), 'UTF-8');
         $genre = $request->input('genre');
+
+        /**
+         * 📚 SIRALAMA WHİTELİST GÜVENLİĞİ:
+         *
+         * Kullanıcıdan gelen 'sort' değerini DİREKT olarak orderBy'a vermek
+         * SQL Injection riski taşır. Örneğin kötü niyetli biri:
+         *   ?sort=title; DROP TABLE movies;
+         * gibi bir şey gönderebilir.
+         *
+         * ÇÖZÜM: İzin verilen sıralama seçeneklerini bir whitelist'te tutuyoruz.
+         * Kullanıcının gönderdiği değer listede yoksa varsayılan sıralamayı kullanıyoruz.
+         */
+        $allowedSorts = [
+            'updated_at'      => 'desc',   // Son eklenen (varsayılan)
+            'title'           => 'asc',    // İsme göre A-Z
+            'rating'          => 'desc',   // TMDB puanına göre
+            'personal_rating' => 'desc',   // Kişisel puana göre
+            'release_date'    => 'desc',   // Yayın tarihine göre
+            'runtime'         => 'desc',   // Süreye göre
+        ];
+
+        $sort = $request->input('sort', 'updated_at');
+        // Whitelist'te yoksa varsayılana dön
+        if (!array_key_exists($sort, $allowedSorts)) {
+            $sort = 'updated_at';
+        }
+        $query->orderBy($sort, $allowedSorts[$sort]);
 
         if ($filter === 'favorites') {
             $query->where('personal_rating', '>=', 4);
         }
 
         if ($genre) {
-            // JSON sütununda tür araması: genres içinde "Aksiyon" var mı?
             $query->whereJsonContains('genres', $genre);
         }
 
@@ -56,22 +82,19 @@ class MovieController extends Controller
             $query->where('title', 'like', '%' . $search . '%');
         }
 
-        // BÜYÜK DOKUNUŞ: get() yerine paginate(20) kullanıyoruz.
-        // withQueryString() ise sayfa değiştirirken arama kelimesini kaybetmememizi sağlar.
         $movies = $query->paginate(20)->withQueryString();
 
-        // Kullanıcının izlediği filmlerdeki tüm türleri topla (filtre dropdown için)
         $availableGenres = $user->movies()
             ->where('is_watched', true)
             ->whereNotNull('genres')
-            ->pluck('genres')    // Her satırdan genres array'ini al
-            ->flatten()          // Tüm array'leri düzleştir: ["Aksiyon","Dram","Aksiyon","Bilim Kurgu"]
-            ->unique()           // Tekrarları kaldır
-            ->sort()             // Alfabetik sırala
-            ->values();          // Index'leri sıfırla
+            ->pluck('genres')
+            ->flatten()
+            ->unique()
+            ->sort()
+            ->values();
 
         return view('movies.index', compact(
-            'movies', 'search', 'filter', 'genre', 'availableGenres',
+            'movies', 'search', 'filter', 'genre', 'availableGenres', 'sort',
             'totalMovies', 'watchedCount', 'totalHours', 'remainingMinutes', 'highestRated'
         ));
     }
@@ -82,9 +105,23 @@ class MovieController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        $query = $user->movies()->where('is_watched', false)->orderBy('updated_at', 'desc');
+        $query = $user->movies()->where('is_watched', false);
         $search = mb_strtolower($request->input('search'), 'UTF-8');
         $genre = $request->input('genre');
+
+        // Aynı whitelist yaklaşımı (güvenlik için)
+        $allowedSorts = [
+            'updated_at'   => 'desc',
+            'title'        => 'asc',
+            'rating'       => 'desc',
+            'release_date' => 'desc',
+            'runtime'      => 'desc',
+        ];
+        $sort = $request->input('sort', 'updated_at');
+        if (!array_key_exists($sort, $allowedSorts)) {
+            $sort = 'updated_at';
+        }
+        $query->orderBy($sort, $allowedSorts[$sort]);
 
         if ($genre) {
             $query->whereJsonContains('genres', $genre);
@@ -106,7 +143,7 @@ class MovieController extends Controller
             ->sort()
             ->values();
 
-        return view('movies.watchlist', compact('movies', 'search', 'genre', 'availableGenres', 'totalMovies'));
+        return view('movies.watchlist', compact('movies', 'search', 'genre', 'availableGenres', 'totalMovies', 'sort'));
     }
 
     public function create()

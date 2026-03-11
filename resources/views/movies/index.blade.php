@@ -137,6 +137,34 @@
 
             </div>
         </div>
+
+        {{-- 📚 SIRALAMA DROPDOWN'I --}}
+        {{-- Kullanıcı seçim yaptığında form otomatik submit olur (onchange) --}}
+        {{-- Mevcut filtre/arama/tür parametreleri hidden input'larla korunur --}}
+        <div class="mb-8 flex justify-center md:justify-start">
+            <form action="{{ route('movies.index') }}" method="GET" class="flex items-center gap-3">
+                <input type="hidden" name="filter" value="{{ request('filter', 'all') }}">
+                @if(request('search'))
+                    <input type="hidden" name="search" value="{{ request('search') }}">
+                @endif
+                @if(request('genre'))
+                    <input type="hidden" name="genre" value="{{ request('genre') }}">
+                @endif
+
+                <span class="text-slate-500 text-xs font-bold uppercase tracking-widest">
+                    <i class="fas fa-sort mr-1"></i> Sırala
+                </span>
+                <select name="sort" onchange="this.form.submit()"
+                    class="bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer">
+                    <option value="updated_at" {{ $sort === 'updated_at' ? 'selected' : '' }}>Son Eklenen</option>
+                    <option value="title" {{ $sort === 'title' ? 'selected' : '' }}>İsme Göre (A-Z)</option>
+                    <option value="rating" {{ $sort === 'rating' ? 'selected' : '' }}>TMDB Puanı</option>
+                    <option value="personal_rating" {{ $sort === 'personal_rating' ? 'selected' : '' }}>Kişisel Puan</option>
+                    <option value="release_date" {{ $sort === 'release_date' ? 'selected' : '' }}>Yayın Tarihi</option>
+                    <option value="runtime" {{ $sort === 'runtime' ? 'selected' : '' }}>Süre</option>
+                </select>
+            </form>
+        </div>
         @if ($movies->isEmpty())
             <div class="bg-slate-900 border-2 border-dashed border-slate-800 rounded-[2.5rem] p-20 text-center">
                 <div class="bg-slate-800 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
