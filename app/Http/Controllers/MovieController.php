@@ -71,7 +71,7 @@ class MovieController extends Controller
         $movies = $query->paginate(20)->withQueryString();
 
         // Türleri yine Model üzerinden alıyoruz
-        $availableGenres = App\Models\Movie::getAvailableGenres($user->id, true);
+        $availableGenres = Movie::getAvailableGenres($user->id, true);
 
         return view('movies.index', compact(
             'movies', 'search', 'filter', 'genre', 'availableGenres', 'sort',

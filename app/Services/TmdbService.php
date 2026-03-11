@@ -145,6 +145,23 @@ class TmdbService
     }
 
     /**
+     * 1.5. Film Arama (Yıla göre daha spesifik)
+     */
+    public function searchMovie(string $query, ?string $year = null)
+    {
+        $params = [
+            'query'         => $query,
+            'include_adult' => false,
+        ];
+
+        if ($year) {
+            $params['primary_release_year'] = $year;
+        }
+
+        return $this->request('/search/movie', $params);
+    }
+
+    /**
      * 2. Film Detayı (yönetmen bilgisi dahil)
      */
     public function getMovieDetails(int|string $id)

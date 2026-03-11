@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Movie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -43,7 +44,7 @@ class WatchlistController extends Controller
         $totalMovies = $user->movies()->unwatched()->count();
 
         // Türleri static metodumuzla alıyoruz (isWatched = false)
-        $availableGenres = \App\Models\Movie::getAvailableGenres($user->id, false);
+        $availableGenres = Movie::getAvailableGenres($user->id, false);
 
         return view('movies.watchlist', compact('movies', 'search', 'genre', 'availableGenres', 'totalMovies', 'sort'));
     }

@@ -28,28 +28,33 @@
 
                 <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
                     <x-nav-link :href="route('movies.index')" :active="request()->routeIs('movies.index')"
-                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors">
-                        {{ __('Film Arşivim') }}
+                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors flex items-center gap-2">
+                        <i class="fas fa-film"></i> {{ __('Film Arşivim') }}
                     </x-nav-link>
 
                     <x-nav-link :href="route('movies.watchlist')" :active="request()->routeIs('movies.watchlist')"
-                        class="text-slate-300 hover:text-white hover:border-amber-500 focus:text-white focus:border-amber-500 transition-colors">
-                        {{ __('İzleme Listem') }}
+                        class="text-slate-300 hover:text-white hover:border-amber-500 focus:text-white focus:border-amber-500 transition-colors flex items-center gap-2">
+                        <i class="fas fa-bookmark text-amber-500/70"></i> {{ __('İzleme Listem') }}
                     </x-nav-link>
 
                     <x-nav-link :href="route('movies.create')" :active="request()->routeIs('movies.create')"
-                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors">
-                        {{ __('Film Ekle') }}
+                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors flex items-center gap-2">
+                        <i class="fas fa-plus"></i> {{ __('Film Ekle') }}
                     </x-nav-link>
 
                     <x-nav-link :href="route('movies.recommendations')" :active="request()->routeIs('movies.recommendations')"
-                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors">
-                        {{ __('Sana Özel Öneriler') }}
+                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors flex items-center gap-2">
+                        <i class="fas fa-magic text-purple-400"></i> {{ __('Sana Özel Öneriler') }}
                     </x-nav-link>
 
                     <x-nav-link :href="route('movies.now_playing')" :active="request()->routeIs('movies.now_playing')"
-                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors">
-                        {{ __('Vizyondakiler') }}
+                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors flex items-center gap-2">
+                        <i class="fas fa-fire text-orange-500"></i> {{ __('Vizyondakiler') }}
+                    </x-nav-link>
+
+                    <x-nav-link :href="route('movies.statistics')" :active="request()->routeIs('movies.statistics')"
+                        class="text-indigo-300 hover:text-indigo-200 hover:border-indigo-400 focus:text-indigo-200 focus:border-indigo-400 transition-colors font-bold flex items-center gap-2">
+                        <i class="fas fa-chart-pie"></i> {{ __('İstatistikler') }}
                     </x-nav-link>
                 </div>
             </div>
@@ -73,8 +78,8 @@
                     </x-slot>
 
                     <x-slot name="content">
-                        <x-dropdown-link :href="route('profile.edit')" class="text-slate-700 hover:bg-slate-100">
-                            {{ __('Profil') }}
+                        <x-dropdown-link :href="route('profile.edit')" class="text-slate-700 hover:bg-slate-100 flex items-center gap-2">
+                            <i class="fas fa-user-circle"></i> {{ __('Profil') }}
                         </x-dropdown-link>
 
                         <form method="POST" action="{{ route('logout') }}">
@@ -82,8 +87,8 @@
                             <x-dropdown-link :href="route('logout')"
                                 onclick="event.preventDefault();
                                                 this.closest('form').submit();"
-                                class="text-red-600 hover:bg-red-50">
-                                {{ __('Çıkış Yap') }}
+                                class="text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                <i class="fas fa-sign-out-alt"></i> {{ __('Çıkış Yap') }}
                             </x-dropdown-link>
                         </form>
                     </x-slot>
@@ -108,28 +113,33 @@
     <div :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden bg-slate-900 border-t border-slate-800">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('movies.index')" :active="request()->routeIs('movies.index')"
-                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
-                {{ __('Film Arşivim') }}
+                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
+                <i class="fas fa-film w-5 text-center"></i> {{ __('Film Arşivim') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.watchlist')" :active="request()->routeIs('movies.watchlist')"
-                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-amber-500">
-                {{ __('İzleme Listem') }}
+                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-amber-500 flex items-center gap-2">
+                <i class="fas fa-bookmark w-5 text-center text-amber-500/70"></i> {{ __('İzleme Listem') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.create')" :active="request()->routeIs('movies.create')"
-                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
-                {{ __('Film Ekle') }}
+                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
+                <i class="fas fa-plus w-5 text-center"></i> {{ __('Film Ekle') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.recommendations')" :active="request()->routeIs('movies.recommendations')"
-                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
-                {{ __('Sana Özel Öneriler') }}
+                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
+                <i class="fas fa-magic w-5 text-center text-purple-400"></i> {{ __('Sana Özel Öneriler') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.now_playing')" :active="request()->routeIs('movies.now_playing')"
-                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
-                {{ __('Vizyondakiler') }}
+                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
+                <i class="fas fa-fire w-5 text-center text-orange-500"></i> {{ __('Vizyondakiler') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('movies.statistics')" :active="request()->routeIs('movies.statistics')"
+                class="text-indigo-400 font-bold hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
+                <i class="fas fa-chart-pie w-5 text-center mr-1"></i> {{ __('İstatistikler') }}
             </x-responsive-nav-link>
         </div>
 
@@ -140,8 +150,8 @@
             </div>
 
             <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile.edit')" class="text-slate-300 hover:text-white hover:bg-slate-800">
-                    {{ __('Profil') }}
+                <x-responsive-nav-link :href="route('profile.edit')" class="text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
+                    <i class="fas fa-user-circle w-5 text-center"></i> {{ __('Profil') }}
                 </x-responsive-nav-link>
 
                 <form method="POST" action="{{ route('logout') }}">
@@ -149,8 +159,8 @@
                     <x-responsive-nav-link :href="route('logout')"
                         onclick="event.preventDefault();
                                         this.closest('form').submit();"
-                        class="text-red-400 hover:text-red-300 hover:bg-slate-800">
-                        {{ __('Çıkış Yap') }}
+                        class="text-red-400 hover:text-red-300 hover:bg-slate-800 flex items-center gap-2">
+                        <i class="fas fa-sign-out-alt w-5 text-center"></i> {{ __('Çıkış Yap') }}
                     </x-responsive-nav-link>
                 </form>
             </div>

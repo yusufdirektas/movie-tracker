@@ -5,6 +5,8 @@ use App\Http\Controllers\MovieController;
 use App\Http\Controllers\WatchlistController;
 use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\NowPlayingController;
+use App\Http\Controllers\StatisticsController;
+use App\Http\Controllers\ExportController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,10 +36,21 @@ Route::get('/movies/api-search', [MovieController::class, 'apiSearch'])
 Route::get('/movies/recommendations', [RecommendationController::class, 'index'])
     ->middleware(['auth'])
     ->name('movies.recommendations');
+// İstatistikler Sayfası
+Route::get('/movies/statistics', [StatisticsController::class, 'index'])
+    ->middleware(['auth'])
+    ->name('movies.statistics');
 // Vizyondaki Filmler Sayfası
 Route::get('/movies/now-playing', [NowPlayingController::class, 'index'])
     ->middleware(['auth'])
     ->name('movies.now_playing');
+// Dışa Aktarma (Export) Sayfaları
+Route::get('/movies/export/csv', [ExportController::class, 'exportCsv'])
+    ->middleware(['auth'])
+    ->name('movies.export.csv');
+Route::get('/movies/export/json', [ExportController::class, 'exportJson'])
+    ->middleware(['auth'])
+    ->name('movies.export.json');
 
 // --- 2. GENEL SAYFA ROTALARI ---
 

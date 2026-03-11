@@ -139,19 +139,15 @@
         </div>
 
         {{-- 📚 SIRALAMA DROPDOWN'I --}}
-        {{-- Kullanıcı seçim yaptığında form otomatik submit olur (onchange) --}}
-        {{-- Mevcut filtre/arama/tür parametreleri hidden input'larla korunur --}}
-        <div class="mb-8 flex justify-center md:justify-start">
+        <div class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <form action="{{ route('movies.index') }}" method="GET" class="flex items-center gap-3">
                 <input type="hidden" name="filter" value="{{ request('filter', 'all') }}">
                 @if(request('search'))
                     <input type="hidden" name="search" value="{{ request('search') }}">
                 @endif
-                @if(request('genre'))
-                    <input type="hidden" name="genre" value="{{ request('genre') }}">
-                @endif
 
-                <span class="text-slate-500 text-xs font-bold uppercase tracking-widest">
+
+                <span class="text-slate-500 text-xs font-bold uppercase tracking-widest hidden sm:inline-block">
                     <i class="fas fa-sort mr-1"></i> Sırala
                 </span>
                 <select name="sort" onchange="this.form.submit()"
@@ -163,7 +159,30 @@
                     <option value="release_date" {{ $sort === 'release_date' ? 'selected' : '' }}>Yayın Tarihi</option>
                     <option value="runtime" {{ $sort === 'runtime' ? 'selected' : '' }}>Süre</option>
                 </select>
+
+                <span class="text-slate-500 text-xs font-bold uppercase tracking-widest hidden sm:inline-block ml-4">
+                    <i class="fas fa-filter mr-1"></i> Tür
+                </span>
+                <select name="genre" onchange="this.form.submit()"
+                    class="bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer max-w-[150px] truncate">
+                    <option value="">Tüm Türler</option>
+                    @foreach($availableGenres as $g)
+                        <option value="{{ $g }}" {{ request('genre') === $g ? 'selected' : '' }}>
+                            {{ $g }}
+                        </option>
+                    @endforeach
+                </select>
             </form>
+
+            {{-- 📚 DIŞA AKTAR (EXPORT) BUTONLARI --}}
+            <div class="flex items-center gap-3">
+                <a href="{{ route('movies.export.csv') }}" class="bg-indigo-600/20 text-indigo-400 hover:bg-indigo-500 hover:text-white px-4 py-2 flex items-center gap-2 rounded-xl text-sm font-bold transition-all border border-indigo-500/30">
+                    <i class="fas fa-file-csv"></i> CSV İndir
+                </a>
+                <a href="{{ route('movies.export.json') }}" class="bg-purple-600/20 text-purple-400 hover:bg-purple-500 hover:text-white px-4 py-2 flex items-center gap-2 rounded-xl text-sm font-bold transition-all border border-purple-500/30">
+                    <i class="fas fa-file-code"></i> JSON İndir
+                </a>
+            </div>
         </div>
         @if ($movies->isEmpty())
             <div class="bg-slate-900 border-2 border-dashed border-slate-800 rounded-[2.5rem] p-20 text-center">

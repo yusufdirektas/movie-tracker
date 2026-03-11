@@ -49,11 +49,9 @@
                 @if(request('search'))
                     <input type="hidden" name="search" value="{{ request('search') }}">
                 @endif
-                @if(request('genre'))
-                    <input type="hidden" name="genre" value="{{ request('genre') }}">
-                @endif
 
-                <span class="text-slate-500 text-xs font-bold uppercase tracking-widest">
+
+                <span class="text-slate-500 text-xs font-bold uppercase tracking-widest hidden sm:inline-block">
                     <i class="fas fa-sort mr-1"></i> Sırala
                 </span>
                 <select name="sort" onchange="this.form.submit()"
@@ -63,6 +61,19 @@
                     <option value="rating" {{ $sort === 'rating' ? 'selected' : '' }}>TMDB Puanı</option>
                     <option value="release_date" {{ $sort === 'release_date' ? 'selected' : '' }}>Yayın Tarihi</option>
                     <option value="runtime" {{ $sort === 'runtime' ? 'selected' : '' }}>Süre</option>
+                </select>
+
+                <span class="text-slate-500 text-xs font-bold uppercase tracking-widest hidden sm:inline-block ml-4">
+                    <i class="fas fa-filter mr-1"></i> Tür
+                </span>
+                <select name="genre" onchange="this.form.submit()"
+                    class="bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer max-w-[150px] truncate">
+                    <option value="">Tüm Türler</option>
+                    @foreach($availableGenres as $g)
+                        <option value="{{ $g }}" {{ request('genre') === $g ? 'selected' : '' }}>
+                            {{ $g }}
+                        </option>
+                    @endforeach
                 </select>
             </form>
         </div>
