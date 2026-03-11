@@ -16,9 +16,9 @@ class WatchlistController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        $query = $user->movies()->where('is_watched', false);
         $search = mb_strtolower($request->input('search'), 'UTF-8');
         $genre = $request->input('genre');
+        $sort = $request->input('sort', 'updated_at');
 
         $allowedSorts = [
             'updated_at'   => 'desc',
@@ -27,31 +27,23 @@ class WatchlistController extends Controller
             'release_date' => 'desc',
             'runtime'      => 'desc',
         ];
-        $sort = $request->input('sort', 'updated_at');
-        if (!array_key_exists($sort, $allowedSorts)) {
-            $sort = 'updated_at';
-        }
-        $query->orderBy($sort, $allowedSorts[$sort]);
 
-        if ($genre) {
-            $query->whereJsonContains('genres', $genre);
-        }
-
-        if ($search) {
-            $query->where('title', 'like', '%' . $search . '%');
-        }
+        // ---------------------------------------------------------------------
+        // 📚 REFACTORING (KOD İYİLEŞTİRME)
+        // MovieController'daki gibi burada da Local Scope'ları kullanıyoruz.
+        // Aynı filtreleme mantığını iki kez yazmaktan kurtulduk (DRY Prensibi).
+        // ---------------------------------------------------------------------
+        $query = $user->movies()
+            ->unwatched()
+            ->searchByTitle($search)
+            ->filterByGenre($genre)
+            ->applySort($sort, $allowedSorts);
 
         $movies = $query->paginate(20)->withQueryString();
-        $totalMovies = $user->movies()->where('is_watched', false)->count();
+        $totalMovies = $user->movies()->unwatched()->count();
 
-        $availableGenres = $user->movies()
-            ->where('is_watched', false)
-            ->whereNotNull('genres')
-            ->pluck('genres')
-            ->flatten()
-            ->unique()
-            ->sort()
-            ->values();
+        // Türleri static metodumuzla alıyoruz (isWatched = false)
+        $availableGenres = \App\Models\Movie::getAvailableGenres($user->id, false);
 
         return view('movies.watchlist', compact('movies', 'search', 'genre', 'availableGenres', 'totalMovies', 'sort'));
     }

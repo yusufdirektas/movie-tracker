@@ -26,72 +26,52 @@ class MovieController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        // İSTATİSTİKLERİ SAYFALANDIRMADAN BAĞIMSIZ, TÜM VERİTABANINDAN ÇEKİYORUZ
+        // İSTATİSTİKLERİ SAYFALANDIRMADAN BAĞIMSIZ ÇEKİYORUZ
         $totalMovies = $user->movies()->count();
-        $baseWatchedQuery = $user->movies()->where('is_watched', true);
+        $baseWatchedQuery = clone $user->movies()->watched();
 
         $watchedCount = $baseWatchedQuery->count();
         $totalMinutes = $baseWatchedQuery->sum('runtime');
         $totalHours = floor($totalMinutes / 60);
         $remainingMinutes = $totalMinutes % 60;
-        $highestRated = $baseWatchedQuery->orderByDesc('rating')->first();
+        // `clone` etmezsek yukarıdaki sum() ve count() sonrası query bozulabilir. Zaten modelin yeni bir query nesnesi oluşturduğundan yukarıda sıkıntı yok ama en doğrusu ayrı çalışmak.
+        $highestRated = $user->movies()->watched()->orderByDesc('rating')->first();
 
-        // FİLM LİSTELEME VE ARAMA SORGUSU
-        $query = $user->movies()->where('is_watched', true);
+        // ---------------------------------------------------------------------
+        // 📚 REFACTORING (KOD İYİLEŞTİRME) SONRASI:
+        // Eskiden burada iç içe geçmiş bir sürü if bloğu ve sorgu vardı.
+        // Şimdi tüm karmaşıklık Model (Movie.php) içindeki Scope'lara taşındı.
+        // Kod bir hikaye okur gibi yukarıdan aşağıya akıyor.
+        // ---------------------------------------------------------------------
 
         $filter = $request->input('filter', 'all');
         $search = mb_strtolower($request->input('search'), 'UTF-8');
         $genre = $request->input('genre');
+        $sort = $request->input('sort', 'updated_at');
 
-        /**
-         * 📚 SIRALAMA WHİTELİST GÜVENLİĞİ:
-         *
-         * Kullanıcıdan gelen 'sort' değerini DİREKT olarak orderBy'a vermek
-         * SQL Injection riski taşır. Örneğin kötü niyetli biri:
-         *   ?sort=title; DROP TABLE movies;
-         * gibi bir şey gönderebilir.
-         *
-         * ÇÖZÜM: İzin verilen sıralama seçeneklerini bir whitelist'te tutuyoruz.
-         * Kullanıcının gönderdiği değer listede yoksa varsayılan sıralamayı kullanıyoruz.
-         */
         $allowedSorts = [
-            'updated_at'      => 'desc',   // Son eklenen (varsayılan)
-            'title'           => 'asc',    // İsme göre A-Z
-            'rating'          => 'desc',   // TMDB puanına göre
-            'personal_rating' => 'desc',   // Kişisel puana göre
-            'release_date'    => 'desc',   // Yayın tarihine göre
-            'runtime'         => 'desc',   // Süreye göre
+            'updated_at'      => 'desc',
+            'title'           => 'asc',
+            'rating'          => 'desc',
+            'personal_rating' => 'desc',
+            'release_date'    => 'desc',
+            'runtime'         => 'desc',
         ];
 
-        $sort = $request->input('sort', 'updated_at');
-        // Whitelist'te yoksa varsayılana dön
-        if (!array_key_exists($sort, $allowedSorts)) {
-            $sort = 'updated_at';
-        }
-        $query->orderBy($sort, $allowedSorts[$sort]);
+        $query = $user->movies()
+            ->watched()
+            ->searchByTitle($search)
+            ->filterByGenre($genre)
+            ->applySort($sort, $allowedSorts);
 
         if ($filter === 'favorites') {
             $query->where('personal_rating', '>=', 4);
         }
 
-        if ($genre) {
-            $query->whereJsonContains('genres', $genre);
-        }
-
-        if ($search) {
-            $query->where('title', 'like', '%' . $search . '%');
-        }
-
         $movies = $query->paginate(20)->withQueryString();
 
-        $availableGenres = $user->movies()
-            ->where('is_watched', true)
-            ->whereNotNull('genres')
-            ->pluck('genres')
-            ->flatten()
-            ->unique()
-            ->sort()
-            ->values();
+        // Türleri yine Model üzerinden alıyoruz
+        $availableGenres = App\Models\Movie::getAvailableGenres($user->id, true);
 
         return view('movies.index', compact(
             'movies', 'search', 'filter', 'genre', 'availableGenres', 'sort',
