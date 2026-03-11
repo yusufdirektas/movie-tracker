@@ -181,10 +181,32 @@ class MovieController extends Controller
         return back()->with('error', 'Film bilgileri alınamadı.');
     }
 
+    /**
+     * 📚 ROUTE MODEL BINDING:
+     * URL'de /movies/5 yazıldığında Laravel otomatik olarak
+     * Movie::findOrFail(5) çalıştırır ve $movie değişkenine atar.
+     * Eğer film bulunamazsa otomatik 404 döner.
+     *
+     * 📚 POLICY AUTHORIZATION:
+     * $this->authorize('view', $movie) → MoviePolicy::view() metodunu çağırır.
+     * Kullanıcı filmin sahibi değilse 403 Forbidden döner.
+     */
     public function show(Movie $movie)
     {
         $this->authorize('view', $movie);
-        return redirect()->route('movies.index');
+
+        // Bu filmin TMDB ID'si varsa benzer film önerilerini çek (24 saat cache)
+        $similarMovies = [];
+        if ($movie->tmdb_id) {
+            $cacheKey = 'movie_similar_' . $movie->tmdb_id;
+            $similarMovies = Cache::remember($cacheKey, now()->addHours(24), function () use ($movie) {
+                $response = $this->tmdb->getSimilar($movie->tmdb_id);
+                return $response->successful() ? ($response->json()['results'] ?? []) : [];
+            });
+            $similarMovies = collect($similarMovies)->take(6);
+        }
+
+        return view('movies.show', compact('movie', 'similarMovies'));
     }
 
     public function update(UpdateMovieRequest $request, Movie $movie)

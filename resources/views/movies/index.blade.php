@@ -157,13 +157,12 @@
         @else
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
                 @foreach ($movies as $movie)
-                    {{-- DİKKAT: x-show komutu silindi, sadece modalOpen tanımlandı --}}
-                    <div x-data="{ modalOpen: false }" class="relative">
+                    <div class="relative">
 
                         <div class="group relative bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 transition-all hover:scale-105 hover:shadow-2xl hover:shadow-indigo-500/10">
 
-                            <div @click="modalOpen = true"
-                                class="aspect-[2/3] relative overflow-hidden bg-slate-800 cursor-pointer">
+                            <a href="{{ route('movies.show', $movie) }}"
+                                class="aspect-[2/3] relative overflow-hidden bg-slate-800 cursor-pointer block">
 
                                 <div class="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all z-20 flex items-center justify-center">
                                     <i class="fas fa-search-plus opacity-0 group-hover:opacity-100 text-white text-5xl drop-shadow-lg scale-50 group-hover:scale-100 transition-all duration-300"></i>
@@ -194,11 +193,11 @@
                                         <span class="bg-amber-500/90 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg italic">İZLENECEK</span>
                                     @endif
                                 </div>
-                            </div>
+                            </a>
 
                             <div class="p-5">
-                                <h4 class="text-white font-bold truncate mb-0.5" title="{{ $movie->title }}">
-                                    {{ $movie->title }}</h4>
+                                <a href="{{ route('movies.show', $movie) }}" class="text-white font-bold truncate mb-0.5 block hover:text-indigo-400 transition-colors" title="{{ $movie->title }}">
+                                    {{ $movie->title }}</a>
                                 <div x-data="{
                                     rating: {{ $movie->personal_rating ?? 0 }},
                                     hoverRating: 0,
@@ -252,120 +251,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        {{-- MODAL İÇERİĞİ --}}
-                        <template x-teleport="body">
-                            <div x-show="modalOpen"
-                                class="fixed inset-0 z-[99] flex items-center justify-center p-4 md:p-6 bg-slate-950/90 backdrop-blur-sm"
-                                @keydown.escape.window="modalOpen = false" x-transition.opacity style="display: none;">
-
-                                <div @click.away="modalOpen = false"
-                                    class="bg-slate-900 border border-slate-800 w-full max-w-3xl max-h-[90vh] flex flex-col rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl relative">
-
-                                    <button @click="modalOpen = false"
-                                        class="absolute top-4 right-4 z-50 bg-slate-900/80 backdrop-blur-sm hover:bg-slate-800 text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors border border-slate-700 shadow-xl">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-
-                                    <div class="overflow-y-auto custom-scrollbar flex-1 w-full">
-                                        <div class="flex flex-col md:hidden">
-                                            <div class="relative w-full h-64 shrink-0 bg-slate-950">
-                                                @if ($movie->poster_path)
-                                                    <img src="https://image.tmdb.org/t/p/w500{{ $movie->poster_path }}"
-                                                        class="w-full h-full object-cover object-top" loading="lazy">
-                                                @else
-                                                    <div class="w-full h-full flex items-center justify-center text-slate-700 bg-slate-950">
-                                                        <i class="fas fa-image text-4xl"></i>
-                                                    </div>
-                                                @endif
-                                                <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
-                                            </div>
-
-                                            <div class="px-6 pb-6 -mt-8 relative z-10">
-                                                <h2 class="text-3xl font-black text-white leading-tight mb-2 pr-8">{{ $movie->title }}</h2>
-
-                                                <p class="text-indigo-400 text-sm font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
-                                                    <i class="fas fa-video"></i> {{ $movie->director ?? 'Yönetmen Bilgisi Yok' }}
-                                                </p>
-
-                                                <div class="flex items-center gap-3 flex-wrap mb-6">
-                                                    <span class="bg-indigo-500/10 text-indigo-400 px-3 py-1.5 rounded-lg font-bold text-xs uppercase border border-indigo-500/20">
-                                                        {{ $movie->release_date ? substr($movie->release_date, 0, 4) : '-' }}
-                                                    </span>
-                                                    <div class="flex items-center gap-1.5 text-yellow-400 bg-yellow-400/10 px-3 py-1.5 rounded-lg border border-yellow-400/20">
-                                                        <i class="fas fa-star text-xs"></i>
-                                                        <span class="text-sm font-black">{{ number_format($movie->rating ?? 0, 1) }}</span>
-                                                    </div>
-                                                    @if ($movie->runtime)
-                                                        <div class="flex items-center gap-1.5 text-slate-400 text-xs font-bold bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
-                                                            <i class="fas fa-clock"></i> <span>{{ $movie->runtime }} dk</span>
-                                                        </div>
-                                                    @endif
-                                                </div>
-
-                                                <h3 class="text-slate-500 font-black mb-2 uppercase text-[10px] tracking-widest">Özet</h3>
-                                                <p class="text-slate-300 leading-relaxed text-sm italic">{{ $movie->overview ?? 'Özet yok.' }}</p>
-                                            </div>
-                                        </div>
-
-                                        <div class="hidden md:flex flex-row h-full">
-                                            <div class="w-2/5 shrink-0 bg-slate-950 relative">
-                                                @if ($movie->poster_path)
-                                                    <img src="https://image.tmdb.org/t/p/w500{{ $movie->poster_path }}"
-                                                        class="w-full h-full object-cover" loading="lazy">
-                                                @else
-                                                    <div class="w-full h-full flex items-center justify-center text-slate-700 bg-slate-950">
-                                                        <i class="fas fa-image text-4xl"></i>
-                                                    </div>
-                                                @endif
-                                                <div class="absolute inset-0 bg-gradient-to-r from-transparent to-slate-900/50"></div>
-                                            </div>
-
-                                            <div class="w-3/5 p-10 flex flex-col justify-center">
-                                                <h2 class="text-4xl font-black text-white mb-2 leading-tight pr-8">{{ $movie->title }}</h2>
-
-                                                <p class="text-indigo-400 text-sm font-bold tracking-widest uppercase mb-6 flex items-center gap-2 drop-shadow-md">
-                                                    <i class="fas fa-video"></i> {{ $movie->director ?? 'Yönetmen Bilgisi Yok' }}
-                                                </p>
-
-                                                <div class="flex items-center gap-4 mb-8 flex-wrap">
-                                                    <span class="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg font-bold text-xs uppercase border border-indigo-500/20">{{ $movie->release_date }}</span>
-                                                    <div class="flex items-center gap-1.5 text-yellow-400 bg-slate-800 px-3 py-1 rounded-lg">
-                                                        <i class="fas fa-star text-base"></i><span class="text-lg font-black">{{ number_format($movie->rating ?? 0, 1) }}</span>
-                                                    </div>
-                                                    @if ($movie->runtime)
-                                                        <div class="flex items-center gap-1.5 text-slate-400 text-xs font-bold bg-slate-800 px-3 py-1 rounded-lg">
-                                                            <i class="fas fa-clock"></i> <span>{{ $movie->runtime }} dk</span>
-                                                        </div>
-                                                    @endif
-                                                </div>
-
-                                                <h3 class="text-slate-500 font-black mb-3 uppercase text-[10px] tracking-widest">Özet</h3>
-                                                <p class="text-slate-300 leading-relaxed text-base italic">{{ $movie->overview ?? 'Özet yok.' }}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="bg-slate-900 border-t border-slate-800 p-4 md:p-6 shrink-0 flex flex-wrap gap-4 justify-start relative z-20">
-                                        <form action="{{ route('movies.update', $movie) }}" method="POST">
-                                            @csrf @method('PATCH')
-                                            <button class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl text-sm font-black transition-all shadow-lg shadow-indigo-600/20">
-                                                {{ $movie->is_watched ? 'İzlemedim Olarak İşaretle' : 'İzledim Olarak İşaretle' }}
-                                            </button>
-                                        </form>
-
-                                        <form action="{{ route('movies.destroy', $movie) }}" method="POST"
-                                            onsubmit="return confirm('Bu filmi arşivinizden silmek istediğinize emin misiniz?')">
-                                            @csrf @method('DELETE')
-                                            <button class="bg-slate-800 hover:bg-red-600/20 hover:text-red-500 text-slate-400 px-6 py-3 rounded-2xl text-sm font-black transition-all border border-slate-700">
-                                                <i class="fas fa-trash-alt mr-2"></i> Sil
-                                            </button>
-                                        </form>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </template>
                     </div>
                 @endforeach
             </div>
