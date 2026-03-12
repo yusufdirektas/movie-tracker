@@ -24,10 +24,23 @@ class Collection extends Model
     protected $fillable = [
         'user_id',
         'name',
-        'description',
-        'color',
         'icon',
+        'color',
+        'is_public',
+        'share_token',
     ];
+
+    /**
+     * Model boot metodu
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($collection) {
+            $collection->share_token = (string) \Illuminate\Support\Str::uuid();
+        });
+    }
 
     public function user(): BelongsTo
     {

@@ -8,9 +8,64 @@
 
         <div class="mb-12">
             <div class="flex flex-col md:flex-row justify-between items-end mb-6">
-                <h1 class="text-4xl font-extrabold text-white tracking-tight italic">
-                    Film <span class="text-indigo-500">Analizim</span>
-                </h1>
+                <div class="flex items-center gap-4">
+                    <h1 class="text-3xl md:text-5xl font-black text-white tracking-tighter uppercase italic">
+                        Film <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Arşivim</span>
+                    </h1>
+                    
+                    {{-- PAYLAŞ BUTONU VE MENÜSÜ --}}
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click="open = !open" 
+                            class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-black px-4 py-2 rounded-xl transition-all border border-slate-700 flex items-center gap-2">
+                            <i class="fas fa-share-alt {{ Auth::user()->is_public ? 'text-emerald-400' : '' }}"></i> 
+                            {{ Auth::user()->is_public ? 'Paylaşılıyor' : 'Paylaş' }}
+                        </button>
+                        
+                        <div x-show="open" @click.away="open = false" style="display: none;"
+                            class="absolute top-full left-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 p-4">
+                            
+                            <div class="mb-4 pb-4 border-b border-slate-800">
+                                <form action="{{ route('privacy.archive.toggle') }}" method="POST" class="flex items-center justify-between">
+                                    @csrf
+                                    <div>
+                                        <h4 class="text-sm font-bold text-white">Arşiv Paylaşımı</h4>
+                                        <p class="text-[10px] text-slate-500">Arşiviniz herkese açık olsun mu?</p>
+                                    </div>
+                                    <button type="submit" 
+                                        class="w-12 h-6 rounded-full relative transition-colors duration-200 focus:outline-none {{ Auth::user()->is_public ? 'bg-emerald-500' : 'bg-slate-700' }}">
+                                        <div class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 {{ Auth::user()->is_public ? 'translate-x-6' : '' }}"></div>
+                                    </button>
+                                </form>
+                            </div>
+
+                            @if(Auth::user()->is_public)
+                                <div class="mb-4">
+                                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Paylaşım Linki</label>
+                                    <div class="flex gap-2">
+                                        <input type="text" readonly value="{{ route('public.archive', Auth::user()->share_token) }}" id="shareUrl"
+                                            class="flex-1 bg-slate-800 border-none rounded-lg text-xs text-slate-300 py-2 px-3 focus:ring-1 focus:ring-indigo-500">
+                                        <button onclick="copyToClipboard('shareUrl')"
+                                            class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg transition-colors">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <form action="{{ route('privacy.regenerate-token') }}" method="POST" onsubmit="return confirm('Link yenilendiğinde eski link artık çalışmayacaktır. Emin misiniz?')">
+                                    @csrf
+                                    <button type="submit" class="text-[10px] text-slate-500 hover:text-red-400 transition-colors underline">
+                                        Link Yenile
+                                    </button>
+                                </form>
+                            @else
+                                <div class="text-center py-2">
+                                    <i class="fas fa-lock text-slate-600 mb-2 block"></i>
+                                    <p class="text-[10px] text-slate-500 italic">Paylaşımı aktif ederek listeni herkese açık hale getirebilirsin.</p>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
 
                 <a href="{{ route('movies.import') }}"
                     class="group flex items-center gap-2 text-slate-500 hover:text-indigo-400 transition-colors mt-4 md:mt-0">
@@ -394,4 +449,25 @@
             </div>
         </div>
     </div>
+@push('scripts')
+<script>
+function copyToClipboard(elementId) {
+    var copyText = document.getElementById(elementId);
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); // Mobil için
+    navigator.clipboard.writeText(copyText.value);
+    
+    // Basit bir toast mesajı simülasyonu
+    const btn = event.currentTarget;
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i>';
+    btn.classList.replace('bg-indigo-600', 'bg-emerald-600');
+    
+    setTimeout(() => {
+        btn.innerHTML = oldHtml;
+        btn.classList.replace('bg-emerald-600', 'bg-indigo-600');
+    }, 2000);
+}
+</script>
+@endpush
 @endsection

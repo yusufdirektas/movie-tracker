@@ -8,6 +8,7 @@ use App\Http\Controllers\NowPlayingController;
 use App\Http\Controllers\StatisticsController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\CollectionController;
+use App\Http\Controllers\PublicProfileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,7 +22,17 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// --- 1. ÖZEL FİLM ROTALARI (En Üste) ---
+// --- 1. HERKESE AÇIK (PUBLIC) ROTALAR ---
+Route::get('/p/{token}', [PublicProfileController::class, 'showArchive'])->name('public.archive');
+Route::get('/c/{token}', [PublicProfileController::class, 'showCollection'])->name('public.collection');
+
+// --- 2. AYARLAR VE ÖZEL SAYFA ROTALARI ---
+
+Route::middleware('auth')->group(function () {
+    Route::post('/privacy/archive/toggle', [PrivacyController::class, 'toggleArchive'])->name('privacy.archive.toggle');
+    Route::post('/privacy/collection/{collection}/toggle', [PrivacyController::class, 'toggleCollection'])->name('privacy.collection.toggle');
+    Route::post('/privacy/regenerate-token', [PrivacyController::class, 'regenerateToken'])->name('privacy.regenerate-token');
+});
 
 // Toplu İçe Aktarma Sayfası
 Route::get('/movies/import-list', [MovieController::class, 'import'])
