@@ -73,9 +73,13 @@ class MovieController extends Controller
         // Türleri yine Model üzerinden alıyoruz
         $availableGenres = Movie::getAvailableGenres($user->id, true);
 
+        // Koleksiyonlar (Toplu işlem toolbar'ı için)
+        $collections = $user->collections()->orderBy('name')->get();
+
         return view('movies.index', compact(
             'movies', 'search', 'filter', 'genre', 'availableGenres', 'sort',
-            'totalMovies', 'watchedCount', 'totalHours', 'remainingMinutes', 'highestRated'
+            'totalMovies', 'watchedCount', 'totalHours', 'remainingMinutes', 'highestRated',
+            'collections'
         ));
     }
 

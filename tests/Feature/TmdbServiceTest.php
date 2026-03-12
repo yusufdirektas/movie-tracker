@@ -9,6 +9,12 @@ use Tests\TestCase;
 
 class TmdbServiceTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['services.tmdb.token' => 'dummy-test-token']);
+    }
+
     public function test_search_movie_returns_successful_data_from_tmdb()
     {
         Http::fake([
