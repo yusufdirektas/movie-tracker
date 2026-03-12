@@ -49,6 +49,10 @@ class WatchlistController extends Controller
         // Kullanıcının Koleksiyonları (Toplu işlem dropdown'ı için)
         $collections = $user->collections()->orderBy('name')->get();
 
+        if ($request->ajax()) {
+            return view('movies.partials._watchlist_grid', compact('movies'));
+        }
+
         return view('movies.watchlist', compact('movies', 'search', 'genre', 'availableGenres', 'totalMovies', 'sort', 'collections'));
     }
 }

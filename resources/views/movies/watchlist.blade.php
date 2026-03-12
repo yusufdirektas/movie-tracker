@@ -3,7 +3,7 @@
 @section('title', 'İzlenecek Filmlerim')
 
 @section('content')
-    <div class="container mx-auto" x-data="{ selectedMovies: [] }">
+    <div class="container mx-auto" x-data="watchlistFilter()">
 
         <div class="mb-12">
             <div class="flex flex-col md:flex-row justify-between items-end mb-6">
@@ -26,140 +26,62 @@
 
         {{-- BACKEND ARAMA ÇUBUĞU FORMU --}}
         <div class="mb-12">
-            <form action="{{ route('movies.watchlist') }}" method="GET" class="relative group max-w-md mx-auto md:mx-0">
+            <form @submit.prevent="submitSearch()" class="relative group max-w-md mx-auto md:mx-0">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <i class="fas fa-search text-slate-500 group-focus-within:text-indigo-500 transition-colors"></i>
                 </div>
 
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Listemde ara (Enter'a bas)..."
+                <input type="text" x-model="search" placeholder="Listemde ara (Enter'a bas)..."
                     class="block w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder-slate-600 shadow-xl">
 
-                @if(request('search'))
-                    <a href="{{ route('movies.watchlist') }}"
-                        class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors">
-                        <i class="fas fa-times-circle"></i>
-                    </a>
-                @endif
+                <button type="button" x-show="search.length > 0" @click="clearSearch()"
+                    class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors">
+                    <i class="fas fa-times-circle"></i>
+                </button>
             </form>
         </div>
 
         {{-- SIRALAMA DROPDOWN'I --}}
         <div class="mb-8 flex justify-center md:justify-start">
-            <form action="{{ route('movies.watchlist') }}" method="GET" class="flex items-center gap-3">
-                @if(request('search'))
-                    <input type="hidden" name="search" value="{{ request('search') }}">
-                @endif
-
-
+            <div class="flex items-center gap-3">
                 <span class="text-slate-500 text-xs font-bold uppercase tracking-widest hidden sm:inline-block">
                     <i class="fas fa-sort mr-1"></i> Sırala
                 </span>
-                <select name="sort" onchange="this.form.submit()"
+                <select x-model="sort" @change="_fetch()"
                     class="bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer">
-                    <option value="updated_at" {{ $sort === 'updated_at' ? 'selected' : '' }}>Son Eklenen</option>
-                    <option value="title" {{ $sort === 'title' ? 'selected' : '' }}>İsme Göre (A-Z)</option>
-                    <option value="rating" {{ $sort === 'rating' ? 'selected' : '' }}>TMDB Puanı</option>
-                    <option value="release_date" {{ $sort === 'release_date' ? 'selected' : '' }}>Yayın Tarihi</option>
-                    <option value="runtime" {{ $sort === 'runtime' ? 'selected' : '' }}>Süre</option>
+                    <option value="updated_at">Son Eklenen</option>
+                    <option value="title">İsme Göre (A-Z)</option>
+                    <option value="rating">TMDB Puanı</option>
+                    <option value="release_date">Yayın Tarihi</option>
+                    <option value="runtime">Süre</option>
                 </select>
 
                 <span class="text-slate-500 text-xs font-bold uppercase tracking-widest hidden sm:inline-block ml-4">
                     <i class="fas fa-filter mr-1"></i> Tür
                 </span>
-                <select name="genre" onchange="this.form.submit()"
+                <select x-model="genre" @change="_fetch()"
                     class="bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer max-w-[150px] truncate">
                     <option value="">Tüm Türler</option>
                     @foreach($availableGenres as $g)
-                        <option value="{{ $g }}" {{ request('genre') === $g ? 'selected' : '' }}>
+                        <option value="{{ $g }}">
                             {{ $g }}
                         </option>
                     @endforeach
                 </select>
-            </form>
+            </div>
         </div>
 
-        @if ($movies->isEmpty())
-            <div class="bg-slate-900 border-2 border-dashed border-slate-800 rounded-[2.5rem] p-20 text-center">
-                <div class="bg-slate-800 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
-                    <i class="fas fa-popcorn text-3xl text-slate-600"></i>
-                </div>
-                <h3 class="text-xl font-bold text-white mb-2">Listende hiç film yok.</h3>
-                <p class="text-slate-500 mb-8 italic text-sm">İzlemek istediğin yeni filmleri keşfetme vakti!</p>
-                <div class="flex justify-center gap-4 mt-6">
-                    <a href="{{ route('movies.create') }}"
-                        class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-xl font-bold transition-all inline-block shadow-lg shadow-indigo-600/20">
-                        + Film Ara ve Ekle
-                    </a>
+        {{-- Film Grid Alanı (AJAX ile güncellenecek) --}}
+        <div x-ref="movieGrid" class="relative">
+            {{-- Loading Spinner --}}
+            <div x-show="loading" class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center rounded-3xl" style="display: none;">
+                <div class="flex flex-col items-center gap-3">
+                    <i class="fas fa-spinner fa-spin text-indigo-500 text-3xl"></i>
+                    <span class="text-slate-400 text-sm font-medium">Yükleniyor...</span>
                 </div>
             </div>
-        @else
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-                @foreach ($movies as $movie)
-                    <div class="relative">
-
-                        <div class="group relative bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 transition-all hover:scale-105 hover:shadow-2xl hover:shadow-indigo-500/10">
-
-                            <a href="{{ route('movies.show', $movie) }}" class="aspect-[2/3] relative overflow-hidden bg-slate-800 cursor-pointer block">
-                                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all z-20 flex items-center justify-center">
-                                    <i class="fas fa-search-plus opacity-0 group-hover:opacity-100 text-white text-5xl drop-shadow-lg scale-50 group-hover:scale-100 transition-all duration-300"></i>
-                                </div>
-
-                                @if ($movie->poster_path)
-                                    <img src="https://image.tmdb.org/t/p/w500{{ $movie->poster_path }}"
-                                        class="w-full h-full object-cover relative z-10" loading="lazy">
-                                @else
-                                    <div class="w-full h-full flex items-center justify-center text-slate-700 bg-slate-950 relative z-10">
-                                        <i class="fas fa-image text-4xl"></i>
-                                    </div>
-                                @endif
-
-                                @if ($movie->rating)
-                                    <div class="absolute top-4 left-4 z-30 pointer-events-none">
-                                        <div class="bg-black/70 backdrop-blur-md text-white px-2 py-1 rounded-lg flex items-center gap-1 border border-white/10 shadow-lg">
-                                            <i class="fas fa-star text-yellow-400 text-[10px]"></i>
-                                            <span class="text-xs font-black">{{ number_format($movie->rating, 1) }}</span>
-                                        </div>
-                                    </div>
-                                @endif
-
-                                <div class="absolute bottom-4 left-4 z-30 pointer-events-none">
-                                    <span class="bg-amber-500/90 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg italic">İZLENECEK</span>
-                                </div>
-
-                                {{-- ÇOKLU SEÇİM CHECKBOX'I --}}
-                                <div class="absolute top-4 right-4 z-40">
-                                    <input type="checkbox" x-model="selectedMovies" value="{{ $movie->id }}" @click.stop
-                                        class="w-6 h-6 rounded-lg text-indigo-500 bg-black/60 border-2 border-white/20 focus:ring-indigo-500 focus:ring-offset-0 focus:ring-offset-transparent cursor-pointer transition-all hover:scale-110 hover:border-white/50 shadow-xl">
-                                </div>
-                            </a>
-
-                            <div class="p-5">
-                                <a href="{{ route('movies.show', $movie) }}" class="text-white font-bold truncate mb-3 block hover:text-indigo-400 transition-colors" title="{{ $movie->title }}">
-                                    {{ $movie->title }}
-                                </a>
-
-                                <p class="text-indigo-400/80 text-[10px] font-bold uppercase tracking-wider mb-2 truncate"
-                                    title="{{ $movie->director ?? 'Bilinmiyor' }}">
-                                    <i class="fas fa-bullhorn mr-1"></i> {{ $movie->director ?? 'Bilinmiyor' }}
-                                </p>
-
-                                <div class="flex justify-between items-center mt-2 border-t border-slate-800/50 pt-3">
-                                    <span class="text-slate-500 text-xs font-semibold">{{ $movie->release_date ? substr($movie->release_date, 0, 4) : '-' }}</span>
-                                    @if ($movie->runtime)
-                                        <span class="text-slate-400 text-[10px] font-mono bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">{{ $movie->runtime }} dk</span>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-
-            {{-- SAYFALANDIRMA (PAGINATION) LİNKLERİ --}}
-            <div class="mt-12 mb-24">
-                {{ $movies->links() }}
-            </div>
-        @endif
+            @include('movies.partials._watchlist_grid')
+        </div>
 
         {{-- TOPLU İŞLEM ARAÇ ÇUBUĞU (STICKY BOTTOM BAR) --}}
         <div x-show="selectedMovies.length > 0"
@@ -171,7 +93,7 @@
              x-transition:leave-end="translate-y-full opacity-0"
              class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-4xl"
              style="display: none;">
-             
+
             <div class="bg-slate-900/95 backdrop-blur-xl border border-indigo-500/50 rounded-2xl p-4 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
                 {{-- Seçim Sayacı ve İptal --}}
                 <div class="flex items-center gap-4 text-white">
@@ -186,7 +108,7 @@
 
                 {{-- İşlem Butonları --}}
                 <div class="flex flex-wrap items-center justify-center gap-3">
-                    
+
                     {{-- Koleksiyona Ekle --}}
                     @if($collections->isNotEmpty())
                         <div x-data="{ showDropdown: false }" class="relative">
@@ -194,8 +116,8 @@
                                 class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold px-4 py-2 rounded-xl transition-colors flex items-center gap-2 border border-slate-700">
                                 <i class="fas fa-folder-plus text-teal-400"></i> Koleksiyona Ekle <i class="fas fa-chevron-down text-xs ml-1"></i>
                             </button>
-                            
-                            <div x-show="showDropdown" style="display: none;" 
+
+                            <div x-show="showDropdown" style="display: none;"
                                 class="absolute bottom-full mb-2 right-0 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
                                 <form action="{{ route('movies.bulk.collection') }}" method="POST" class="flex flex-col max-h-48 overflow-y-auto">
                                     @csrf
@@ -203,7 +125,7 @@
                                         <input type="hidden" name="movie_ids[]" :value="id">
                                     </template>
                                     @foreach($collections as $collection)
-                                        <button type="submit" name="collection_id" value="{{ $collection->id }}" 
+                                        <button type="submit" name="collection_id" value="{{ $collection->id }}"
                                             class="text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white border-b border-slate-700/50 last:border-0 transition-colors">
                                             <i class="fas fa-{{ $collection->icon }} mr-2" style="color: {{ $collection->color }}"></i> {{ $collection->name }}
                                         </button>
@@ -240,3 +162,88 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+function watchlistFilter() {
+    return {
+        selectedMovies: [],
+        loading: false,
+        search: '{{ request('search') }}',
+        sort: '{{ $sort }}',
+        genre: '{{ request('genre') }}',
+
+        init() {
+            this.$refs.movieGrid.addEventListener('click', (e) => {
+                const link = e.target.closest('nav[role="navigation"] a');
+                if (link) {
+                    e.preventDefault();
+                    this.fetchFromUrl(link.href);
+                }
+            });
+
+            window.addEventListener('popstate', () => {
+                const params = new URLSearchParams(window.location.search);
+                this.search = params.get('search') || '';
+                this.sort = params.get('sort') || 'updated_at';
+                this.genre = params.get('genre') || '';
+                this._fetch(false);
+            });
+        },
+
+        submitSearch() {
+            this.selectedMovies = [];
+            this._fetch();
+        },
+
+        clearSearch() {
+            this.search = '';
+            this.selectedMovies = [];
+            this._fetch();
+        },
+
+        _buildUrl() {
+            const params = new URLSearchParams();
+            if (this.search) params.set('search', this.search);
+            if (this.sort && this.sort !== 'updated_at') params.set('sort', this.sort);
+            if (this.genre) params.set('genre', this.genre);
+            const qs = params.toString();
+            return '{{ route("movies.watchlist") }}' + (qs ? '?' + qs : '');
+        },
+
+        async _fetch(pushState = true) {
+            this.loading = true;
+            const url = this._buildUrl();
+            if (pushState) window.history.pushState({}, '', url);
+
+            try {
+                const res = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                this.$refs.movieGrid.innerHTML = await res.text();
+                this.$nextTick(() => Alpine.initTree(this.$refs.movieGrid));
+            } catch (err) {
+                console.error('Filtre hatası:', err);
+            }
+            this.loading = false;
+        },
+
+        async fetchFromUrl(url) {
+            this.loading = true;
+            window.history.pushState({}, '', url);
+
+            try {
+                const res = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                this.$refs.movieGrid.innerHTML = await res.text();
+                this.$nextTick(() => Alpine.initTree(this.$refs.movieGrid));
+            } catch (err) {
+                console.error('Sayfalama hatası:', err);
+            }
+            this.loading = false;
+        }
+    };
+}
+</script>
+@endpush

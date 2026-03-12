@@ -76,6 +76,10 @@ class MovieController extends Controller
         // Koleksiyonlar (Toplu işlem toolbar'ı için)
         $collections = $user->collections()->orderBy('name')->get();
 
+        if ($request->ajax()) {
+            return view('movies.partials._grid', compact('movies'));
+        }
+
         return view('movies.index', compact(
             'movies', 'search', 'filter', 'genre', 'availableGenres', 'sort',
             'totalMovies', 'watchedCount', 'totalHours', 'remainingMinutes', 'highestRated',
