@@ -24,6 +24,7 @@ class Collection extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'description',
         'icon',
         'color',
         'is_public',

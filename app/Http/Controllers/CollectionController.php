@@ -101,12 +101,17 @@ class CollectionController extends Controller
             'movie_id' => 'required|integer|exists:movies,id',
         ]);
 
+        // Güvenlik: Filmin gerçekten bu kullanıcıya ait olduğunu doğrula (IDOR koruması)
+        $movie = \App\Models\Movie::where('id', $request->movie_id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
         // Zaten ekli mi?
-        if ($collection->movies()->where('movie_id', $request->movie_id)->exists()) {
+        if ($collection->movies()->where('movie_id', $movie->id)->exists()) {
             return back()->with('error', 'Bu film zaten bu koleksiyonda!');
         }
 
-        $collection->movies()->attach($request->movie_id);
+        $collection->movies()->attach($movie->id);
 
         return back()->with('success', 'Film koleksiyona eklendi!');
     }
@@ -123,9 +128,15 @@ class CollectionController extends Controller
             'movie_ids.*' => 'integer|exists:movies,id',
         ]);
 
+        // Güvenlik: Sadece kullanıcının kendi filmlerini kabul et (IDOR koruması)
+        $validMovieIds = \App\Models\Movie::whereIn('id', $request->movie_ids)
+            ->where('user_id', Auth::id())
+            ->pluck('id')
+            ->toArray();
+
         // Zaten ekli olanları filtrele
         $existingIds = $collection->movies()->pluck('movies.id')->toArray();
-        $newIds = array_diff($request->movie_ids, $existingIds);
+        $newIds = array_diff($validMovieIds, $existingIds);
 
         if (!empty($newIds)) {
             $collection->movies()->attach($newIds);

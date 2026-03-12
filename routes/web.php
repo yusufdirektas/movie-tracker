@@ -9,6 +9,8 @@ use App\Http\Controllers\StatisticsController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\PublicProfileController;
+use App\Http\Controllers\PrivacyController;
+use App\Http\Controllers\BulkActionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -106,8 +108,8 @@ Route::middleware('auth')->group(function () {
 
 // --- 6. TOPLU İŞLEM ROTALARI (BULK ACTIONS) ---
 Route::middleware('auth')->group(function () {
-    Route::delete('/movies/bulk/delete', [\App\Http\Controllers\BulkActionController::class, 'delete'])->name('movies.bulk.delete');
-    Route::post('/movies/bulk/watched', [\App\Http\Controllers\BulkActionController::class, 'markAsWatched'])->name('movies.bulk.watched');
-    Route::post('/movies/bulk/unwatched', [\App\Http\Controllers\BulkActionController::class, 'markAsUnwatched'])->name('movies.bulk.unwatched');
-    Route::post('/movies/bulk/collection', [\App\Http\Controllers\BulkActionController::class, 'addToCollection'])->name('movies.bulk.collection');
+    Route::delete('/movies/bulk/delete', [BulkActionController::class, 'delete'])->name('movies.bulk.delete');
+    Route::post('/movies/bulk/watched', [BulkActionController::class, 'markAsWatched'])->name('movies.bulk.watched');
+    Route::post('/movies/bulk/unwatched', [BulkActionController::class, 'markAsUnwatched'])->name('movies.bulk.unwatched');
+    Route::post('/movies/bulk/collection', [BulkActionController::class, 'addToCollection'])->name('movies.bulk.collection');
 });

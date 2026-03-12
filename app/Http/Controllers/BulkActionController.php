@@ -37,12 +37,19 @@ class BulkActionController extends Controller
             'movie_ids.*' => 'exists:movies,id'
         ]);
 
-        Movie::whereIn('id', $request->movie_ids)
+        // Her filmi tek tek güncelliyoruz: zaten watched_at varsa dokunma, yoksa şimdiyi yaz.
+        // NOT: DB::raw('COALESCE(watched_at, NOW())') SQLite'ta çalışmaz çünkü NOW() MySQL fonksiyonudur.
+        // Bu yüzden PHP tarafında Carbon ile çözüyoruz.
+        $movies = Movie::whereIn('id', $request->movie_ids)
             ->where('user_id', Auth::id())
-            ->update([
+            ->get();
+
+        foreach ($movies as $movie) {
+            $movie->update([
                 'is_watched' => true,
-                'watched_at' => \DB::raw('COALESCE(watched_at, NOW())') // Zaten izlenmişse tarih değişmesin, değilse şuan olsun
+                'watched_at' => $movie->watched_at ?? now(),
             ]);
+        }
 
         return back()->with('success', count($request->movie_ids) . ' film izlendi olarak işaretlendi.');
     }
