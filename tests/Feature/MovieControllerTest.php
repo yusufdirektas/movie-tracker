@@ -12,6 +12,12 @@ class MovieControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['services.tmdb.token' => 'dummy-test-token']);
+    }
+
     public function test_guest_is_redirected_to_login()
     {
         $response = $this->get(route('movies.index'));
