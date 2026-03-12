@@ -46,6 +46,9 @@ class WatchlistController extends Controller
         // Türleri static metodumuzla alıyoruz (isWatched = false)
         $availableGenres = Movie::getAvailableGenres($user->id, false);
 
-        return view('movies.watchlist', compact('movies', 'search', 'genre', 'availableGenres', 'totalMovies', 'sort'));
+        // Kullanıcının Koleksiyonları (Toplu işlem dropdown'ı için)
+        $collections = $user->collections()->orderBy('name')->get();
+
+        return view('movies.watchlist', compact('movies', 'search', 'genre', 'availableGenres', 'totalMovies', 'sort', 'collections'));
     }
 }

@@ -3,8 +3,8 @@
 @section('title', 'Film İstatistiklerim')
 
 @section('content')
-    {{-- JAVASCRIPT YÜKÜNDEN KURTULDUK: Sayfalandırma olduğu için sadece temiz bir container var --}}
-    <div class="container mx-auto">
+    {{-- Alpine.js State Wrapper: selectedMovies dizisi seçilen filmlerin ID'lerini tutar --}}
+    <div class="container mx-auto" x-data="{ selectedMovies: [] }">
 
         <div class="mb-12">
             <div class="flex flex-col md:flex-row justify-between items-end mb-6">
@@ -204,7 +204,9 @@
         @else
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
                 @foreach ($movies as $movie)
-                    <div class="relative">
+                    <div class="relative" draggable="true"
+                        ondragstart="event.dataTransfer.setData('text/movie-id', '{{ $movie->id }}'); this.style.opacity='0.5';"
+                        ondragend="this.style.opacity='1';">
 
                         <div class="group relative bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 transition-all hover:scale-105 hover:shadow-2xl hover:shadow-indigo-500/10">
 
@@ -225,7 +227,7 @@
                                 @endif
 
                                 @if ($movie->rating)
-                                    <div class="absolute top-4 left-4 z-30">
+                                    <div class="absolute top-4 left-4 z-30 pointer-events-none">
                                         <div class="bg-black/70 backdrop-blur-md text-white px-2 py-1 rounded-lg flex items-center gap-1 border border-white/10 shadow-lg">
                                             <i class="fas fa-star text-yellow-400 text-[10px]"></i>
                                             <span class="text-xs font-black">{{ number_format($movie->rating, 1) }}</span>
@@ -233,12 +235,18 @@
                                     </div>
                                 @endif
 
-                                <div class="absolute top-4 right-4 z-30">
+                                <div class="absolute bottom-4 left-4 z-30 pointer-events-none">
                                     @if ($movie->is_watched)
                                         <span class="bg-emerald-500/90 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg italic">İZLENDİ</span>
                                     @else
                                         <span class="bg-amber-500/90 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg italic">İZLENECEK</span>
                                     @endif
+                                </div>
+
+                                {{-- ÇOKLU SEÇİM CHECKBOX'I --}}
+                                <div class="absolute top-4 right-4 z-40">
+                                    <input type="checkbox" x-model="selectedMovies" value="{{ $movie->id }}" @click.stop
+                                        class="w-6 h-6 rounded-lg text-indigo-500 bg-black/60 border-2 border-white/20 focus:ring-indigo-500 focus:ring-offset-0 focus:ring-offset-transparent cursor-pointer transition-all hover:scale-110 hover:border-white/50 shadow-xl">
                                 </div>
                             </a>
 
@@ -302,11 +310,88 @@
                 @endforeach
             </div>
 
-            {{-- YENİ EKLENEN KISIM: SAYFALANDIRMA (PAGINATION) LİNKLERİ --}}
-            <div class="mt-12 mb-8">
+            {{-- SAYFALANDIRMA --}}
+            <div class="mt-12 mb-24">
                 {{ $movies->links() }}
             </div>
-
         @endif
+
+        {{-- TOPLU İŞLEM ARAÇ ÇUBUĞU (STICKY BOTTOM BAR) --}}
+        <div x-show="selectedMovies.length > 0"
+             x-transition:enter="transition ease-out duration-300 transform"
+             x-transition:enter-start="translate-y-full opacity-0"
+             x-transition:enter-end="translate-y-0 opacity-100"
+             x-transition:leave="transition ease-in duration-200 transform"
+             x-transition:leave-start="translate-y-0 opacity-100"
+             x-transition:leave-end="translate-y-full opacity-0"
+             class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-4xl"
+             style="display: none;">
+             
+            <div class="bg-slate-900/95 backdrop-blur-xl border border-indigo-500/50 rounded-2xl p-4 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                {{-- Seçim Sayacı ve İptal --}}
+                <div class="flex items-center gap-4 text-white">
+                    <div class="flex items-center gap-2 bg-indigo-500/20 text-indigo-400 px-3 py-1.5 rounded-lg font-bold">
+                        <i class="fas fa-check-double"></i>
+                        <span x-text="selectedMovies.length"></span> film seçildi
+                    </div>
+                     <button @click="selectedMovies = []" class="text-slate-400 hover:text-white text-sm font-semibold underline underline-offset-4 transition-colors">
+                        Seçimi Temizle
+                    </button>
+                </div>
+
+                {{-- İşlem Butonları --}}
+                <div class="flex flex-wrap items-center justify-center gap-3">
+                    
+                    {{-- Koleksiyona Ekle --}}
+                    @if($collections->isNotEmpty())
+                        <div x-data="{ showDropdown: false }" class="relative">
+                            <button @click="showDropdown = !showDropdown" @click.away="showDropdown = false"
+                                class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold px-4 py-2 rounded-xl transition-colors flex items-center gap-2 border border-slate-700">
+                                <i class="fas fa-folder-plus text-teal-400"></i> Koleksiyona Ekle <i class="fas fa-chevron-down text-xs ml-1"></i>
+                            </button>
+                            
+                            <div x-show="showDropdown" style="display: none;" 
+                                class="absolute bottom-full mb-2 right-0 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
+                                <form action="{{ route('movies.bulk.collection') }}" method="POST" class="flex flex-col max-h-48 overflow-y-auto">
+                                    @csrf
+                                    <template x-for="id in selectedMovies">
+                                        <input type="hidden" name="movie_ids[]" :value="id">
+                                    </template>
+                                    @foreach($collections as $collection)
+                                        <button type="submit" name="collection_id" value="{{ $collection->id }}" 
+                                            class="text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white border-b border-slate-700/50 last:border-0 transition-colors">
+                                            <i class="fas fa-{{ $collection->icon }} mr-2" style="color: {{ $collection->color }}"></i> {{ $collection->name }}
+                                        </button>
+                                    @endforeach
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- İzlendi İşaretle --}}
+                    <form action="{{ route('movies.bulk.watched') }}" method="POST">
+                        @csrf
+                        <template x-for="id in selectedMovies">
+                            <input type="hidden" name="movie_ids[]" :value="id">
+                        </template>
+                        <button type="submit" class="bg-emerald-500/20 hover:bg-emerald-500 hover:text-white text-emerald-400 text-sm font-bold px-4 py-2 rounded-xl transition-colors border border-emerald-500/30 flex items-center gap-2">
+                            <i class="fas fa-check"></i> İzlendi İşaretle
+                        </button>
+                    </form>
+
+                    {{-- Sil --}}
+                    <form action="{{ route('movies.bulk.delete') }}" method="POST" onsubmit="return confirm('Seçili filmleri arşivden silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')">
+                        @csrf
+                        @method('DELETE')
+                        <template x-for="id in selectedMovies">
+                            <input type="hidden" name="movie_ids[]" :value="id">
+                        </template>
+                        <button type="submit" class="bg-red-500/20 hover:bg-red-500 hover:text-white text-red-500 text-sm font-bold px-4 py-2 rounded-xl transition-colors border border-red-500/30 flex items-center gap-2">
+                            <i class="fas fa-trash-alt"></i> Sil
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 @endsection

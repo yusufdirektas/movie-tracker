@@ -7,6 +7,7 @@ use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\NowPlayingController;
 use App\Http\Controllers\StatisticsController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\CollectionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -79,3 +80,23 @@ require __DIR__.'/auth.php';
 Route::get('/movies/watchlist', [WatchlistController::class, 'index'])->middleware(['auth'])->name('movies.watchlist');
 Route::post('/movies', [MovieController::class, 'store'])->middleware(['auth', 'throttle:store-movie'])->name('movies.store');
 Route::resource('movies', MovieController::class)->middleware(['auth'])->except(['store']);
+
+// --- 5. KOLEKSİYON ROTALARI ---
+Route::middleware('auth')->group(function () {
+    Route::get('/collections', [CollectionController::class, 'index'])->name('collections.index');
+    Route::post('/collections', [CollectionController::class, 'store'])->name('collections.store');
+    Route::get('/collections/{collection}', [CollectionController::class, 'show'])->name('collections.show');
+    Route::put('/collections/{collection}', [CollectionController::class, 'update'])->name('collections.update');
+    Route::delete('/collections/{collection}', [CollectionController::class, 'destroy'])->name('collections.destroy');
+    Route::post('/collections/{collection}/movies', [CollectionController::class, 'addMovie'])->name('collections.addMovie');
+    Route::post('/collections/{collection}/movies/bulk', [CollectionController::class, 'addMovies'])->name('collections.addMovies');
+    Route::delete('/collections/{collection}/movies/{movie}', [CollectionController::class, 'removeMovie'])->name('collections.removeMovie');
+});
+
+// --- 6. TOPLU İŞLEM ROTALARI (BULK ACTIONS) ---
+Route::middleware('auth')->group(function () {
+    Route::delete('/movies/bulk/delete', [\App\Http\Controllers\BulkActionController::class, 'delete'])->name('movies.bulk.delete');
+    Route::post('/movies/bulk/watched', [\App\Http\Controllers\BulkActionController::class, 'markAsWatched'])->name('movies.bulk.watched');
+    Route::post('/movies/bulk/unwatched', [\App\Http\Controllers\BulkActionController::class, 'markAsUnwatched'])->name('movies.bulk.unwatched');
+    Route::post('/movies/bulk/collection', [\App\Http\Controllers\BulkActionController::class, 'addToCollection'])->name('movies.bulk.collection');
+});

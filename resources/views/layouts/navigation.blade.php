@@ -52,6 +52,11 @@
                         <i class="fas fa-fire text-orange-500"></i> {{ __('Vizyondakiler') }}
                     </x-nav-link>
 
+                    <x-nav-link :href="route('collections.index')" :active="request()->routeIs('collections.*')"
+                        class="text-slate-300 hover:text-white hover:border-teal-500 focus:text-white focus:border-teal-500 transition-colors flex items-center gap-2">
+                        <i class="fas fa-layer-group text-teal-400"></i> {{ __('Koleksiyonlarım') }}
+                    </x-nav-link>
+
                     <x-nav-link :href="route('movies.statistics')" :active="request()->routeIs('movies.statistics')"
                         class="text-indigo-300 hover:text-indigo-200 hover:border-indigo-400 focus:text-indigo-200 focus:border-indigo-400 transition-colors font-bold flex items-center gap-2">
                         <i class="fas fa-chart-pie"></i> {{ __('İstatistikler') }}
@@ -135,6 +140,11 @@
             <x-responsive-nav-link :href="route('movies.now_playing')" :active="request()->routeIs('movies.now_playing')"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
                 <i class="fas fa-fire w-5 text-center text-orange-500"></i> {{ __('Vizyondakiler') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('collections.index')" :active="request()->routeIs('collections.*')"
+                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-teal-500 flex items-center gap-2">
+                <i class="fas fa-layer-group w-5 text-center text-teal-400"></i> {{ __('Koleksiyonlarım') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.statistics')" :active="request()->routeIs('movies.statistics')"

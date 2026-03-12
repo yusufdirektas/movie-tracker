@@ -156,7 +156,7 @@
                     @endif
 
                     {{-- Aksiyon Butonları --}}
-                    <div class="flex flex-wrap gap-4">
+                    <div class="flex flex-wrap gap-4 items-start">
                         <form action="{{ route('movies.update', $movie) }}" method="POST">
                             @csrf @method('PATCH')
                             <button class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl text-sm font-black transition-all shadow-lg shadow-indigo-600/20">
@@ -164,6 +164,60 @@
                                 {{ $movie->is_watched ? 'İzlemedim Olarak İşaretle' : 'İzledim Olarak İşaretle' }}
                             </button>
                         </form>
+
+                        {{-- Koleksiyona Ekle Dropdown --}}
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" type="button"
+                                class="bg-teal-600/20 hover:bg-teal-600 text-teal-400 hover:text-white px-6 py-3 rounded-2xl text-sm font-black transition-all border border-teal-500/30 flex items-center gap-2">
+                                <i class="fas fa-layer-group"></i> Koleksiyona Ekle
+                                <i class="fas fa-chevron-down text-xs transition-transform" :class="open && 'rotate-180'"></i>
+                            </button>
+
+                            <div x-show="open" @click.away="open = false" x-transition
+                                class="absolute left-0 top-full mt-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
+
+                                @if($collections->isEmpty())
+                                    <div class="p-4 text-center">
+                                        <p class="text-slate-500 text-sm mb-3">Henüz koleksiyon oluşturmadın</p>
+                                        <a href="{{ route('collections.index') }}"
+                                            class="text-teal-400 hover:text-teal-300 text-sm font-bold">
+                                            <i class="fas fa-plus mr-1"></i> Koleksiyon Oluştur
+                                        </a>
+                                    </div>
+                                @else
+                                    <div class="p-2 max-h-60 overflow-y-auto">
+                                        @foreach($collections as $col)
+                                            @if(in_array($col->id, $movieCollectionIds))
+                                                {{-- Zaten ekliyse --}}
+                                                <div class="flex items-center gap-3 p-3 rounded-xl bg-teal-900/20 border border-teal-500/20">
+                                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                                                        style="background-color: {{ $col->color }}20; color: {{ $col->color }};">
+                                                        <i class="fas fa-{{ $col->icon }}"></i>
+                                                    </div>
+                                                    <span class="text-teal-400 text-sm font-bold flex-1 truncate">{{ $col->name }}</span>
+                                                    <i class="fas fa-check-circle text-teal-500 text-xs"></i>
+                                                </div>
+                                            @else
+                                                {{-- Ekle butonu --}}
+                                                <form action="{{ route('collections.addMovie', $col) }}" method="POST">
+                                                    @csrf
+                                                    <input type="hidden" name="movie_id" value="{{ $movie->id }}">
+                                                    <button type="submit"
+                                                        class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 transition-all text-left">
+                                                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                                                            style="background-color: {{ $col->color }}20; color: {{ $col->color }};">
+                                                            <i class="fas fa-{{ $col->icon }}"></i>
+                                                        </div>
+                                                        <span class="text-slate-300 text-sm font-bold flex-1 truncate">{{ $col->name }}</span>
+                                                        <i class="fas fa-plus text-slate-600 text-xs"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
 
                         <form action="{{ route('movies.destroy', $movie) }}" method="POST"
                             onsubmit="return confirm('Bu filmi arşivinizden silmek istediğinize emin misiniz?')">

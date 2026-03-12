@@ -184,8 +184,11 @@ class MovieController extends Controller
             });
             $similarMovies = collect($similarMovies)->take(6);
         }
+        // Kullanıcının koleksiyonlarını al (Koleksiyona Ekle dropdown'u için)
+        $collections = Auth::user()->collections()->orderBy('name')->get();
+        $movieCollectionIds = $movie->collections()->pluck('collections.id')->toArray();
 
-        return view('movies.show', compact('movie', 'similarMovies'));
+        return view('movies.show', compact('movie', 'similarMovies', 'collections', 'movieCollectionIds'));
     }
 
     public function update(UpdateMovieRequest $request, Movie $movie)
