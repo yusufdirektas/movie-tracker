@@ -10,6 +10,7 @@ use App\Services\TmdbService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class MovieController extends Controller
 {
@@ -25,6 +26,11 @@ class MovieController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
+
+        if (blank($user->share_token)) {
+            $user->forceFill(['share_token' => (string) Str::uuid()])->save();
+            $user->refresh();
+        }
 
         // İSTATİSTİKLERİ SAYFALANDIRMADAN BAĞIMSIZ ÇEKİYORUZ
         $totalMovies = $user->movies()->count();

@@ -33,7 +33,7 @@
                                     </div>
                                     <button type="submit"
                                         class="w-12 h-6 rounded-full relative transition-colors duration-200 focus:outline-none {{ Auth::user()->is_public ? 'bg-emerald-500' : 'bg-slate-700' }}">
-                                        <div class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 {{ Auth::user()->is_public ? 'translate-x-6' : '' }}"></div>
+                                        <div class="absolute top-1/2 -translate-y-1/2 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 {{ Auth::user()->is_public ? 'translate-x-6' : '' }}"></div>
                                     </button>
                                 </form>
                             </div>
@@ -41,11 +41,11 @@
                             @if(Auth::user()->is_public)
                                 <div class="mb-4">
                                     <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Paylaşım Linki</label>
-                                    <div class="flex gap-2">
-                                        <input type="text" readonly value="{{ route('public.archive', Auth::user()->share_token) }}" id="shareUrl"
-                                            class="flex-1 bg-slate-800 border-none rounded-lg text-xs text-slate-300 py-2 px-3 focus:ring-1 focus:ring-indigo-500">
+                                    <div style="display:flex; gap:8px; width:100%; box-sizing:border-box;">
+                                        <input type="text" readonly value="{{ Auth::user()->share_token ? route('public.archive', ['token' => Auth::user()->share_token]) : '' }}" id="shareUrl"
+                                            style="flex:1 1 0%; min-width:0; background:#1e293b; border:none; border-radius:8px; font-size:12px; color:#cbd5e1; padding:8px 12px; box-sizing:border-box; overflow:hidden; text-overflow:ellipsis;">
                                         <button onclick="copyToClipboard('shareUrl')"
-                                            class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg transition-colors">
+                                            style="flex-shrink:0; background:#4f46e5; color:white; padding:8px; border-radius:8px; border:none; cursor:pointer;">
                                             <i class="fas fa-copy"></i>
                                         </button>
                                     </div>

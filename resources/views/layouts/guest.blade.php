@@ -20,7 +20,7 @@
                 </a>
             </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-slate-900 border border-slate-800 shadow-xl overflow-hidden sm:rounded-lg">
+            <div class="auth-form w-full sm:max-w-md mt-6 px-6 py-4 bg-slate-900 border border-slate-800 shadow-xl overflow-hidden sm:rounded-lg">
                 {{ $slot }}
             </div>
         </div>

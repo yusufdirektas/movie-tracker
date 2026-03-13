@@ -15,9 +15,17 @@ class PrivacyController extends Controller
     public function toggleArchive()
     {
         $user = Auth::user();
-        $user->update([
-            'is_public' => !$user->is_public
-        ]);
+
+        $updates = [
+            'is_public' => !$user->is_public,
+        ];
+
+        if (!$user->is_public && blank($user->share_token)) {
+            $updates['share_token'] = (string) Str::uuid();
+        }
+
+        $user->update($updates);
+        $user->refresh();
 
         $status = $user->is_public ? 'Arşiviniz artık herkese açık!' : 'Arşiviniz artık gizli.';
         return back()->with('success', $status);
@@ -47,11 +55,11 @@ class PrivacyController extends Controller
     public function regenerateToken(Request $request)
     {
         $user = Auth::user();
-        
+
         if ($request->has('collection_id')) {
             $collection = Collection::findOrFail($request->collection_id);
             if ($collection->user_id !== $user->id) abort(403);
-            
+
             $collection->update(['share_token' => (string) Str::uuid()]);
             return back()->with('success', 'Koleksiyon paylaşım linki yenilendi.');
         }
