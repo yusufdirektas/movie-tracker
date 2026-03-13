@@ -28,7 +28,7 @@
         </h1>
 
         <p class="text-xl text-slate-400 max-w-lg mx-auto mb-12">
-            İzlediğin filmleri takip et, arşivini oluştur ve film yolculuğunu kişiselleştir.
+            İzlediğin filmleri takip et, arşivini oluştur ve film yolculuğunu kişiselleştir...
         </p>
 
         <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
