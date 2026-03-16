@@ -20,11 +20,11 @@ class BulkActionController extends Controller
         ]);
 
         // Yalnızca kullanıcının kendi filmlerini silebildiğinden emin olalım
-        Movie::whereIn('id', $request->movie_ids)
+        $deletedCount = Movie::whereIn('id', $request->movie_ids)
             ->where('user_id', Auth::id())
             ->delete();
 
-        return back()->with('success', count($request->movie_ids) . ' film başarıyla silindi.');
+        return back()->with('success', $deletedCount . ' film başarıyla silindi.');
     }
 
     /**
@@ -51,7 +51,7 @@ class BulkActionController extends Controller
             ]);
         }
 
-        return back()->with('success', count($request->movie_ids) . ' film izlendi olarak işaretlendi.');
+        return back()->with('success', $movies->count() . ' film izlendi olarak işaretlendi.');
     }
 
     /**
@@ -64,14 +64,14 @@ class BulkActionController extends Controller
             'movie_ids.*' => 'exists:movies,id'
         ]);
 
-        Movie::whereIn('id', $request->movie_ids)
+        $updatedCount = Movie::whereIn('id', $request->movie_ids)
             ->where('user_id', Auth::id())
             ->update([
                 'is_watched' => false,
                 'watched_at' => null
             ]);
 
-        return back()->with('success', count($request->movie_ids) . ' film izlenmedi olarak işaretlendi.');
+        return back()->with('success', $updatedCount . ' film izlenmedi olarak işaretlendi.');
     }
 
     /**
