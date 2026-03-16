@@ -153,6 +153,11 @@ class CollectionController extends Controller
     {
         $this->authorize('update', $collection);
 
+        // Güvenlik: Filmin bu kullanıcıya ait olduğunu doğrula (IDOR koruması)
+        if ($movie->user_id !== Auth::id()) {
+            abort(403);
+        }
+
         $collection->movies()->detach($movie->id);
 
         return back()->with('success', 'Film koleksiyondan çıkarıldı!');
