@@ -51,6 +51,13 @@
                     </div>
                 @endif
 
+                {{-- Hata Mesajı Bildirimi --}}
+                @if(session('error'))
+                    <div class="mb-6 bg-red-500/10 border border-red-500/50 p-4 rounded-xl flex items-center gap-3 text-red-400">
+                        <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+                    </div>
+                @endif
+
                 {{-- Dinamik İçerik --}}
                 @yield('content')
 
