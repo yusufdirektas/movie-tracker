@@ -20,8 +20,7 @@ class RecommendationController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
-        $movies = $user->movies()->latest()->get();
-        $lastMovie = $movies->first();
+        $lastMovie = $user->movies()->latest()->first();
         $recommendations = [];
 
         if ($lastMovie && $lastMovie->tmdb_id) {
@@ -41,7 +40,7 @@ class RecommendationController extends Controller
             });
 
             if (!empty($results)) {
-                $myMovieIds = $movies->pluck('tmdb_id')->toArray();
+                $myMovieIds = $user->movies()->pluck('tmdb_id')->toArray();
                 $recommendations = collect($results)
                     ->whereNotIn('id', $myMovieIds)
                     ->shuffle()
