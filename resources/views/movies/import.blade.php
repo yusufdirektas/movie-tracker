@@ -24,16 +24,18 @@
                 // Basit bir temizlik (Yıl bilgisini parantezden ayırabiliriz ama şimdilik direkt aratalım)
 
                 try {
-                    // Senin apiSearch rotanı kullanıyoruz
-                    let res = await fetch('{{ route('movies.api_search') }}?query=' + encodeURIComponent(query));
+                    // smartSearch endpoint'ini kullanıyoruz (yazım hatası toleranslı)
+                    let res = await fetch('{{ route('movies.api_search') }}?smart=1&query=' + encodeURIComponent(query));
                     let data = await res.json();
 
-                    if(data && data.length > 0) {
+                    if(data.results && data.results.length > 0) {
                         // En iyi eşleşmeyi (ilk sıradakini) alıyoruz
-                        let bestMatch = data[0];
+                        let bestMatch = data.results[0];
                         this.candidates.push({
                             original: query,
                             found: true,
+                            corrected: data.corrected || false,
+                            corrected_query: data.corrected_query || null,
                             tmdb_id: bestMatch.id,
                             title: bestMatch.title,
                             year: bestMatch.release_date ? bestMatch.release_date.substring(0,4) : '-',
@@ -162,7 +164,10 @@
                                 <h4 class="text-white text-sm font-bold truncate" x-text="item.title"></h4>
                                 <p class="text-slate-500 text-xs" x-text="item.year"></p>
                                 <p x-show="item.status === 'duplicate'" class="text-amber-400 text-[10px] font-bold uppercase tracking-wider">Zaten arşivinde var</p>
-                                <p x-show="item.status !== 'duplicate'" class="text-indigo-400 text-[10px] truncate" x-text="'Aranan: ' + item.original"></p>
+                                <p x-show="item.corrected && item.status !== 'duplicate'" class="text-teal-400 text-[10px] truncate">
+                                    <i class="fas fa-spell-check mr-1"></i> <span x-text="item.original"></span> → düzeltildi
+                                </p>
+                                <p x-show="!item.corrected && item.status !== 'duplicate'" class="text-indigo-400 text-[10px] truncate" x-text="'Aranan: ' + item.original"></p>
                             </div>
                         </template>
                         <template x-if="!item.found">

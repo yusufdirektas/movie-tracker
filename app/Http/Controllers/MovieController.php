@@ -105,14 +105,17 @@ class MovieController extends Controller
         $query = mb_strtolower($request->input('query'), 'UTF-8');
         if (!$query) return response()->json([]);
 
-        // Arama kısmı anlık olmalı, burayı cache'lemiyoruz.
-        /**
-         * 📚 NULL-SAFE OPERATOR (?->):
-         * TmdbService artık hata durumunda null dönebiliyor.
-         * $response->successful() yerine $response?->successful() kullanıyoruz.
-         * Eğer $response null ise, ?-> otomatik olarak false döner
-         * ve uygulama çökmez.
-         */
+        // Import sayfası smart=1 parametresi gönderir → yazım hatası toleranslı arama
+        if ($request->boolean('smart')) {
+            $result = $this->tmdb->smartSearch($query);
+            return response()->json([
+                'results'         => collect($result['results'])->take(6),
+                'corrected'       => $result['corrected'],
+                'corrected_query' => $result['corrected_query'],
+            ]);
+        }
+
+        // Normal arama (create sayfasındaki canlı arama için)
         $response = $this->tmdb->searchMovies($query);
 
         if ($response?->successful()) {
