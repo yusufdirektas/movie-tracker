@@ -112,6 +112,7 @@ class MovieController extends Controller
                 'results'         => collect($result['results'])->take(6),
                 'corrected'       => $result['corrected'],
                 'corrected_query' => $result['corrected_query'],
+                'suggestions'     => collect($result['suggestions'])->take(3),
             ]);
         }
 

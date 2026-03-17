@@ -150,60 +150,129 @@ class TmdbService
      * 📚 FUZZY SEARCH STRATEJİSİ:
      * TMDB'nin kendi arama motoru zaten temel typo toleransına sahip.
      * Ama Türkçe karakterler, parantez içi bilgiler ve fazla boşluklar
-     * başarısız aramalara yol açabiliyor. Bu metod 3 katmanlı bir
+     * başarısız aramalara yol açabiliyor. Bu metod 4 katmanlı bir
      * strateji ile en iyi eşleşmeyi bulmaya çalışır:
      *
      * Katman 1: Orijinal metin ile ara (TMDB'ye güven)
      * Katman 2: Normalize edilmiş metin ile ara (temizlik + düzeltme)
      * Katman 3: Parantez/sezon bilgisi çıkarılmış çekirdek isimle ara
+     * Katman 4: Kelime kelime parçalayıp en uzun eşleşeni bul
      *
-     * @return array{results: array, corrected: bool, corrected_query: string|null}
+     * Hiçbir katman kesin sonuç bulamazsa, toplanan kısmi sonuçları
+     * "suggestions" (öneriler) olarak döndürür → "Bunu mu demek istediniz?"
+     *
+     * @return array{results: array, corrected: bool, corrected_query: string|null, suggestions: array}
      */
     public function smartSearch(string $query): array
     {
         $original = trim($query);
+        $suggestions = []; // Tüm katmanlardan toplanan kısmi sonuçlar
 
         // Katman 1: Orijinal metin ile dene
         $response = $this->searchMovies($original);
-        if ($response?->successful() && !empty($response->json()['results'] ?? [])) {
-            return [
-                'results'         => $response->json()['results'],
-                'corrected'       => false,
-                'corrected_query' => null,
-            ];
+        if ($response?->successful()) {
+            $results = $response->json()['results'] ?? [];
+            if (!empty($results)) {
+                return [
+                    'results'         => $results,
+                    'corrected'       => false,
+                    'corrected_query' => null,
+                    'suggestions'     => [],
+                ];
+            }
         }
 
         // Katman 2: Normalize edilmiş metin ile dene
         $normalized = $this->normalizeQuery($original);
         if ($normalized !== mb_strtolower($original, 'UTF-8')) {
             $response = $this->searchMovies($normalized);
-            if ($response?->successful() && !empty($response->json()['results'] ?? [])) {
-                return [
-                    'results'         => $response->json()['results'],
-                    'corrected'       => true,
-                    'corrected_query' => $normalized,
-                ];
+            if ($response?->successful()) {
+                $results = $response->json()['results'] ?? [];
+                if (!empty($results)) {
+                    return [
+                        'results'         => $results,
+                        'corrected'       => true,
+                        'corrected_query' => $normalized,
+                        'suggestions'     => [],
+                    ];
+                }
             }
         }
 
-        // Katman 3: Çekirdek ismi çıkarıp dene (parantez, sezon, sayılar temizlenir)
+        // Katman 3: Çekirdek ismi çıkarıp dene
         $core = $this->extractCoreTitle($original);
         if ($core && $core !== $normalized) {
             $response = $this->searchMovies($core);
-            if ($response?->successful() && !empty($response->json()['results'] ?? [])) {
-                return [
-                    'results'         => $response->json()['results'],
-                    'corrected'       => true,
-                    'corrected_query' => $core,
-                ];
+            if ($response?->successful()) {
+                $results = $response->json()['results'] ?? [];
+                if (!empty($results)) {
+                    return [
+                        'results'         => $results,
+                        'corrected'       => true,
+                        'corrected_query' => $core,
+                        'suggestions'     => [],
+                    ];
+                }
             }
         }
 
-        // Hiçbir katman bulamadı
+        // Katman 4: Kelime kelime parçala, en uzun anlamlı eşleşmeyi bul
+        // Örn: "Matrisx Revolutions 2024" → "Matrisx Revolutions" → "Matrisx" → sonuç?
+        $words = explode(' ', $normalized ?: mb_strtolower($original, 'UTF-8'));
+        if (count($words) > 1) {
+            // Uzundan kısaya doğru dene
+            for ($len = count($words); $len >= 1; $len--) {
+                $partial = implode(' ', array_slice($words, 0, $len));
+                if (mb_strlen($partial) < 2) continue;
+
+                $response = $this->searchMovies($partial);
+                if ($response?->successful()) {
+                    $results = $response->json()['results'] ?? [];
+                    if (!empty($results)) {
+                        $suggestions = array_merge($suggestions, array_slice($results, 0, 3));
+                        break; // İlk bulunan parçalama yeterli
+                    }
+                }
+            }
+        }
+
+        // Tek kelimelik son şans: kelimenin kendisi zaten normalize edilmişse
+        // ama hiç sonuç yoksa, kelimeyi kısaltarak dene (son 1-2 harfi at)
+        if (empty($suggestions)) {
+            $baseWord = $core ?: ($normalized ?: mb_strtolower($original, 'UTF-8'));
+            if (mb_strlen($baseWord) > 3) {
+                // Son 1 ve 2 harfi atarak dene (typo genelde sonda olur)
+                for ($cut = 1; $cut <= 2; $cut++) {
+                    $shortened = mb_substr($baseWord, 0, mb_strlen($baseWord) - $cut);
+                    if (mb_strlen($shortened) < 2) break;
+
+                    $response = $this->searchMovies($shortened);
+                    if ($response?->successful()) {
+                        $results = $response->json()['results'] ?? [];
+                        if (!empty($results)) {
+                            $suggestions = array_slice($results, 0, 3);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Duplicate'ları temizle (aynı film farklı katmanlardan gelebilir)
+        $seen = [];
+        $uniqueSuggestions = [];
+        foreach ($suggestions as $s) {
+            if (!in_array($s['id'], $seen)) {
+                $seen[] = $s['id'];
+                $uniqueSuggestions[] = $s;
+            }
+        }
+
         return [
             'results'         => [],
             'corrected'       => false,
             'corrected_query' => null,
+            'suggestions'     => array_slice($uniqueSuggestions, 0, 3),
         ];
     }
 
