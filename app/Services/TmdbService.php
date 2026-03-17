@@ -145,120 +145,114 @@ class TmdbService
     }
 
     /**
-     * 1.1. Yazım Hatası Duyarlı Akıllı Arama
+     * 1.1. Yazım Hatası Duyarlı Akıllı Arama (v2 – Çift Dil + Popülerlik)
      *
      * 📚 FUZZY SEARCH STRATEJİSİ:
-     * TMDB'nin kendi arama motoru zaten temel typo toleransına sahip.
-     * Ama Türkçe karakterler, parantez içi bilgiler ve fazla boşluklar
-     * başarısız aramalara yol açabiliyor. Bu metod 4 katmanlı bir
-     * strateji ile en iyi eşleşmeyi bulmaya çalışır:
      *
-     * Katman 1: Orijinal metin ile ara (TMDB'ye güven)
-     * Katman 2: Normalize edilmiş metin ile ara (temizlik + düzeltme)
-     * Katman 3: Parantez/sezon bilgisi çıkarılmış çekirdek isimle ara
-     * Katman 4: Kelime kelime parçalayıp en uzun eşleşeni bul
+     * TMDB'nin arama motoru tüm dillerdeki film başlıklarını tarayabilir.
+     * Ancak dil parametresi sonuçların SIRALAMASINI ve döndürülen başlığı
+     * etkiler. Bu yüzden hem TR hem EN dilinde arama yapıyoruz.
      *
-     * Hiçbir katman kesin sonuç bulamazsa, toplanan kısmi sonuçları
-     * "suggestions" (öneriler) olarak döndürür → "Bunu mu demek istediniz?"
+     * Katman 1: Orijinal metin → TR + EN çift dil arama
+     * Katman 2: Normalize edilmiş metin → TR + EN çift dil arama
+     * Katman 3: Çekirdek isim (parantez/sezon temizliği) → çift dil
+     * Katman 4: Yazım hatası varyantları (çift harf, karakter kırpma)
+     * Katman 5: Kelime parçalama → öneri toplama
+     * Katman 6: Karakter kırpma → son şans önerileri
+     *
+     * Tüm sonuçlar popülerliğe göre sıralanır (en bilinen filmler önce).
      *
      * @return array{results: array, corrected: bool, corrected_query: string|null, suggestions: array}
      */
     public function smartSearch(string $query): array
     {
         $original = trim($query);
-        $suggestions = []; // Tüm katmanlardan toplanan kısmi sonuçlar
+        $suggestions = [];
 
-        // Katman 1: Orijinal metin ile dene
-        $response = $this->searchMovies($original);
-        if ($response?->successful()) {
-            $results = $response->json()['results'] ?? [];
+        // ── Katman 1: Orijinal metin → TR + EN çift dil arama ──
+        $results = $this->searchBothLanguages($original);
+        if (!empty($results)) {
+            return [
+                'results'         => $results,
+                'corrected'       => false,
+                'corrected_query' => null,
+                'suggestions'     => [],
+            ];
+        }
+
+        // ── Katman 2: Normalize edilmiş metin (Türkçe→ASCII, özel karakter temizliği) ──
+        $normalized = $this->normalizeQuery($original);
+        if ($normalized !== mb_strtolower($original, 'UTF-8')) {
+            $results = $this->searchBothLanguages($normalized);
             if (!empty($results)) {
                 return [
                     'results'         => $results,
-                    'corrected'       => false,
-                    'corrected_query' => null,
+                    'corrected'       => true,
+                    'corrected_query' => $normalized,
                     'suggestions'     => [],
                 ];
             }
         }
 
-        // Katman 2: Normalize edilmiş metin ile dene
-        $normalized = $this->normalizeQuery($original);
-        if ($normalized !== mb_strtolower($original, 'UTF-8')) {
-            $response = $this->searchMovies($normalized);
-            if ($response?->successful()) {
-                $results = $response->json()['results'] ?? [];
-                if (!empty($results)) {
-                    return [
-                        'results'         => $results,
-                        'corrected'       => true,
-                        'corrected_query' => $normalized,
-                        'suggestions'     => [],
-                    ];
-                }
-            }
-        }
-
-        // Katman 3: Çekirdek ismi çıkarıp dene
+        // ── Katman 3: Çekirdek isim (parantez, sezon bilgisi çıkarılmış) ──
         $core = $this->extractCoreTitle($original);
         if ($core && $core !== $normalized) {
-            $response = $this->searchMovies($core);
-            if ($response?->successful()) {
-                $results = $response->json()['results'] ?? [];
-                if (!empty($results)) {
-                    return [
-                        'results'         => $results,
-                        'corrected'       => true,
-                        'corrected_query' => $core,
-                        'suggestions'     => [],
-                    ];
-                }
+            $results = $this->searchBothLanguages($core);
+            if (!empty($results)) {
+                return [
+                    'results'         => $results,
+                    'corrected'       => true,
+                    'corrected_query' => $core,
+                    'suggestions'     => [],
+                ];
             }
         }
 
-        // Katman 4: Kelime kelime parçala, en uzun anlamlı eşleşmeyi bul
-        // Örn: "Matrisx Revolutions 2024" → "Matrisx Revolutions" → "Matrisx" → sonuç?
-        $words = explode(' ', $normalized ?: mb_strtolower($original, 'UTF-8'));
+        // ── Katman 4: Yazım hatası varyantları ──
+        $baseText = $core ?: ($normalized ?: mb_strtolower($original, 'UTF-8'));
+        $variants = $this->generateTypoVariants($baseText);
+        foreach ($variants as $variant) {
+            $results = $this->searchBothLanguages($variant);
+            if (!empty($results)) {
+                return [
+                    'results'         => $results,
+                    'corrected'       => true,
+                    'corrected_query' => $variant,
+                    'suggestions'     => [],
+                ];
+            }
+        }
+
+        // ── Katman 5: Kelime parçalama → öneri toplama ──
+        $words = explode(' ', $baseText);
         if (count($words) > 1) {
-            // Uzundan kısaya doğru dene
-            for ($len = count($words); $len >= 1; $len--) {
+            for ($len = count($words) - 1; $len >= 1; $len--) {
                 $partial = implode(' ', array_slice($words, 0, $len));
                 if (mb_strlen($partial) < 2) continue;
 
-                $response = $this->searchMovies($partial);
-                if ($response?->successful()) {
-                    $results = $response->json()['results'] ?? [];
-                    if (!empty($results)) {
-                        $suggestions = array_merge($suggestions, array_slice($results, 0, 3));
-                        break; // İlk bulunan parçalama yeterli
-                    }
+                $partialResults = $this->searchBothLanguages($partial);
+                if (!empty($partialResults)) {
+                    $suggestions = array_merge($suggestions, $partialResults);
+                    break;
                 }
             }
         }
 
-        // Tek kelimelik son şans: kelimenin kendisi zaten normalize edilmişse
-        // ama hiç sonuç yoksa, kelimeyi kısaltarak dene (son 1-2 harfi at)
-        if (empty($suggestions)) {
-            $baseWord = $core ?: ($normalized ?: mb_strtolower($original, 'UTF-8'));
-            if (mb_strlen($baseWord) > 3) {
-                // Son 1 ve 2 harfi atarak dene (typo genelde sonda olur)
-                for ($cut = 1; $cut <= 2; $cut++) {
-                    $shortened = mb_substr($baseWord, 0, mb_strlen($baseWord) - $cut);
-                    if (mb_strlen($shortened) < 2) break;
+        // ── Katman 6: Karakter kırpma (son 1-3 harf) ──
+        if (empty($suggestions) && mb_strlen($baseText) > 3) {
+            for ($cut = 1; $cut <= 3; $cut++) {
+                $shortened = mb_substr($baseText, 0, mb_strlen($baseText) - $cut);
+                if (mb_strlen($shortened) < 2) break;
 
-                    $response = $this->searchMovies($shortened);
-                    if ($response?->successful()) {
-                        $results = $response->json()['results'] ?? [];
-                        if (!empty($results)) {
-                            $suggestions = array_slice($results, 0, 3);
-                            break;
-                        }
-                    }
+                $shortResults = $this->searchBothLanguages($shortened);
+                if (!empty($shortResults)) {
+                    $suggestions = array_merge($suggestions, $shortResults);
+                    break;
                 }
             }
         }
 
-        // Duplicate'ları temizle (aynı film farklı katmanlardan gelebilir)
+        // Deduplicate + popülerliğe göre sırala
         $seen = [];
         $uniqueSuggestions = [];
         foreach ($suggestions as $s) {
@@ -267,13 +261,100 @@ class TmdbService
                 $uniqueSuggestions[] = $s;
             }
         }
+        usort($uniqueSuggestions, fn($a, $b) => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0));
 
         return [
             'results'         => [],
             'corrected'       => false,
             'corrected_query' => null,
-            'suggestions'     => array_slice($uniqueSuggestions, 0, 3),
+            'suggestions'     => array_slice($uniqueSuggestions, 0, 5),
         ];
+    }
+
+    /**
+     * Çift dil arama: Hem TR hem EN dilinde arama yapıp sonuçları birleştirir.
+     *
+     * 📚 NEDEN ÇİFT DİL?
+     * TMDB, tüm dillerdeki film başlıklarını arayabilir. Ancak:
+     * - `language=tr-TR` → Sonuçlar Türkçe başlıkla döner, sıralama Türkçe odaklı
+     * - `language=en-US` → Sonuçlar İngilizce başlıkla döner, farklı sıralama
+     * Bazı filmler sadece EN aramada yüksek relevans alır (örn: niş filmler).
+     * TR aramada bulunan sonuçlar Türkçe başlıklı olduğundan önceliklidir.
+     * EN aramadan sadece TR'de bulunmayan YENİ filmler eklenir.
+     * Son olarak tüm sonuçlar popülerliğe göre sıralanır.
+     */
+    protected function searchBothLanguages(string $query): array
+    {
+        $allResults = [];
+        $seenIds = [];
+
+        foreach (['tr-TR', 'en-US'] as $lang) {
+            $response = $this->request('/search/movie', [
+                'query'         => $query,
+                'include_adult' => false,
+                'language'      => $lang,
+            ]);
+
+            if ($response?->successful()) {
+                foreach (($response->json()['results'] ?? []) as $movie) {
+                    if (!in_array($movie['id'], $seenIds)) {
+                        $seenIds[] = $movie['id'];
+                        $allResults[] = $movie;
+                    }
+                }
+            }
+        }
+
+        // Popülerliğe göre sırala (en bilinen filmler en üstte)
+        usort($allResults, fn($a, $b) => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0));
+
+        return $allResults;
+    }
+
+    /**
+     * Yazım hatası varyantları üretir.
+     *
+     * 📚 YAYGIN TYPO KALIPLARI:
+     * 1. Çift harf: "inceptioon" → "inception", "matrixx" → "matrix"
+     * 2. Son karakter fazlalığı: her kelimenin sonundaki typo'yu kırpar
+     * 3. İlk kelime odaklı: sadece ilk kelimeyi kırparak dener
+     *
+     * API çağrısını sınırlamak için max 5 varyant üretilir.
+     */
+    protected function generateTypoVariants(string $text): array
+    {
+        $variants = [];
+
+        // Tekrarlanan harfleri düzelt: "inceptioon" → "inception"
+        $deduped = preg_replace('/(.)\1+/u', '$1', $text);
+        if ($deduped !== $text && mb_strlen($deduped) >= 2) {
+            $variants[] = $deduped;
+        }
+
+        // Her kelimenin son harfini kırp (fazla harf typo'su)
+        $words = explode(' ', $text);
+        if (count($words) >= 1) {
+            $trimmedWords = array_map(
+                fn($w) => mb_strlen($w) > 3 ? mb_substr($w, 0, -1) : $w,
+                $words
+            );
+            $trimmed = implode(' ', $trimmedWords);
+            if ($trimmed !== $text) {
+                $variants[] = $trimmed;
+            }
+        }
+
+        // Sadece ilk kelimenin son harfini kırp
+        if (count($words) > 1 && mb_strlen($words[0]) > 3) {
+            $firstTrimmed = $words;
+            $firstTrimmed[0] = mb_substr($words[0], 0, -1);
+            $variant = implode(' ', $firstTrimmed);
+            if ($variant !== $text && !in_array($variant, $variants)) {
+                $variants[] = $variant;
+            }
+        }
+
+        return array_slice($variants, 0, 5);
     }
 
     /**
