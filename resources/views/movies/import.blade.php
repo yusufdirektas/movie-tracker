@@ -33,6 +33,7 @@
                             corrected: data.corrected || false,
                             corrected_query: data.corrected_query || null,
                             tmdb_id: bestMatch.id,
+                            media_type: bestMatch.media_type || 'movie',
                             title: bestMatch.title,
                             year: bestMatch.release_date ? bestMatch.release_date.substring(0,4) : '-',
                             poster: bestMatch.poster_path,
@@ -46,6 +47,7 @@
                             found: false,
                             suggestions: data.suggestions.map(s => ({
                                 tmdb_id: s.id,
+                                media_type: s.media_type || 'movie',
                                 title: s.title,
                                 year: s.release_date ? s.release_date.substring(0,4) : '-',
                                 poster: s.poster_path,
@@ -68,6 +70,7 @@
             let item = this.candidates[candidateIndex];
             item.found = true;
             item.tmdb_id = suggestion.tmdb_id;
+            item.media_type = suggestion.media_type || 'movie';
             item.title = suggestion.title;
             item.year = suggestion.year;
             item.poster = suggestion.poster;
@@ -92,6 +95,7 @@
                 try {
                     let formData = new FormData();
                     formData.append('tmdb_id', item.tmdb_id);
+                    formData.append('media_type', item.media_type || 'movie');
                     formData.append('is_watched', '1');
                     formData.append('_token', '{{ csrf_token() }}');
 
@@ -194,7 +198,10 @@
                             <div class="flex-1 min-w-0">
                                 <template x-if="item.found">
                                     <div>
-                                        <h4 class="text-white text-sm font-bold truncate" x-text="item.title"></h4>
+                                        <h4 class="text-white text-sm font-bold truncate">
+                                            <i x-show="item.media_type === 'tv'" class="fas fa-tv text-purple-400 mr-1 text-[10px]"></i>
+                                            <span x-text="item.title"></span>
+                                        </h4>
                                         <p class="text-slate-500 text-xs" x-text="item.year"></p>
                                         <p x-show="item.status === 'duplicate'" class="text-amber-400 text-[10px] font-bold uppercase tracking-wider">Zaten arşivinde var</p>
                                         <p x-show="item.corrected && item.status !== 'duplicate'" class="text-teal-400 text-[10px] truncate">
@@ -247,7 +254,10 @@
                                             </template>
                                         </div>
                                         <div class="flex-1 min-w-0">
-                                            <h5 class="text-white text-sm font-bold truncate group-hover:text-violet-300" x-text="sug.title"></h5>
+                                            <h5 class="text-white text-sm font-bold truncate group-hover:text-violet-300">
+                                                <i x-show="sug.media_type === 'tv'" class="fas fa-tv text-purple-400 mr-1 text-[10px]"></i>
+                                                <span x-text="sug.title"></span>
+                                            </h5>
                                             <p class="text-slate-500 text-xs" x-text="sug.year"></p>
                                         </div>
                                         <i class="fas fa-plus-circle text-slate-600 group-hover:text-violet-400 text-lg"></i>

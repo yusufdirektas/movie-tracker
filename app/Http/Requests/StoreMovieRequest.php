@@ -36,6 +36,7 @@ class StoreMovieRequest extends FormRequest
         return [
             'tmdb_id'    => ['required', 'integer'],
             'is_watched' => ['sometimes', 'boolean'],
+            'media_type' => ['sometimes', 'in:movie,tv'],
         ];
     }
 

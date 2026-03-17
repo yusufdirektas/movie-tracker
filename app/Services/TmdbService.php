@@ -272,16 +272,21 @@ class TmdbService
     }
 
     /**
-     * Çift dil arama: Hem TR hem EN dilinde arama yapıp sonuçları birleştirir.
+     * Çift dil arama: Hem TR hem EN dilinde /search/multi ile arama yapar.
      *
-     * 📚 NEDEN ÇİFT DİL?
-     * TMDB, tüm dillerdeki film başlıklarını arayabilir. Ancak:
-     * - `language=tr-TR` → Sonuçlar Türkçe başlıkla döner, sıralama Türkçe odaklı
-     * - `language=en-US` → Sonuçlar İngilizce başlıkla döner, farklı sıralama
-     * Bazı filmler sadece EN aramada yüksek relevans alır (örn: niş filmler).
-     * TR aramada bulunan sonuçlar Türkçe başlıklı olduğundan önceliklidir.
-     * EN aramadan sadece TR'de bulunmayan YENİ filmler eklenir.
-     * Son olarak tüm sonuçlar popülerliğe göre sıralanır.
+     * 📚 NEDEN /search/multi?
+     * - `/search/movie` → Sadece filmler
+     * - `/search/tv` → Sadece diziler
+     * - `/search/multi` → Film + Dizi + Kişi → hepsini tek seferde bulur!
+     *
+     * Kullanıcı "13 Reasons Why" yazarsa bu bir dizidir.
+     * /search/movie ile asla bulunamaz. /search/multi ile bulunur.
+     * "person" türündeki sonuçları filtreliyoruz (aktör/yönetmen aramıyoruz).
+     *
+     * TV dizileri TMDB'de farklı alan isimleri kullanır:
+     * - title → name
+     * - release_date → first_air_date
+     * Bu farkları normalize edip frontend'e tutarlı veri gönderiyoruz.
      */
     protected function searchBothLanguages(string $query): array
     {
@@ -289,23 +294,39 @@ class TmdbService
         $seenIds = [];
 
         foreach (['tr-TR', 'en-US'] as $lang) {
-            $response = $this->request('/search/movie', [
+            $response = $this->request('/search/multi', [
                 'query'         => $query,
                 'include_adult' => false,
                 'language'      => $lang,
             ]);
 
             if ($response?->successful()) {
-                foreach (($response->json()['results'] ?? []) as $movie) {
-                    if (!in_array($movie['id'], $seenIds)) {
-                        $seenIds[] = $movie['id'];
-                        $allResults[] = $movie;
+                foreach (($response->json()['results'] ?? []) as $item) {
+                    $type = $item['media_type'] ?? '';
+
+                    // Sadece film ve dizi — kişileri (person) atla
+                    if (!in_array($type, ['movie', 'tv'])) continue;
+
+                    // TV ve Movie için benzersiz anahtar (aynı ID farklı tiplerde olabilir)
+                    $uniqueKey = $type . '_' . $item['id'];
+                    if (in_array($uniqueKey, $seenIds)) continue;
+                    $seenIds[] = $uniqueKey;
+
+                    // TV sonuçlarını movie formatına normalize et
+                    if ($type === 'tv') {
+                        $item['title'] = $item['name'] ?? $item['original_name'] ?? '';
+                        $item['release_date'] = $item['first_air_date'] ?? null;
                     }
+
+                    // media_type bilgisini koru (frontend'e ve store'a lazım)
+                    $item['media_type'] = $type;
+
+                    $allResults[] = $item;
                 }
             }
         }
 
-        // Popülerliğe göre sırala (en bilinen filmler en üstte)
+        // Popülerliğe göre sırala (en bilinen içerikler en üstte)
         usort($allResults, fn($a, $b) => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0));
 
         return $allResults;
@@ -443,6 +464,23 @@ class TmdbService
     public function getMovieDetails(int|string $id)
     {
         return $this->request("/movie/{$id}", [
+            'append_to_response' => 'credits',
+        ]);
+    }
+
+    /**
+     * 2.1. Dizi Detayı (yaratıcı bilgisi dahil)
+     *
+     * 📚 TMDB'de TV dizileri farklı endpoint kullanır:
+     * - `/movie/{id}` → Film detayı (title, runtime, credits.crew)
+     * - `/tv/{id}` → Dizi detayı (name, episode_run_time, created_by)
+     *
+     * Dizi detayında `credits` yerine `aggregate_credits` kullanılır,
+     * `created_by` alanı ise "yönetmen" yerine geçer.
+     */
+    public function getTvDetails(int|string $id)
+    {
+        return $this->request("/tv/{$id}", [
             'append_to_response' => 'credits',
         ]);
     }

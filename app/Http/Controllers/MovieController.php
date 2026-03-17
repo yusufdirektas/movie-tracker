@@ -130,41 +130,74 @@ class MovieController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
-        $alreadyExists = $user->movies()->where('tmdb_id', $request->tmdb_id)->exists();
+        $mediaType = $request->input('media_type', 'movie');
+        $alreadyExists = $user->movies()
+            ->where('tmdb_id', $request->tmdb_id)
+            ->where('media_type', $mediaType)
+            ->exists();
 
         if ($alreadyExists) {
             if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Bu film zaten arşivinde mevcut!'], 400);
+                return response()->json(['success' => false, 'message' => 'Bu içerik zaten arşivinde mevcut!'], 400);
             }
-            return back()->with('error', 'Bu film zaten arşivinde mevcut!');
+            return back()->with('error', 'Bu içerik zaten arşivinde mevcut!');
         }
 
-        $response = $this->tmdb->getMovieDetails($request->tmdb_id);
+        // media_type'a göre film veya dizi detayını çek
+        if ($mediaType === 'tv') {
+            $response = $this->tmdb->getTvDetails($request->tmdb_id);
+        } else {
+            $response = $this->tmdb->getMovieDetails($request->tmdb_id);
+        }
 
         if ($response?->successful()) {
-            $movieData = $response->json();
-            $director = collect($movieData['credits']['crew'] ?? [])->firstWhere('job', 'Director')['name'] ?? 'Bilinmiyor';
+            $data = $response->json();
             $isWatched = $request->boolean('is_watched');
+            $genres = collect($data['genres'] ?? [])->pluck('name')->toArray();
 
-            // TMDB'den gelen genre objeleri: [{"id":28,"name":"Aksiyon"}, ...]
-            // Sadece isimleri alıyoruz: ["Aksiyon", "Bilim Kurgu", "Gerilim"]
-            $genres = collect($movieData['genres'] ?? [])->pluck('name')->toArray();
+            if ($mediaType === 'tv') {
+                // Dizi: created_by → yönetmen, name → başlık, episode_run_time → süre
+                $creator = collect($data['created_by'] ?? [])->first()['name']
+                    ?? collect($data['credits']['crew'] ?? [])->firstWhere('job', 'Director')['name']
+                    ?? 'Bilinmiyor';
+                $runtime = $data['episode_run_time'][0] ?? $data['last_episode_to_air']['runtime'] ?? null;
 
-            $user->movies()->create([
-                'tmdb_id'      => $movieData['id'],
-                'title'        => $movieData['title'],
-                'director'     => $director,
-                'genres'       => $genres,
-                'poster_path'  => $movieData['poster_path'],
-                'rating'       => $movieData['vote_average'],
-                'runtime'      => $movieData['runtime'],
-                'overview'     => empty($movieData['overview']) ? null : $movieData['overview'],
-                'release_date' => $movieData['release_date'],
-                'is_watched'   => $isWatched,
-                'watched_at'   => $isWatched ? now() : null,
-            ]);
+                $user->movies()->create([
+                    'tmdb_id'      => $data['id'],
+                    'media_type'   => 'tv',
+                    'title'        => $data['name'] ?? $data['original_name'],
+                    'director'     => $creator,
+                    'genres'       => $genres,
+                    'poster_path'  => $data['poster_path'],
+                    'rating'       => $data['vote_average'],
+                    'runtime'      => $runtime,
+                    'overview'     => empty($data['overview']) ? null : $data['overview'],
+                    'release_date' => $data['first_air_date'] ?? null,
+                    'is_watched'   => $isWatched,
+                    'watched_at'   => $isWatched ? now() : null,
+                ]);
+            } else {
+                // Film: credits.crew → yönetmen, title → başlık
+                $director = collect($data['credits']['crew'] ?? [])->firstWhere('job', 'Director')['name'] ?? 'Bilinmiyor';
 
-            $message = $isWatched ? 'Film listeye eklendi!' : 'Film izleneceklere eklendi!';
+                $user->movies()->create([
+                    'tmdb_id'      => $data['id'],
+                    'media_type'   => 'movie',
+                    'title'        => $data['title'],
+                    'director'     => $director,
+                    'genres'       => $genres,
+                    'poster_path'  => $data['poster_path'],
+                    'rating'       => $data['vote_average'],
+                    'runtime'      => $data['runtime'],
+                    'overview'     => empty($data['overview']) ? null : $data['overview'],
+                    'release_date' => $data['release_date'],
+                    'is_watched'   => $isWatched,
+                    'watched_at'   => $isWatched ? now() : null,
+                ]);
+            }
+
+            $label = $mediaType === 'tv' ? 'Dizi' : 'Film';
+            $message = $isWatched ? "{$label} listeye eklendi!" : "{$label} izleneceklere eklendi!";
 
             if ($request->wantsJson()) {
                 return response()->json(['success' => true, 'message' => $message]);
@@ -173,9 +206,9 @@ class MovieController extends Controller
         }
 
         if ($request->wantsJson()) {
-            return response()->json(['success' => false, 'message' => 'Film bilgileri alınamadı.'], 500);
+            return response()->json(['success' => false, 'message' => 'Bilgiler alınamadı.'], 500);
         }
-        return back()->with('error', 'Film bilgileri alınamadı.');
+        return back()->with('error', 'Bilgiler alınamadı.');
     }
 
     /**
