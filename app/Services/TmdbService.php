@@ -145,202 +145,432 @@ class TmdbService
     }
 
     /**
-     * 1.1. Yazım Hatası Duyarlı Akıllı Arama (v2 – Çift Dil + Popülerlik)
+     * 1.1. Akıllı Arama Motoru v3 – Başlık Doğrulamalı + Dil Filtreleme
      *
-     * 📚 FUZZY SEARCH STRATEJİSİ:
+     * 📚 KÖK SORUNLAR VE ÇÖZÜMLER:
      *
-     * TMDB'nin arama motoru tüm dillerdeki film başlıklarını tarayabilir.
-     * Ancak dil parametresi sonuçların SIRALAMASINI ve döndürülen başlığı
-     * etkiler. Bu yüzden hem TR hem EN dilinde arama yapıyoruz.
+     * Sorun 1: "Flipped" → "Flip Flappers" (anime) kabul ediliyordu
+     *   Çözüm: findBestMatch() ile başlık benzerlik skoru kontrol ediliyor.
+     *   Benzerlik eşiğini geçemeyen sonuçlar reddedilir.
      *
-     * Katman 1: Orijinal metin → TR + EN çift dil arama
-     * Katman 2: Normalize edilmiş metin → TR + EN çift dil arama
-     * Katman 3: Çekirdek isim (parantez/sezon temizliği) → çift dil
-     * Katman 4: Yazım hatası varyantları (çift harf, karakter kırpma)
-     * Katman 5: Kelime parçalama → öneri toplama
-     * Katman 6: Karakter kırpma → son şans önerileri
+     * Sorun 2: "Atonement" → Japonca anime, "Dhom 3" → Fransızca film
+     *   Çözüm: Sonuçlar dil filtresinden geçiriliyor. TR/EN öncelikli.
+     *   Diğer diller yalnızca başlık benzerliği yüksekse kabul edilir.
      *
-     * Tüm sonuçlar popülerliğe göre sıralanır (en bilinen filmler önce).
+     * Sorun 3: "Joker" → "Impractical Jokers" (popülerlik sıralaması yanlış seçtiriyordu)
+     *   Çözüm: Popülerlik yerine başlık benzerlik skoru ile en iyi eşleşme seçiliyor.
+     *   "Joker" tam eşleşme 1.0 > "Impractical Jokers" kısmi eşleşme 0.6
+     *
+     * Sorun 4: "Bridge yo terabithia" → Korece filmler
+     *   Çözüm: Kısa anlamsız kelimeler (2 harf, sayı olmayan) kaldırılıp tekrar aranıyor.
+     *   "bridge terabithia" → "Bridge to Terabithia" bulunuyor.
+     *
+     * KATMAN YAPISI:
+     * 1. Orijinal metin → ara + başlık doğrula
+     * 2. Normalize metin (Türkçe→ASCII) → ara + başlık doğrula
+     * 3. Çekirdek isim (parantez/sezon temizliği) → ara + başlık doğrula
+     * 4. Kısa kelimeler çıkarılmış → ara + başlık doğrula
+     * 5. Typo varyantları → ara + başlık doğrula
+     * 6. Kelime parçalama → öneri toplama
+     * 7. Karakter kırpma → son şans önerileri
+     *
+     * Her katmanda: arama sonuçları + findBestMatch ile en iyi eşleşme seçilir.
+     * Bulunamazsa → toplanıp suggestions olarak döner (dil filtreleme + popülerlik)
      *
      * @return array{results: array, corrected: bool, corrected_query: string|null, suggestions: array}
      */
     public function smartSearch(string $query): array
     {
         $original = trim($query);
-        $suggestions = [];
+        $allCandidates = [];
 
-        // ── Katman 1: Orijinal metin → TR + EN çift dil arama ──
+        // ── Katman 1: Orijinal metin ──
         $results = $this->searchBothLanguages($original);
-        if (!empty($results)) {
-            return [
-                'results'         => $results,
-                'corrected'       => false,
-                'corrected_query' => null,
-                'suggestions'     => [],
-            ];
+        $best = $this->findBestMatch($original, $results);
+        if ($best) {
+            return $this->matchResult([$best]);
         }
+        $allCandidates = array_merge($allCandidates, $results);
 
-        // ── Katman 2: Normalize edilmiş metin (Türkçe→ASCII, özel karakter temizliği) ──
+        // ── Katman 2: Normalize (Türkçe→ASCII, özel karakter temizliği) ──
         $normalized = $this->normalizeQuery($original);
         if ($normalized !== mb_strtolower($original, 'UTF-8')) {
             $results = $this->searchBothLanguages($normalized);
-            if (!empty($results)) {
-                return [
-                    'results'         => $results,
-                    'corrected'       => true,
-                    'corrected_query' => $normalized,
-                    'suggestions'     => [],
-                ];
+            $best = $this->findBestMatch($original, $results);
+            if ($best) {
+                return $this->matchResult([$best], true, $normalized);
             }
+            $allCandidates = array_merge($allCandidates, $results);
         }
 
-        // ── Katman 3: Çekirdek isim (parantez, sezon bilgisi çıkarılmış) ──
+        // ── Katman 3: Çekirdek isim (parantez, sezon kaldırılmış) ──
         $core = $this->extractCoreTitle($original);
-        if ($core && $core !== $normalized) {
+        if ($core && $core !== ($normalized ?: '')) {
             $results = $this->searchBothLanguages($core);
-            if (!empty($results)) {
-                return [
-                    'results'         => $results,
-                    'corrected'       => true,
-                    'corrected_query' => $core,
-                    'suggestions'     => [],
-                ];
+            $best = $this->findBestMatch($original, $results);
+            if ($best) {
+                return $this->matchResult([$best], true, $core);
             }
+            $allCandidates = array_merge($allCandidates, $results);
         }
 
-        // ── Katman 4: Yazım hatası varyantları ──
+        // ── Katman 4: Kısa anlamsız kelimeler çıkarılmış ──
+        // "Bridge yo terabithia" → "bridge terabithia" → TMDB bulur
         $baseText = $core ?: ($normalized ?: mb_strtolower($original, 'UTF-8'));
-        $variants = $this->generateTypoVariants($baseText);
-        foreach ($variants as $variant) {
-            $results = $this->searchBothLanguages($variant);
-            if (!empty($results)) {
-                return [
-                    'results'         => $results,
-                    'corrected'       => true,
-                    'corrected_query' => $variant,
-                    'suggestions'     => [],
-                ];
+        $withoutShort = $this->removeShortWords($baseText);
+        if ($withoutShort && $withoutShort !== $baseText) {
+            $results = $this->searchBothLanguages($withoutShort);
+            $best = $this->findBestMatch($original, $results);
+            if ($best) {
+                return $this->matchResult([$best], true, $withoutShort);
             }
+            $allCandidates = array_merge($allCandidates, $results);
         }
 
-        // ── Katman 5: Kelime parçalama → öneri toplama ──
+        // ── Katman 5: Typo varyantları (çift harf, kelime kırpma) ──
+        foreach ($this->generateTypoVariants($baseText) as $variant) {
+            $results = $this->searchBothLanguages($variant);
+            $best = $this->findBestMatch($original, $results);
+            if ($best) {
+                return $this->matchResult([$best], true, $variant);
+            }
+            $allCandidates = array_merge($allCandidates, $results);
+        }
+
+        // ── Katman 6: Kelime parçalama → öneri toplama ──
         $words = explode(' ', $baseText);
         if (count($words) > 1) {
             for ($len = count($words) - 1; $len >= 1; $len--) {
                 $partial = implode(' ', array_slice($words, 0, $len));
                 if (mb_strlen($partial) < 2) continue;
-
-                $partialResults = $this->searchBothLanguages($partial);
-                if (!empty($partialResults)) {
-                    $suggestions = array_merge($suggestions, $partialResults);
+                $results = $this->searchBothLanguages($partial);
+                if (!empty($results)) {
+                    $allCandidates = array_merge($allCandidates, $results);
                     break;
                 }
             }
         }
 
-        // ── Katman 6: Karakter kırpma (son 1-3 harf) ──
-        if (empty($suggestions) && mb_strlen($baseText) > 3) {
+        // ── Katman 7: Karakter kırpma (son 1-3 harf) ──
+        if (mb_strlen($baseText) > 3) {
             for ($cut = 1; $cut <= 3; $cut++) {
                 $shortened = mb_substr($baseText, 0, mb_strlen($baseText) - $cut);
                 if (mb_strlen($shortened) < 2) break;
-
-                $shortResults = $this->searchBothLanguages($shortened);
-                if (!empty($shortResults)) {
-                    $suggestions = array_merge($suggestions, $shortResults);
+                $results = $this->searchBothLanguages($shortened);
+                if (!empty($results)) {
+                    $allCandidates = array_merge($allCandidates, $results);
                     break;
                 }
             }
         }
 
-        // Deduplicate + popülerliğe göre sırala
-        $seen = [];
-        $uniqueSuggestions = [];
-        foreach ($suggestions as $s) {
-            if (!in_array($s['id'], $seen)) {
-                $seen[] = $s['id'];
-                $uniqueSuggestions[] = $s;
-            }
-        }
-        usort($uniqueSuggestions, fn($a, $b) => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0));
+        // ── Öneriler: dil filtrele + deduplicate + popülerlik sırala ──
+        $suggestions = $this->buildSuggestions($allCandidates);
 
         return [
             'results'         => [],
             'corrected'       => false,
             'corrected_query' => null,
-            'suggestions'     => array_slice($uniqueSuggestions, 0, 5),
+            'suggestions'     => array_slice($suggestions, 0, 5),
         ];
     }
 
     /**
-     * Çift dil arama: Hem TR hem EN dilinde /search/multi ile arama yapar.
+     * Eşleşme sonucu döndürme yardımcısı.
+     */
+    protected function matchResult(array $results, bool $corrected = false, ?string $correctedQuery = null): array
+    {
+        return [
+            'results'         => $results,
+            'corrected'       => $corrected,
+            'corrected_query' => $correctedQuery,
+            'suggestions'     => [],
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  ARAMA + DOĞRULAMA METODLARI
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Çift dil arama: Önce EN-US, sonra TR-TR ile arama yapar.
      *
-     * 📚 NEDEN /search/multi?
-     * - `/search/movie` → Sadece filmler
-     * - `/search/tv` → Sadece diziler
-     * - `/search/multi` → Film + Dizi + Kişi → hepsini tek seferde bulur!
+     * 📚 NEDEN EN-US ÖNCELİKLİ?
+     * TR-TR araması Türkçe çevirisi olmayan filmleri orijinal dilde
+     * (Tayca, Korece, vb.) döndürüyor. Örneğin "Girl from Nowhere"
+     * TR aramasında "เด็กใหม่" (Tayca) olarak geliyor.
      *
-     * Kullanıcı "13 Reasons Why" yazarsa bu bir dizidir.
-     * /search/movie ile asla bulunamaz. /search/multi ile bulunur.
-     * "person" türündeki sonuçları filtreliyoruz (aktör/yönetmen aramıyoruz).
-     *
-     * TV dizileri TMDB'de farklı alan isimleri kullanır:
-     * - title → name
-     * - release_date → first_air_date
-     * Bu farkları normalize edip frontend'e tutarlı veri gönderiyoruz.
+     * EN-US araması ise hemen her film için İngilizce başlık döndürür.
+     * Bu yüzden EN sonuçlarını baz alıyoruz, sadece Türkçe orijinal
+     * filmler için TR başlığına geçiyoruz (Yeşilçam, Türk dizileri).
      */
     protected function searchBothLanguages(string $query): array
     {
-        $allResults = [];
-        $seenIds = [];
+        $enResults = [];
 
-        foreach (['tr-TR', 'en-US'] as $lang) {
-            $response = $this->request('/search/multi', [
-                'query'         => $query,
-                'include_adult' => false,
-                'language'      => $lang,
+        // 1. EN-US araması → evrensel İngilizce başlıklar
+        $response = $this->request('/search/multi', [
+            'query'         => $query,
+            'include_adult' => false,
+            'language'      => 'en-US',
+        ]);
+
+        if ($response?->successful()) {
+            foreach (($response->json()['results'] ?? []) as $item) {
+                $type = $item['media_type'] ?? '';
+                if (!in_array($type, ['movie', 'tv'])) continue;
+
+                if ($type === 'tv') {
+                    $item['title'] = $item['name'] ?? $item['original_name'] ?? '';
+                    $item['release_date'] = $item['first_air_date'] ?? null;
+                }
+                $item['media_type'] = $type;
+                $key = $type . '_' . $item['id'];
+                $enResults[$key] = $item;
+            }
+        }
+
+        // 2. TR-TR araması → Türkçe orijinal filmler için Türkçe başlık
+        $response = $this->request('/search/multi', [
+            'query'         => $query,
+            'include_adult' => false,
+            'language'      => 'tr-TR',
+        ]);
+
+        if ($response?->successful()) {
+            foreach (($response->json()['results'] ?? []) as $item) {
+                $type = $item['media_type'] ?? '';
+                if (!in_array($type, ['movie', 'tv'])) continue;
+
+                if ($type === 'tv') {
+                    $item['title'] = $item['name'] ?? $item['original_name'] ?? '';
+                    $item['release_date'] = $item['first_air_date'] ?? null;
+                }
+                $item['media_type'] = $type;
+                $key = $type . '_' . $item['id'];
+
+                if (($item['original_language'] ?? '') === 'tr') {
+                    // Türkçe orijinal → TR başlığı tercih et
+                    $enResults[$key] = $item;
+                } elseif (!isset($enResults[$key])) {
+                    // EN'de bulunmayan yeni sonuç → ekle
+                    $enResults[$key] = $item;
+                }
+                // Zaten EN'de varsa → EN başlığını koru (Thai/Korean yerine English)
+            }
+        }
+
+        return array_values($enResults);
+    }
+
+    /**
+     * Arama sonuçları arasından sorguya en iyi eşleşen sonucu bulur.
+     *
+     * 📚 NEDEN GEREKLİ?
+     * Eski sistem TMDB'nin döndürdüğü ilk sonucu direkt kabul ediyordu.
+     * Ama TMDB bazen alakasız sonuçlar döndürüyor:
+     *   "Joker" → "Impractical Jokers" (popüler ama yanlış)
+     *   "Flipped" → "Flip Flappers" (kelime benzerliği ama yanlış)
+     *
+     * Bu metod:
+     * 1. Her sonucun başlığını sorguyla karşılaştırır (titleSimilarity)
+     * 2. Dil filtresini uygular (TR/EN öncelikli)
+     * 3. En yüksek benzerlik skorlu sonucu seçer
+     * 4. Skor eşik değerinin altındaysa → null döner (hiçbiri kabul edilmez)
+     */
+    protected function findBestMatch(string $query, array $results, float $threshold = 0.4): ?array
+    {
+        if (empty($results)) return null;
+
+        $queryNorm = $this->normalizeForComparison($query);
+        $best = null;
+        $bestScore = 0;
+
+        foreach ($results as $result) {
+            // Her sonucun birden fazla başlık alanı olabilir
+            $titles = array_filter([
+                $result['title'] ?? '',
+                $result['original_title'] ?? $result['original_name'] ?? '',
+                $result['name'] ?? '',
             ]);
 
-            if ($response?->successful()) {
-                foreach (($response->json()['results'] ?? []) as $item) {
-                    $type = $item['media_type'] ?? '';
+            $maxScore = 0;
+            foreach ($titles as $title) {
+                $titleNorm = $this->normalizeForComparison($title);
+                $score = $this->titleSimilarity($queryNorm, $titleNorm);
+                $maxScore = max($maxScore, $score);
+            }
 
-                    // Sadece film ve dizi — kişileri (person) atla
-                    if (!in_array($type, ['movie', 'tv'])) continue;
+            // TR/EN filmler için küçük bonus (alakasız dildeki filmleri dezavantajla)
+            $lang = $result['original_language'] ?? '';
+            if (in_array($lang, ['tr', 'en'])) {
+                $maxScore += 0.05;
+            }
 
-                    // TV ve Movie için benzersiz anahtar (aynı ID farklı tiplerde olabilir)
-                    $uniqueKey = $type . '_' . $item['id'];
-                    if (in_array($uniqueKey, $seenIds)) continue;
-                    $seenIds[] = $uniqueKey;
+            if ($maxScore > $bestScore) {
+                $bestScore = $maxScore;
+                $best = $result;
+            }
+        }
 
-                    // TV sonuçlarını movie formatına normalize et
-                    if ($type === 'tv') {
-                        $item['title'] = $item['name'] ?? $item['original_name'] ?? '';
-                        $item['release_date'] = $item['first_air_date'] ?? null;
-                    }
+        return $bestScore >= $threshold ? $best : null;
+    }
 
-                    // media_type bilgisini koru (frontend'e ve store'a lazım)
-                    $item['media_type'] = $type;
+    /**
+     * İki metin arasındaki başlık benzerliğini hesaplar (0.0 – 1.0).
+     *
+     * 📚 SKORLAMA SİSTEMİ:
+     * - Tam eşleşme: "joker" == "joker" → 1.0
+     * - Kelime eşleşme: "korku kapani" vs "korku kapani 3" → yüksek
+     * - Kısmi kelime: "joker" vs "jokers" (çoğul) → 0.8
+     * - Fazla kelime cezası: Sonuçta ekstra kelime → -0.08/kelime
+     *   "joker" vs "impractical jokers" → 0.8 (kelime) - 0.08 (1 extra) = 0.72
+     *   Ama: "joker" vs "joker" → 1.0 - 0 = 1.0 → doğru seçilir
+     */
+    protected function titleSimilarity(string $query, string $title): float
+    {
+        if ($query === $title) return 1.0;
+        if (empty($query) || empty($title)) return 0.0;
 
-                    $allResults[] = $item;
+        $qWords = array_values(array_filter(explode(' ', $query), fn($w) => mb_strlen($w) >= 1));
+        $tWords = array_values(array_filter(explode(' ', $title), fn($w) => mb_strlen($w) >= 1));
+
+        if (empty($qWords)) return 0.0;
+
+        $matchCount = 0;
+        foreach ($qWords as $qw) {
+            if (mb_strlen($qw) < 1) continue;
+            $matched = false;
+
+            foreach ($tWords as $tw) {
+                if (mb_strlen($tw) < 1) continue;
+
+                // Tam eşleşme
+                if ($qw === $tw) { $matchCount += 1.0; $matched = true; break; }
+
+                // Fuzzy eşleşme: biri diğerinin önekiyse ve uzunluk farkı max %30
+                $shorter = mb_strlen($qw) <= mb_strlen($tw) ? $qw : $tw;
+                $longer = mb_strlen($qw) > mb_strlen($tw) ? $qw : $tw;
+                $lenRatio = mb_strlen($shorter) / mb_strlen($longer);
+
+                if (mb_strlen($shorter) >= 3 && $lenRatio >= 0.7 && str_starts_with($longer, $shorter)) {
+                    $matchCount += 0.8;
+                    $matched = true;
+                    break;
+                }
+
+                // Sayılar için tam eşleşme gerekli (3 ≠ 30)
+                if (is_numeric($qw) && is_numeric($tw) && $qw === $tw) {
+                    $matchCount += 1.0;
+                    $matched = true;
+                    break;
                 }
             }
         }
 
-        // Popülerliğe göre sırala (en bilinen içerikler en üstte)
-        usort($allResults, fn($a, $b) => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0));
+        // Temel skor: sorgu kelimelerinin kaçı eşleşti
+        $baseScore = $matchCount / count($qWords);
 
-        return $allResults;
+        // Fazla kelime cezası: sonuçta ekstra kelime varsa skor düşür
+        $extraWords = max(0, count($tWords) - count($qWords));
+        $lengthPenalty = $extraWords * 0.08;
+
+        return max(0, $baseScore - $lengthPenalty);
+    }
+
+    /**
+     * Karşılaştırma için metin normalize eder.
+     * normalizeQuery'den farkı: sadece harf + rakam + boşluk kalır, tire bile gider.
+     */
+    protected function normalizeForComparison(string $text): string
+    {
+        $text = mb_strtolower($text, 'UTF-8');
+
+        // Türkçe → ASCII
+        $map = [
+            'ı' => 'i', 'ş' => 's', 'ğ' => 'g', 'ü' => 'u',
+            'ö' => 'o', 'ç' => 'c', 'İ' => 'i', 'Ş' => 's',
+            'Ğ' => 'g', 'Ü' => 'u', 'Ö' => 'o', 'Ç' => 'c',
+            'i̇' => 'i', 'é' => 'e', 'è' => 'e', 'ê' => 'e',
+            'à' => 'a', 'â' => 'a', 'ô' => 'o', 'û' => 'u',
+            'ñ' => 'n', 'ä' => 'a',
+        ];
+        $text = str_replace(array_keys($map), array_values($map), $text);
+
+        // Sadece harf, rakam, boşluk
+        $text = preg_replace('/[^\p{Latin}\p{N}\s]/u', '', $text);
+        $text = preg_replace('/\s+/', ' ', $text);
+
+        return trim($text);
+    }
+
+    /**
+     * Kısa anlamsız kelimeleri (1-2 harf, sayı olmayan) kaldırır.
+     *
+     * 📚 ÖRNEK:
+     * "bridge yo terabithia" → "bridge terabithia" → TMDB bulur!
+     * "dhom 3" → "dhom 3" (3 sayı, korunur)
+     */
+    protected function removeShortWords(string $text): ?string
+    {
+        $words = explode(' ', $text);
+        $filtered = array_filter($words, fn($w) => mb_strlen($w) > 2 || is_numeric($w));
+
+        if (count($filtered) < count($words) && count($filtered) >= 1) {
+            return implode(' ', $filtered);
+        }
+        return null;
+    }
+
+    /**
+     * Öneri listesi oluşturur: dil filtresi + deduplicate + popülerlik.
+     *
+     * 📚 DİL FİLTRESİ:
+     * Öneriler öncelikle TR/EN filmlerden oluşur.
+     * Korece, Japonca, Fransızca, Tayca filmler ancak
+     * TR/EN film bulunamazsa gösterilir.
+     */
+    protected function buildSuggestions(array $candidates): array
+    {
+        // Deduplicate
+        $seen = [];
+        $unique = [];
+        foreach ($candidates as $item) {
+            $key = ($item['media_type'] ?? 'movie') . '_' . ($item['id'] ?? 0);
+            if (!in_array($key, $seen)) {
+                $seen[] = $key;
+                $unique[] = $item;
+            }
+        }
+
+        // Dil ayrımı: TR/EN öncelikli
+        $preferred = [];
+        $others = [];
+        foreach ($unique as $r) {
+            $lang = $r['original_language'] ?? '';
+            if (in_array($lang, ['tr', 'en', 'hi'])) {
+                $preferred[] = $r;
+            } else {
+                $others[] = $r;
+            }
+        }
+
+        // Her grubu popülerliğe göre sırala
+        usort($preferred, fn($a, $b) => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0));
+        usort($others, fn($a, $b) => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0));
+
+        // TR/EN önce, sonra diğerleri (max 2 diğer dil)
+        return array_merge(array_slice($preferred, 0, 5), array_slice($others, 0, 2));
     }
 
     /**
      * Yazım hatası varyantları üretir.
      *
      * 📚 YAYGIN TYPO KALIPLARI:
-     * 1. Çift harf: "inceptioon" → "inception", "matrixx" → "matrix"
-     * 2. Son karakter fazlalığı: her kelimenin sonundaki typo'yu kırpar
-     * 3. İlk kelime odaklı: sadece ilk kelimeyi kırparak dener
-     *
-     * API çağrısını sınırlamak için max 5 varyant üretilir.
+     * 1. Çift harf: "inceptioon" → "inception"
+     * 2. Her kelimenin son harfini kırp
+     * 3. İlk kelimenin son harfini kırp
+     * 4. Kısa kelimeleri çıkar (Katman 4'te de yapılıyor ama burada farklı bağlamda)
      */
     protected function generateTypoVariants(string $text): array
     {
@@ -352,7 +582,7 @@ class TmdbService
             $variants[] = $deduped;
         }
 
-        // Her kelimenin son harfini kırp (fazla harf typo'su)
+        // Her kelimenin son harfini kırp
         $words = explode(' ', $text);
         if (count($words) >= 1) {
             $trimmedWords = array_map(
@@ -360,7 +590,7 @@ class TmdbService
                 $words
             );
             $trimmed = implode(' ', $trimmedWords);
-            if ($trimmed !== $text) {
+            if ($trimmed !== $text && !in_array($trimmed, $variants)) {
                 $variants[] = $trimmed;
             }
         }
