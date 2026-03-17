@@ -91,34 +91,52 @@
 
             for (let i = 0; i < total; i++) {
                 let item = itemsToSave[i];
+                let retries = 3;
 
-                try {
-                    let formData = new FormData();
-                    formData.append('tmdb_id', item.tmdb_id);
-                    formData.append('media_type', item.media_type || 'movie');
-                    formData.append('is_watched', '1');
-                    formData.append('_token', '{{ csrf_token() }}');
+                while (retries > 0) {
+                    try {
+                        let formData = new FormData();
+                        formData.append('tmdb_id', item.tmdb_id);
+                        formData.append('media_type', item.media_type || 'movie');
+                        formData.append('is_watched', '1');
+                        formData.append('_token', '{{ csrf_token() }}');
 
-                    let res = await fetch('{{ route('movies.store') }}', {
-                        method: 'POST',
-                        headers: { 'Accept': 'application/json' },
-                        body: formData
-                    });
+                        let res = await fetch('{{ route('movies.store') }}', {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json' },
+                            body: formData
+                        });
 
-                    let data = await res.json();
+                        if (res.status === 429) {
+                            // Rate limit → bekle ve tekrar dene
+                            retries--;
+                            await new Promise(r => setTimeout(r, 3000));
+                            continue;
+                        }
 
-                    if (data.success) {
-                        item.status = 'saved';
-                    } else if (res.status === 400) {
-                        item.status = 'duplicate';
-                    } else {
-                        item.status = 'error';
+                        let data = await res.json();
+
+                        if (data.success) {
+                            item.status = 'saved';
+                        } else if (res.status === 400) {
+                            item.status = 'duplicate';
+                        } else {
+                            item.status = 'error';
+                            item.errorMsg = data.message || 'Bilinmeyen hata';
+                        }
+                        break;
+                    } catch(e) {
+                        retries--;
+                        if (retries <= 0) {
+                            item.status = 'error';
+                            item.errorMsg = 'Bağlantı hatası';
+                        } else {
+                            await new Promise(r => setTimeout(r, 2000));
+                        }
                     }
-                } catch(e) {
-                    item.status = 'error';
                 }
 
-                await new Promise(r => setTimeout(r, 500));
+                await new Promise(r => setTimeout(r, 300));
             }
             this.status = 'done';
         },
@@ -171,12 +189,11 @@
                     <template x-if="item.status !== 'needs_selection'">
                         <div class="bg-slate-900 border rounded-2xl p-3 flex gap-3 items-center transition-all"
                              :class="{
-                                'border-slate-800': item.status === 'pending',
+                                'border-indigo-500/30': item.status === 'pending',
                                 'border-emerald-500/50 bg-emerald-500/10': item.status === 'saved',
                                 'border-amber-500/50 bg-amber-500/10': item.status === 'duplicate',
-                                'border-red-500/50 opacity-70': item.status === 'not_found',
-                                'border-slate-700 opacity-50': item.status === 'skipped',
-                                'border-red-500/50 opacity-70': item.status === 'error'
+                                'border-red-500/50 opacity-70': item.status === 'not_found' || item.status === 'error',
+                                'border-slate-700 opacity-50': item.status === 'skipped'
                              }">
 
                             <div class="w-12 h-16 bg-slate-800 rounded-lg flex-shrink-0 overflow-hidden relative">
@@ -204,10 +221,11 @@
                                         </h4>
                                         <p class="text-slate-500 text-xs" x-text="item.year"></p>
                                         <p x-show="item.status === 'duplicate'" class="text-amber-400 text-[10px] font-bold uppercase tracking-wider">Zaten arşivinde var</p>
-                                        <p x-show="item.corrected && item.status !== 'duplicate'" class="text-teal-400 text-[10px] truncate">
+                                        <p x-show="item.status === 'error'" class="text-red-400 text-[10px] font-bold" x-text="item.errorMsg || 'Kayıt başarısız'"></p>
+                                        <p x-show="item.corrected && !['duplicate','error'].includes(item.status)" class="text-teal-400 text-[10px] truncate">
                                             <i class="fas fa-spell-check mr-1"></i> <span x-text="item.original"></span> → düzeltildi
                                         </p>
-                                        <p x-show="!item.corrected && item.status !== 'duplicate'" class="text-indigo-400 text-[10px] truncate" x-text="'Aranan: ' + item.original"></p>
+                                        <p x-show="!item.corrected && !['duplicate','error'].includes(item.status)" class="text-indigo-400 text-[10px] truncate" x-text="'Aranan: ' + item.original"></p>
                                     </div>
                                 </template>
                                 <template x-if="item.status === 'not_found'">
@@ -278,8 +296,8 @@
         <div x-show="needsAttention > 0 && status === 'ready'" class="mb-4 bg-violet-900/30 border border-violet-500/40 rounded-2xl p-4 flex items-center gap-3">
             <i class="fas fa-hand-point-up text-violet-400 text-lg"></i>
             <p class="text-violet-200 text-sm">
-                <span class="font-bold" x-text="needsAttention"></span> film için seçim yapmanız gerekiyor.
-                Yukarıdaki mor kartlardan birini seçin veya atlayın.
+                <span class="font-bold" x-text="needsAttention"></span> içerik için öneri var.
+                Mor kartlardan birini seçin veya atlayın. Seçmeden de kaydet butonunu kullanabilirsiniz.
             </p>
         </div>
 
@@ -291,7 +309,7 @@
             </button>
 
             <button @click="saveAll()"
-                    x-show="status === 'ready' && candidates.filter(c => c.found && c.status === 'pending').length > 0 && needsAttention === 0"
+                    x-show="status === 'ready' && candidates.filter(c => c.found && c.status === 'pending').length > 0"
                     class="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-emerald-600/20 flex items-center gap-2">
                 <span>Hepsini Kaydet</span>
                 <span class="bg-black/20 px-2 py-0.5 rounded text-sm" x-text="candidates.filter(c => c.found && c.status === 'pending').length"></span>

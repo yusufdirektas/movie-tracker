@@ -22,16 +22,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // TMDB arama endpoint'i: Kullanıcı başına dakikada 30 istek
-        // Debounce ile bile hızlı yazan biri 30'u geçebilir
+        // TMDB arama: Toplu import'ta her satır 1 istek → büyük listeler için yeterli olmalı
         RateLimiter::for('api-search', function (Request $request) {
-            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
 
-        // Film ekleme endpoint'i: Kullanıcı başına dakikada 10 istek
-        // Normal kullanımda 10'u geçmek neredeyse imkansız
+        // Film ekleme: Toplu import'ta tüm filmler art arda kaydediliyor → yeterli olmalı
         RateLimiter::for('store-movie', function (Request $request) {
-            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
     }
 }
