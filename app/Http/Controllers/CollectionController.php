@@ -25,11 +25,20 @@ class CollectionController extends Controller
 
     /**
      * Koleksiyon detayı (içindeki filmler)
+     * 
+     * 📚 EAGER LOADING AÇIKLAMASI:
+     * load() vs with() farkı:
+     * - with(): Query BAŞINDA kullanılır → Collection::with('movies')->find($id)
+     * - load(): Model SONRASINDA kullanılır → $collection->load('movies')
+     * 
+     * Route Model Binding ($collection parametresi) kullandığımız için
+     * model zaten yüklenmiş durumda. Bu yüzden load() kullanıyoruz.
      */
     public function show(Collection $collection)
     {
         $this->authorize('view', $collection);
 
+        // Filmleri user ilişkisiyle birlikte yükle (ileride kullanıcı adı göstermek istersek)
         $collection->load('movies');
 
         return view('collections.show', compact('collection'));

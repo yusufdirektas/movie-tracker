@@ -64,7 +64,27 @@ class MovieController extends Controller
             'runtime'         => 'desc',
         ];
 
+        /**
+         * 📚 EAGER LOADING (with('collections'))
+         *
+         * Neden ekliyoruz?
+         * - View'da her filmin koleksiyonlarını gösteriyorsak, her film için
+         *   ayrı bir SQL sorgusu atılır (N+1 problemi).
+         * - with('collections') ile tüm koleksiyonlar TEK sorguda yüklenir.
+         *
+         * Önceki durum (20 film için):
+         *   SELECT * FROM movies WHERE user_id = 1           (1 sorgu)
+         *   SELECT * FROM collections WHERE movie_id = 1     (1. film)
+         *   SELECT * FROM collections WHERE movie_id = 2     (2. film)
+         *   ... (toplam 21 sorgu!)
+         *
+         * Şimdiki durum:
+         *   SELECT * FROM movies WHERE user_id = 1                        (1 sorgu)
+         *   SELECT * FROM collections WHERE movie_id IN (1,2,3...)        (1 sorgu)
+         *   (toplam 2 sorgu!)
+         */
         $query = $user->movies()
+            ->with('collections')  // 🚀 EAGER LOADING - N+1 sorununu çözer
             ->watched()
             ->searchByTitle($search)
             ->filterByGenre($genre)

@@ -34,7 +34,14 @@ class WatchlistController extends Controller
         // MovieController'daki gibi burada da Local Scope'ları kullanıyoruz.
         // Aynı filtreleme mantığını iki kez yazmaktan kurtulduk (DRY Prensibi).
         // ---------------------------------------------------------------------
+
+        /**
+         * 📚 EAGER LOADING - with('collections')
+         * View'da filmlerin hangi koleksiyonlarda olduğunu gösteriyorsak,
+         * bu ilişkiyi önceden yüklemeliyiz. Aksi halde N+1 query problemi oluşur.
+         */
         $query = $user->movies()
+            ->with('collections')  // 🚀 EAGER LOADING
             ->unwatched()
             ->searchByTitle($search)
             ->filterByGenre($genre)
