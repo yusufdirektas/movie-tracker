@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Repositories\Contracts\MovieRepositoryInterface;
+use App\Repositories\MovieRepository;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -12,10 +14,36 @@ class AppServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
+     * 
+     * 📚 SERVICE CONTAINER & DEPENDENCY INJECTION
+     * 
+     * register() metodu, uygulama başlarken çalışır ve "bağımlılıkları" tanımlar.
+     * 
+     * $this->app->bind(Interface, Concrete) ne yapar?
+     * - "Biri MovieRepositoryInterface isterse, ona MovieRepository ver" der.
+     * 
+     * Bu neden önemli?
+     * 
+     * 1. LOOSE COUPLING (Gevşek Bağlantı):
+     *    Controller → Interface ← Repository
+     *    Controller repository'nin detaylarını bilmez, sadece interface'i bilir.
+     * 
+     * 2. TEST EDİLEBİLİRLİK:
+     *    Test yazarken: $this->app->bind(Interface, FakeRepository::class);
+     *    Gerçek veritabanına dokunmadan test yapılabilir.
+     * 
+     * 3. DEĞİŞTİRİLEBİLİRLİK:
+     *    Yarın MongoDB'ye geçmek istersek:
+     *    $this->app->bind(Interface, MongoMovieRepository::class);
+     *    Sadece bu satır değişir, controller'lar aynı kalır!
      */
     public function register(): void
     {
-        //
+        // Interface'i concrete class'a bağla
+        $this->app->bind(
+            MovieRepositoryInterface::class,
+            MovieRepository::class
+        );
     }
 
     /**
