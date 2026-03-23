@@ -5,19 +5,78 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class StatisticsController extends Controller
 {
+    /**
+     * 📚 CACHE KULLANIMI - İSTATİSTİK SAYFASI
+     *
+     * İstatistik hesaplamaları yoğun işlemler içerir:
+     * - Tüm filmleri çek
+     * - Türleri say, grupla
+     * - Tarihleri parse et, grupla
+     * - Yönetmenleri say
+     *
+     * Bu işlemler her sayfa yenilemede tekrarlanırsa:
+     * - Veritabanı yorulur
+     * - Sayfa yavaş açılır
+     * - Kullanıcı deneyimi kötüleşir
+     *
+     * ÇÖZÜM: Cache kullanarak sonuçları 5 dakika saklıyoruz.
+     * Film eklenince/silinince cache temizleniyor (bkz: Movie model observer)
+     */
     public function index()
     {
         /** @var User $user */
         $user = Auth::user();
-        
+
+        /**
+         * 📚 CACHE KEY STRATEJİSİ
+         *
+         * Cache key'i kullanıcıya özel yapıyoruz: "user_stats_{user_id}"
+         * Böylece her kullanıcının kendi istatistikleri ayrı cache'lenir.
+         *
+         * Eğer global bir cache olsaydı (örn: "all_stats"):
+         * - Kullanıcı A'nın verileri Kullanıcı B'ye görünebilirdi! (Güvenlik açığı)
+         */
+        $cacheKey = "user_stats_{$user->id}";
+
+        /**
+         * 📚 Cache::remember() NASIL ÇALIŞIR?
+         *
+         * 1. Cache'de $cacheKey var mı diye bakar
+         * 2. VARSA: Direkt döndürür (veritabanına hiç gitmez!)
+         * 3. YOKSA: Closure'ı çalıştırır, sonucu cache'e yazar, döndürür
+         *
+         * now()->addMinutes(5) = 5 dakika sonra cache otomatik silinir (TTL)
+         */
+        $data = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($user) {
+            return $this->calculateStatistics($user);
+        });
+
+        return view('movies.statistics', $data);
+    }
+
+    /**
+     * İstatistik hesaplama mantığını ayrı metoda taşıdık.
+     *
+     * 📚 SINGLE RESPONSIBILITY PRINCIPLE (Tek Sorumluluk İlkesi)
+     * - index() metodu: Cache yönetimi ve view döndürme
+     * - calculateStatistics(): Sadece hesaplama işlemi
+     *
+     * Bu ayırım sayesinde:
+     * - Kod daha okunabilir
+     * - Test yazmak daha kolay
+     * - İleride hesaplama mantığını değiştirmek kolay
+     */
+    private function calculateStatistics(User $user): array
+    {
         // Sadece izlenen filmler üzerinden istatistik üretiyoruz
         $watchedMovies = $user->movies()->watched()->get();
 
         if ($watchedMovies->isEmpty()) {
-            return view('movies.statistics', ['hasData' => false]);
+            return ['hasData' => false];
         }
 
         // =====================================================================
@@ -31,29 +90,27 @@ class StatisticsController extends Controller
         $totalRuntime = $watchedMovies->sum('runtime');
         $totalHours = floor($totalRuntime / 60);
         $remainingMinutes = $totalRuntime % 60;
-        
+
         $averageRating = $watchedMovies->avg('rating');
         $averagePersonalRating = $watchedMovies->whereNotNull('personal_rating')->avg('personal_rating');
 
         // 2. Tür Dağılımı (Pie Chart için)
-        // Her filmin 'genres' array'ini alır, düzleştirir (flatten) ve kaçar tane geçtiğini sayar (countBy).
         $genreCounts = $watchedMovies->pluck('genres')
-            ->filter() // null olanları çıkar
+            ->filter()
             ->flatten()
             ->countBy()
             ->sortDesc()
-            ->take(8); // Sadece en popüler 8 türü grafikte göster
+            ->take(8);
 
         // 3. İzleme Geçmişi (Aylara Göre Dağılım - Bar Chart)
-        // 'watched_at' tarihini 'Yıl-Ay' (örn 2024-03) formatına çevirip sayıyoruz.
         $monthlyCounts = $watchedMovies->whereNotNull('watched_at')
             ->groupBy(function ($movie) {
-                return $movie->watched_at->format('Y-m'); // "2024-03" -> [Movie, Movie, ...]
+                return $movie->watched_at->format('Y-m');
             })
             ->map(function ($group) {
-                return $group->count(); // "2024-03" -> 2
+                return $group->count();
             })
-            ->sortKeys(); // Tarih sırasına diz
+            ->sortKeys();
 
         // 4. En Çok Film İzlenen Yönetmenler
         $directorCounts = $watchedMovies->pluck('director')
@@ -66,13 +123,13 @@ class StatisticsController extends Controller
         $releaseYearCounts = $watchedMovies->pluck('release_date')
             ->filter()
             ->map(function ($date) {
-                return substr($date, 0, 4); // "2023-05-12" -> "2023"
+                return substr($date, 0, 4);
             })
             ->countBy()
             ->sortKeysDesc()
-            ->take(10); // Son 10 yılı göster
+            ->take(10);
 
-        return view('movies.statistics', [
+        return [
             'hasData' => true,
             'stats' => compact('totalWatched', 'totalHours', 'remainingMinutes', 'averageRating', 'averagePersonalRating'),
             'chartData' => [
@@ -81,8 +138,8 @@ class StatisticsController extends Controller
                     'data' => $genreCounts->values()->toArray(),
                 ],
                 'monthly' => [
-                    'labels' => $monthlyCounts->keys()->toArray(), // Aylar
-                    'data' => $monthlyCounts->values()->toArray(), // İzlenen film sayısı
+                    'labels' => $monthlyCounts->keys()->toArray(),
+                    'data' => $monthlyCounts->values()->toArray(),
                 ],
                 'directors' => [
                     'labels' => $directorCounts->keys()->toArray(),
@@ -93,6 +150,6 @@ class StatisticsController extends Controller
                     'data' => $releaseYearCounts->values()->toArray(),
                 ]
             ]
-        ]);
+        ];
     }
 }

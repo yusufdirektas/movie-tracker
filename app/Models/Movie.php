@@ -2,11 +2,27 @@
 
 namespace App\Models;
 
+use App\Observers\MovieObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+/**
+ * 📚 #[ObservedBy] ATTRIBUTE (PHP 8 Özelliği)
+ * 
+ * Bu attribute, Movie modeline MovieObserver'ı otomatik bağlar.
+ * Artık AppServiceProvider'da manuel kayıt yapmaya gerek yok.
+ * 
+ * Eski yöntem (Laravel 10 öncesi):
+ *   // AppServiceProvider.php içinde:
+ *   Movie::observe(MovieObserver::class);
+ * 
+ * Yeni yöntem (Laravel 10+):
+ *   Model sınıfının üstüne #[ObservedBy] ekle, bitti!
+ */
+#[ObservedBy([MovieObserver::class])]
 class Movie extends Model
 {
     use HasFactory;
