@@ -32,18 +32,15 @@
                 {{-- SOL: Poster --}}
                 <div class="md:w-1/3 lg:w-1/4 shrink-0">
                     <div class="aspect-[2/3] relative overflow-hidden md:rounded-l-[2.5rem]">
-                        @if ($movie->poster_path)
-                            <img src="https://image.tmdb.org/t/p/w500{{ $movie->poster_path }}"
-                                alt="{{ $movie->title }}"
-                                class="w-full h-full object-cover">
-                        @else
-                            <div class="w-full h-full flex items-center justify-center bg-slate-950 text-slate-700">
-                                <i class="fas fa-image text-6xl"></i>
-                            </div>
-                        @endif
+                        {{-- 📚 Component kullanımı - Detay sayfasında daha büyük resim (w780) --}}
+                        <x-movie-poster
+                            :path="$movie->poster_path"
+                            :alt="$movie->title"
+                            size="w780"
+                        />
 
                         {{-- İzlendi/İzlenecek rozet --}}
-                        <div class="absolute top-4 right-4">
+                        <div class="absolute top-4 right-4 z-30">
                             @if ($movie->is_watched)
                                 <span class="bg-emerald-500/90 text-white text-xs font-black px-4 py-1.5 rounded-full shadow-lg">
                                     <i class="fas fa-check mr-1"></i> İZLENDİ
@@ -264,15 +261,12 @@
                             </form>
 
                             <div class="aspect-[2/3] bg-slate-800">
-                                @if ($similar['poster_path'] ?? null)
-                                    <img src="https://image.tmdb.org/t/p/w300{{ $similar['poster_path'] }}"
-                                        alt="{{ $similar['title'] ?? '' }}"
-                                        class="w-full h-full object-cover" loading="lazy">
-                                @else
-                                    <div class="w-full h-full flex items-center justify-center text-slate-700">
-                                        <i class="fas fa-image text-3xl"></i>
-                                    </div>
-                                @endif
+                                {{-- 📚 Benzer filmler için küçük resim (w342) - bandwidth tasarrufu --}}
+                                <x-movie-poster 
+                                    :path="$similar['poster_path'] ?? null" 
+                                    :alt="$similar['title'] ?? 'Film'"
+                                    size="w342"
+                                />
 
                                 @if ($similar['vote_average'] ?? null)
                                     <div class="absolute top-3 left-3 z-20">

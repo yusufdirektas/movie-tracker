@@ -37,14 +37,23 @@
                             <i class="fas fa-search-plus opacity-0 group-hover:opacity-100 text-white text-5xl drop-shadow-lg scale-50 group-hover:scale-100 transition-all duration-300"></i>
                         </div>
 
-                        @if ($movie->poster_path)
-                            <img src="https://image.tmdb.org/t/p/w500{{ $movie->poster_path }}"
-                                class="w-full h-full object-cover relative z-10" loading="lazy">
-                        @else
-                            <div class="w-full h-full flex items-center justify-center text-slate-700 bg-slate-950 relative z-10">
-                                <i class="fas fa-image text-4xl"></i>
-                            </div>
-                        @endif
+                        {{--
+                            📚 COMPONENT KULLANIMI
+                            Eski: <img src="https://image.tmdb.org/t/p/w500{{ $movie->poster_path }}" ...>
+                            Yeni: <x-movie-poster ... />
+
+                            Avantajları:
+                            - Lazy loading otomatik
+                            - Skeleton animasyonu var
+                            - Hata yönetimi var
+                            - Tek yerden güncelleme
+                        --}}
+                        <x-movie-poster
+                            :path="$movie->poster_path"
+                            :alt="$movie->title"
+                            size="w500"
+                            class="relative z-10"
+                        />
 
                         @if ($movie->rating)
                             <div class="absolute top-4 left-4 z-30 pointer-events-none">
