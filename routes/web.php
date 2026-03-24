@@ -11,6 +11,8 @@ use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\PrivacyController;
 use App\Http\Controllers\BulkActionController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\FollowController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -83,6 +85,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+    // Profil ek özellikler
+    Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar.update');
+    Route::delete('/profile/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.avatar.delete');
+    Route::patch('/profile/bio', [ProfileController::class, 'updateBio'])->name('profile.bio.update');
+    Route::patch('/profile/showcase', [ProfileController::class, 'updateShowcase'])->name('profile.showcase.update');
 });
 
 require __DIR__.'/auth.php';
@@ -112,4 +120,24 @@ Route::middleware('auth')->group(function () {
     Route::post('/movies/bulk/watched', [BulkActionController::class, 'markAsWatched'])->name('movies.bulk.watched');
     Route::post('/movies/bulk/unwatched', [BulkActionController::class, 'markAsUnwatched'])->name('movies.bulk.unwatched');
     Route::post('/movies/bulk/collection', [BulkActionController::class, 'addToCollection'])->name('movies.bulk.collection');
+});
+
+// --- 7. SOSYAL ÖZELLİKLER (TAKİP SİSTEMİ) ---
+Route::middleware('auth')->group(function () {
+    // Kullanıcı Keşfet / Arama
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+
+    // Aktivite Akışı (Takip edilenlerin aktiviteleri)
+    Route::get('/feed', [UserController::class, 'feed'])->name('feed');
+
+    // Kullanıcı Profili
+    Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
+
+    // Takip Et / Takipten Çık
+    Route::post('/users/{user}/follow', [FollowController::class, 'store'])->name('users.follow');
+    Route::delete('/users/{user}/follow', [FollowController::class, 'destroy'])->name('users.unfollow');
+
+    // Takipçiler / Takip Edilenler Listesi
+    Route::get('/users/{user}/followers', [FollowController::class, 'followers'])->name('users.followers');
+    Route::get('/users/{user}/following', [FollowController::class, 'following'])->name('users.following');
 });

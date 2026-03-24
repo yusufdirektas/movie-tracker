@@ -61,6 +61,11 @@
                         class="text-indigo-300 hover:text-indigo-200 hover:border-indigo-400 focus:text-indigo-200 focus:border-indigo-400 transition-colors font-bold flex items-center gap-2">
                         <i class="fas fa-chart-pie"></i> {{ __('İstatistikler') }}
                     </x-nav-link>
+
+                    <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*') || request()->routeIs('feed')"
+                        class="text-slate-300 hover:text-white hover:border-pink-500 focus:text-white focus:border-pink-500 transition-colors flex items-center gap-2">
+                        <i class="fas fa-users text-pink-400"></i> {{ __('Keşfet') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -86,6 +91,16 @@
                         <x-dropdown-link :href="route('profile.edit')" class="text-slate-700 hover:bg-slate-100 flex items-center gap-2">
                             <i class="fas fa-user-circle"></i> {{ __('Profil') }}
                         </x-dropdown-link>
+
+                        <x-dropdown-link :href="route('users.show', Auth::user())" class="text-slate-700 hover:bg-slate-100 flex items-center gap-2">
+                            <i class="fas fa-id-card"></i> {{ __('Profilim') }}
+                        </x-dropdown-link>
+
+                        <x-dropdown-link :href="route('feed')" class="text-slate-700 hover:bg-slate-100 flex items-center gap-2">
+                            <i class="fas fa-rss"></i> {{ __('Aktivite Akışı') }}
+                        </x-dropdown-link>
+
+                        <hr class="my-1 border-slate-200">
 
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -150,6 +165,11 @@
             <x-responsive-nav-link :href="route('movies.statistics')" :active="request()->routeIs('movies.statistics')"
                 class="text-indigo-400 font-bold hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
                 <i class="fas fa-chart-pie w-5 text-center mr-1"></i> {{ __('İstatistikler') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*') || request()->routeIs('feed')"
+                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-pink-500 flex items-center gap-2">
+                <i class="fas fa-users w-5 text-center text-pink-400"></i> {{ __('Keşfet') }}
             </x-responsive-nav-link>
         </div>
 
