@@ -117,4 +117,17 @@ class ProfileTest extends TestCase
 
         $response->assertOk();
     }
+
+    public function test_profile_page_handles_null_showcase_movies_without_crashing(): void
+    {
+        $user = User::factory()->create([
+            'showcase_movies' => null,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/profile');
+
+        $response->assertOk();
+    }
 }

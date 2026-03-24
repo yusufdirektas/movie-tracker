@@ -102,13 +102,21 @@ class User extends Authenticatable
         // Güvenli şekilde attribute'ü al
         $rawValue = $this->attributes['showcase_movies'] ?? null;
         $movieIds = $rawValue ? json_decode($rawValue, true) : [];
+        $movieIds = collect($movieIds)
+            ->filter(fn($id) => is_numeric($id))
+            ->map(fn($id) => (int) $id)
+            ->values()
+            ->all();
         
         if (empty($movieIds)) {
             return new \Illuminate\Database\Eloquent\Collection();
         }
 
         // Filmleri çek ve PHP'de sırala (SQLite FIELD desteklemediği için)
-        $movies = Movie::whereIn('id', $movieIds)->get();
+        // Güvenlik: Sadece bu kullanıcıya ait filmler vitrine girebilir.
+        $movies = Movie::where('user_id', $this->id)
+            ->whereIn('id', $movieIds)
+            ->get();
         
         // ID sırasını koru
         return $movies->sortBy(function($movie) use ($movieIds) {
