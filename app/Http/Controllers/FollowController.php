@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 /**
  * 📚 TAKİP SİSTEMİ CONTROLLER
@@ -43,6 +43,11 @@ class FollowController extends Controller
 
         $currentUser->follow($user);
 
+        Log::info('follow_user', [
+            'follower_id' => $currentUser->id,
+            'following_id' => $user->id,
+        ]);
+
         // AJAX isteği ise JSON dön
         if (request()->wantsJson()) {
             return response()->json([
@@ -66,11 +71,16 @@ class FollowController extends Controller
         $currentUser = Auth::user();
 
         // Takip etmiyorsan
-        if (!$currentUser->isFollowing($user)) {
+        if (! $currentUser->isFollowing($user)) {
             return back()->with('info', 'Bu kullanıcıyı zaten takip etmiyorsunuz.');
         }
 
         $currentUser->unfollow($user);
+
+        Log::info('unfollow_user', [
+            'follower_id' => $currentUser->id,
+            'following_id' => $user->id,
+        ]);
 
         if (request()->wantsJson()) {
             return response()->json([
@@ -91,7 +101,7 @@ class FollowController extends Controller
     public function followers(User $user)
     {
         $followers = $user->followers()
-            ->withCount(['movies' => fn($q) => $q->where('is_watched', true)])
+            ->withCount(['movies' => fn ($q) => $q->where('is_watched', true)])
             ->paginate(20);
 
         return view('users.followers', compact('user', 'followers'));
@@ -105,7 +115,7 @@ class FollowController extends Controller
     public function following(User $user)
     {
         $following = $user->following()
-            ->withCount(['movies' => fn($q) => $q->where('is_watched', true)])
+            ->withCount(['movies' => fn ($q) => $q->where('is_watched', true)])
             ->paginate(20);
 
         return view('users.following', compact('user', 'following'));

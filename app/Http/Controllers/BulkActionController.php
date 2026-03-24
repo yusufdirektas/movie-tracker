@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Movie;
 use App\Models\Collection;
+use App\Models\Movie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class BulkActionController extends Controller
 {
@@ -16,7 +17,7 @@ class BulkActionController extends Controller
     {
         $request->validate([
             'movie_ids' => 'required|array',
-            'movie_ids.*' => 'exists:movies,id'
+            'movie_ids.*' => 'exists:movies,id',
         ]);
 
         // Yalnızca kullanıcının kendi filmlerini silebildiğinden emin olalım
@@ -24,7 +25,13 @@ class BulkActionController extends Controller
             ->where('user_id', Auth::id())
             ->delete();
 
-        return back()->with('success', $deletedCount . ' film başarıyla silindi.');
+        Log::info('bulk_delete_movies', [
+            'user_id' => Auth::id(),
+            'requested_movie_count' => count($request->movie_ids),
+            'deleted_movie_count' => $deletedCount,
+        ]);
+
+        return back()->with('success', $deletedCount.' film başarıyla silindi.');
     }
 
     /**
@@ -34,7 +41,7 @@ class BulkActionController extends Controller
     {
         $request->validate([
             'movie_ids' => 'required|array',
-            'movie_ids.*' => 'exists:movies,id'
+            'movie_ids.*' => 'exists:movies,id',
         ]);
 
         // Her filmi tek tek güncelliyoruz: zaten watched_at varsa dokunma, yoksa şimdiyi yaz.
@@ -51,7 +58,13 @@ class BulkActionController extends Controller
             ]);
         }
 
-        return back()->with('success', $movies->count() . ' film izlendi olarak işaretlendi.');
+        Log::info('bulk_mark_movies_watched', [
+            'user_id' => Auth::id(),
+            'requested_movie_count' => count($request->movie_ids),
+            'updated_movie_count' => $movies->count(),
+        ]);
+
+        return back()->with('success', $movies->count().' film izlendi olarak işaretlendi.');
     }
 
     /**
@@ -61,17 +74,23 @@ class BulkActionController extends Controller
     {
         $request->validate([
             'movie_ids' => 'required|array',
-            'movie_ids.*' => 'exists:movies,id'
+            'movie_ids.*' => 'exists:movies,id',
         ]);
 
         $updatedCount = Movie::whereIn('id', $request->movie_ids)
             ->where('user_id', Auth::id())
             ->update([
                 'is_watched' => false,
-                'watched_at' => null
+                'watched_at' => null,
             ]);
 
-        return back()->with('success', $updatedCount . ' film izlenmedi olarak işaretlendi.');
+        Log::info('bulk_mark_movies_unwatched', [
+            'user_id' => Auth::id(),
+            'requested_movie_count' => count($request->movie_ids),
+            'updated_movie_count' => $updatedCount,
+        ]);
+
+        return back()->with('success', $updatedCount.' film izlenmedi olarak işaretlendi.');
     }
 
     /**
@@ -82,7 +101,7 @@ class BulkActionController extends Controller
         $request->validate([
             'movie_ids' => 'required|array',
             'movie_ids.*' => 'exists:movies,id',
-            'collection_id' => 'required|exists:collections,id'
+            'collection_id' => 'required|exists:collections,id',
         ]);
 
         // Koleksiyonun kullanıcıya ait olduğunu doğrula
@@ -97,6 +116,13 @@ class BulkActionController extends Controller
         // syncWithoutDetaching ile mevcutları koruyarak yenilerini ekleriz
         $collection->movies()->syncWithoutDetaching($validMovieIds);
 
-        return back()->with('success', count($validMovieIds) . ' film koleksiyona başarıyla eklendi.');
+        Log::info('bulk_add_movies_to_collection', [
+            'user_id' => Auth::id(),
+            'collection_id' => $collection->id,
+            'requested_movie_count' => count($request->movie_ids),
+            'attached_movie_count' => count($validMovieIds),
+        ]);
+
+        return back()->with('success', count($validMovieIds).' film koleksiyona başarıyla eklendi.');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class PrivacyController extends Controller
@@ -26,6 +27,12 @@ class PrivacyController extends Controller
 
         $user->update($updates);
         $user->refresh();
+
+        Log::info('toggle_archive_privacy', [
+            'user_id' => $user->id,
+            'is_public' => $user->is_public,
+            'share_token_present' => ! blank($user->share_token),
+        ]);
 
         $status = $user->is_public ? 'Arşiviniz artık herkese açık!' : 'Arşiviniz artık gizli.';
 
@@ -53,6 +60,13 @@ class PrivacyController extends Controller
         $collection->update($updates);
         $collection->refresh();
 
+        Log::info('toggle_collection_privacy', [
+            'user_id' => Auth::id(),
+            'collection_id' => $collection->id,
+            'is_public' => $collection->is_public,
+            'share_token_present' => ! blank($collection->share_token),
+        ]);
+
         $status = $collection->is_public ? 'Koleksiyon artık herkese açık!' : 'Koleksiyon artık gizli.';
 
         return back()->with('success', $status);
@@ -73,10 +87,19 @@ class PrivacyController extends Controller
 
             $collection->update(['share_token' => (string) Str::uuid()]);
 
+            Log::info('regenerate_collection_share_token', [
+                'user_id' => $user->id,
+                'collection_id' => $collection->id,
+            ]);
+
             return back()->with('success', 'Koleksiyon paylaşım linki yenilendi.');
         }
 
         $user->update(['share_token' => (string) Str::uuid()]);
+
+        Log::info('regenerate_archive_share_token', [
+            'user_id' => $user->id,
+        ]);
 
         return back()->with('success', 'Arşiv paylaşım linki yenilendi.');
     }
