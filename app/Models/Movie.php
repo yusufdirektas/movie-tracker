@@ -48,7 +48,7 @@ class Movie extends Model
         'is_watched' => 'boolean',
         'watched_at' => 'date',
         'release_date' => 'date',
-        'genres'     => 'array', // JSON → PHP array otomatik dönüşüm
+        'genres' => 'array', // JSON → PHP array otomatik dönüşüm
     ];
 
     public function user(): BelongsTo
@@ -59,7 +59,7 @@ class Movie extends Model
     public function collections(): BelongsToMany
     {
         return $this->belongsToMany(Collection::class, 'collection_movie')
-                     ->withTimestamps();
+            ->withTimestamps();
     }
 
     // =========================================================================
@@ -96,8 +96,9 @@ class Movie extends Model
     public function scopeSearchByTitle($query, $search)
     {
         if ($search) {
-            return $query->where('title', 'like', '%' . $search . '%');
+            return $query->where('title', 'like', '%'.$search.'%');
         }
+
         return $query;
     }
 
@@ -110,6 +111,7 @@ class Movie extends Model
         if ($genre) {
             return $query->whereJsonContains('genres', $genre);
         }
+
         return $query;
     }
 
@@ -119,7 +121,7 @@ class Movie extends Model
      */
     public function scopeApplySort($query, $sort, array $allowedSorts, string $defaultSort = 'updated_at')
     {
-        if (!array_key_exists($sort, $allowedSorts)) {
+        if (! array_key_exists($sort, $allowedSorts)) {
             $sort = $defaultSort;
         }
 
@@ -142,7 +144,7 @@ class Movie extends Model
      *
      * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @param  int|null  $yearFrom  Başlangıç yılı (örn: 1990)
-     * @param  int|null  $yearTo    Bitiş yılı (örn: 2000)
+     * @param  int|null  $yearTo  Bitiş yılı (örn: 2000)
      * @return \Illuminate\Database\Eloquent\Builder
      *
      * Kullanım: Movie::filterByYearRange(1990, 2000)->get();
@@ -151,11 +153,12 @@ class Movie extends Model
     {
         // Sadece dolu değerler için filtre uygula
         if ($yearFrom) {
-            $query->where('release_date', '>=', $yearFrom . '-01-01');
+            $query->where('release_date', '>=', $yearFrom.'-01-01');
         }
         if ($yearTo) {
-            $query->where('release_date', '<=', $yearTo . '-12-31');
+            $query->where('release_date', '<=', $yearTo.'-12-31');
         }
+
         return $query;
     }
 
@@ -177,6 +180,7 @@ class Movie extends Model
         if ($maxRuntime) {
             $query->where('runtime', '<=', $maxRuntime);
         }
+
         return $query;
     }
 
@@ -199,6 +203,7 @@ class Movie extends Model
         if ($maxRating !== null) {
             $query->where('rating', '<=', $maxRating);
         }
+
         return $query;
     }
 
@@ -215,8 +220,9 @@ class Movie extends Model
     public function scopeFilterByDirector($query, $director = null)
     {
         if ($director) {
-            return $query->where('director', 'like', '%' . $director . '%');
+            return $query->where('director', 'like', '%'.$director.'%');
         }
+
         return $query;
     }
 
@@ -232,6 +238,7 @@ class Movie extends Model
         if ($mediaType && in_array($mediaType, ['movie', 'tv'])) {
             return $query->where('media_type', $mediaType);
         }
+
         return $query;
     }
 
@@ -239,8 +246,6 @@ class Movie extends Model
      * Belirli bir duruma (izlendi/izlenmedi) ait tüm benzersiz türleri getirir.
      * Bu bir scope değil, yardımcı (helper) metodudur (Static Method).
      *
-     * @param int $userId
-     * @param bool $isWatched
      * @return \Illuminate\Support\Collection
      */
     public static function getAvailableGenres(int $userId, bool $isWatched)
@@ -261,8 +266,6 @@ class Movie extends Model
      * Kullanıcının arşivindeki tüm benzersiz yönetmenleri listeler.
      * Gelişmiş arama formundaki dropdown için kullanılır.
      *
-     * @param int $userId
-     * @param bool $isWatched
      * @return \Illuminate\Support\Collection
      */
     public static function getAvailableDirectors(int $userId, bool $isWatched)

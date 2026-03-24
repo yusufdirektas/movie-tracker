@@ -27,15 +27,15 @@ class MovieControllerTest extends TestCase
     public function test_auth_user_can_view_movie_index()
     {
         $user = User::factory()->create();
-        
+
         Movie::factory()->create([
             'user_id' => $user->id,
             'title' => 'Test Film 1',
-            'is_watched' => true
+            'is_watched' => true,
         ]);
 
         $response = $this->actingAs($user)->get(route('movies.index'));
-        
+
         $response->assertStatus(200);
         $response->assertSee('Test Film 1');
     }
@@ -43,15 +43,15 @@ class MovieControllerTest extends TestCase
     public function test_auth_user_can_view_watchlist()
     {
         $user = User::factory()->create();
-        
+
         Movie::factory()->create([
             'user_id' => $user->id,
             'title' => 'Watchlist Film',
-            'is_watched' => false
+            'is_watched' => false,
         ]);
 
         $response = $this->actingAs($user)->get(route('movies.watchlist'));
-        
+
         $response->assertStatus(200);
         $response->assertSee('Watchlist Film');
     }
@@ -75,7 +75,7 @@ class MovieControllerTest extends TestCase
                 'credits' => [
                     'crew' => [
                         ['job' => 'Director', 'name' => 'David Fincher'],
-                    ]
+                    ],
                 ],
             ], 200),
         ]);
@@ -106,5 +106,21 @@ class MovieControllerTest extends TestCase
         $response
             ->assertOk()
             ->assertExactJson([]);
+    }
+
+    public function test_movie_index_generates_missing_share_token_for_legacy_user_data(): void
+    {
+        $user = User::factory()->create([
+            'share_token' => null,
+            'is_public' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.index'));
+
+        $response->assertOk();
+        $user->refresh();
+        $this->assertNotNull($user->share_token);
     }
 }

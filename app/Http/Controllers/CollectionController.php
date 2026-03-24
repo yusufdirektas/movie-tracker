@@ -26,12 +26,12 @@ class CollectionController extends Controller
 
     /**
      * Koleksiyon detayı (içindeki filmler)
-     * 
+     *
      * 📚 EAGER LOADING AÇIKLAMASI:
      * load() vs with() farkı:
      * - with(): Query BAŞINDA kullanılır → Collection::with('movies')->find($id)
      * - load(): Model SONRASINDA kullanılır → $collection->load('movies')
-     * 
+     *
      * Route Model Binding ($collection parametresi) kullandığımız için
      * model zaten yüklenmiş durumda. Bu yüzden load() kullanıyoruz.
      */
@@ -153,11 +153,12 @@ class CollectionController extends Controller
         $existingIds = $collection->movies()->pluck('movies.id')->toArray();
         $newIds = array_diff($validMovieIds, $existingIds);
 
-        if (!empty($newIds)) {
+        if (! empty($newIds)) {
             $collection->movies()->attach($newIds);
         }
 
         $count = count($newIds);
+
         return back()->with('success', "{$count} film koleksiyona eklendi!");
     }
 

@@ -17,10 +17,10 @@ class PrivacyController extends Controller
         $user = Auth::user();
 
         $updates = [
-            'is_public' => !$user->is_public,
+            'is_public' => ! $user->is_public,
         ];
 
-        if (!$user->is_public && blank($user->share_token)) {
+        if (! $user->is_public && blank($user->share_token)) {
             $updates['share_token'] = (string) Str::uuid();
         }
 
@@ -28,6 +28,7 @@ class PrivacyController extends Controller
         $user->refresh();
 
         $status = $user->is_public ? 'Arşiviniz artık herkese açık!' : 'Arşiviniz artık gizli.';
+
         return back()->with('success', $status);
     }
 
@@ -42,10 +43,10 @@ class PrivacyController extends Controller
         }
 
         $updates = [
-            'is_public' => !$collection->is_public,
+            'is_public' => ! $collection->is_public,
         ];
 
-        if (!$collection->is_public && blank($collection->share_token)) {
+        if (! $collection->is_public && blank($collection->share_token)) {
             $updates['share_token'] = (string) Str::uuid();
         }
 
@@ -53,6 +54,7 @@ class PrivacyController extends Controller
         $collection->refresh();
 
         $status = $collection->is_public ? 'Koleksiyon artık herkese açık!' : 'Koleksiyon artık gizli.';
+
         return back()->with('success', $status);
     }
 
@@ -65,13 +67,17 @@ class PrivacyController extends Controller
 
         if ($request->has('collection_id')) {
             $collection = Collection::findOrFail($request->collection_id);
-            if ($collection->user_id !== $user->id) abort(403);
+            if ($collection->user_id !== $user->id) {
+                abort(403);
+            }
 
             $collection->update(['share_token' => (string) Str::uuid()]);
+
             return back()->with('success', 'Koleksiyon paylaşım linki yenilendi.');
         }
 
         $user->update(['share_token' => (string) Str::uuid()]);
+
         return back()->with('success', 'Arşiv paylaşım linki yenilendi.');
     }
 }

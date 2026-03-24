@@ -72,27 +72,28 @@ class User extends Authenticatable
 
     /**
      * Avatar URL'ini döndür
-     * 
+     *
      * @KAVRAM: Storage::url()
      * - storage/app/public altındaki dosyalara public URL verir
      * - php artisan storage:link ile public/storage symlink oluşturulmalı
-     * 
+     *
      * @return string Avatar URL veya varsayılan avatar
      */
     public function getAvatarUrlAttribute(): string
     {
         if ($this->avatar) {
-            return asset('storage/' . $this->avatar);
+            return asset('storage/'.$this->avatar);
         }
-        
+
         // Varsayılan avatar (UI Avatars API - isimden avatar oluşturur)
         $name = urlencode($this->name);
+
         return "https://ui-avatars.com/api/?name={$name}&background=6366f1&color=fff&size=200";
     }
 
     /**
      * Vitrin filmlerini Movie modelleri olarak getir
-     * 
+     *
      * @KAVRAM: whereIn() with ordering
      * - showcase_movies array'indeki ID'lere göre filmleri çek
      * - SQLite FIELD desteklemez, PHP tarafında sıralama yap
@@ -103,13 +104,13 @@ class User extends Authenticatable
         $rawValue = $this->attributes['showcase_movies'] ?? null;
         $movieIds = $rawValue ? json_decode($rawValue, true) : [];
         $movieIds = collect($movieIds)
-            ->filter(fn($id) => is_numeric($id))
-            ->map(fn($id) => (int) $id)
+            ->filter(fn ($id) => is_numeric($id))
+            ->map(fn ($id) => (int) $id)
             ->values()
             ->all();
-        
+
         if (empty($movieIds)) {
-            return new \Illuminate\Database\Eloquent\Collection();
+            return new \Illuminate\Database\Eloquent\Collection;
         }
 
         // Filmleri çek ve PHP'de sırala (SQLite FIELD desteklemediği için)
@@ -117,9 +118,9 @@ class User extends Authenticatable
         $movies = Movie::where('user_id', $this->id)
             ->whereIn('id', $movieIds)
             ->get();
-        
+
         // ID sırasını koru
-        return $movies->sortBy(function($movie) use ($movieIds) {
+        return $movies->sortBy(function ($movie) use ($movieIds) {
             return array_search($movie->id, $movieIds);
         })->values();
     }
@@ -160,7 +161,7 @@ class User extends Authenticatable
     public function following()
     {
         return $this->belongsToMany(User::class, 'follows', 'follower_id', 'following_id')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     /**
@@ -175,7 +176,7 @@ class User extends Authenticatable
     public function followers()
     {
         return $this->belongsToMany(User::class, 'follows', 'following_id', 'follower_id')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     // =========================================================================
@@ -185,7 +186,7 @@ class User extends Authenticatable
     /**
      * Bir kullanıcıyı takip et
      *
-     * @param User|int $user Takip edilecek kullanıcı veya ID
+     * @param  User|int  $user  Takip edilecek kullanıcı veya ID
      * @return void
      *
      * Kullanım: $currentUser->follow($otherUser);
@@ -206,7 +207,7 @@ class User extends Authenticatable
     /**
      * Bir kullanıcıyı takipten çık
      *
-     * @param User|int $user Takipten çıkılacak kullanıcı veya ID
+     * @param  User|int  $user  Takipten çıkılacak kullanıcı veya ID
      * @return void
      *
      * Kullanım: $currentUser->unfollow($otherUser);
@@ -222,7 +223,7 @@ class User extends Authenticatable
     /**
      * Bu kullanıcı belirtilen kişiyi takip ediyor mu?
      *
-     * @param User|int $user Kontrol edilecek kullanıcı
+     * @param  User|int  $user  Kontrol edilecek kullanıcı
      * @return bool
      *
      * Kullanım: $currentUser->isFollowing($otherUser)
@@ -237,7 +238,7 @@ class User extends Authenticatable
     /**
      * Bu kullanıcıyı belirtilen kişi takip ediyor mu?
      *
-     * @param User|int $user Kontrol edilecek kullanıcı
+     * @param  User|int  $user  Kontrol edilecek kullanıcı
      * @return bool
      *
      * Kullanım: $currentUser->isFollowedBy($otherUser)

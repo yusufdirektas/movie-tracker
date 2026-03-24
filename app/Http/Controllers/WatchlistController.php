@@ -9,13 +9,13 @@ use Illuminate\Support\Facades\Auth;
 
 /**
  * 📚 REPOSITORY PATTERN KULLANIMI
- * 
+ *
  * Eski hali:
  *   $user->movies()->unwatched()->searchByTitle(...)->paginate(20);
- * 
+ *
  * Yeni hali:
  *   $this->movieRepository->getUnwatchedMovies($userId, $filters);
- * 
+ *
  * Değişen ne?
  * - Controller artık veritabanı detaylarını bilmiyor
  * - Tüm sorgu mantığı Repository'de
@@ -26,11 +26,11 @@ class WatchlistController extends Controller
 {
     /**
      * 📚 CONSTRUCTOR INJECTION
-     * 
+     *
      * Repository'yi constructor'da alıyoruz (Dependency Injection).
      * Laravel, AppServiceProvider'daki binding sayesinde
      * otomatik olarak MovieRepository instance'ı verir.
-     * 
+     *
      * Type-hint olarak INTERFACE kullanıyoruz, concrete class değil.
      * Bu sayede yarın farklı bir repository kullanmak istersek
      * sadece ServiceProvider'ı değiştiririz.
@@ -50,17 +50,17 @@ class WatchlistController extends Controller
         // Filtreleri hazırla
         $filters = [
             'search' => mb_strtolower((string) $request->input('search', ''), 'UTF-8'),
-            'genre'  => $request->input('genre'),
-            'sort'   => $request->input('sort', 'updated_at'),
+            'genre' => $request->input('genre'),
+            'sort' => $request->input('sort', 'updated_at'),
         ];
 
         // Repository'den veri al - Tek satırda!
         $movies = $this->movieRepository->getUnwatchedMovies($user->id, $filters);
-        
+
         // İstatistikler ve türler
         $totalMovies = $user->movies()->unwatched()->count();
         $availableGenres = $this->movieRepository->getAvailableGenres($user->id, false);
-        
+
         // Koleksiyonlar (Toplu işlem dropdown'ı için)
         $collections = $user->collections()->orderBy('name')->get();
 

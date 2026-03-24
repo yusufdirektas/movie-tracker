@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Movie;
-use App\Models\User;
 use App\Http\Requests\StoreMovieRequest;
 use App\Http\Requests\UpdateMovieRequest;
+use App\Models\Movie;
+use App\Models\User;
 use App\Services\TmdbService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -74,12 +74,12 @@ class MovieController extends Controller
         $mediaType = $request->input('media_type');
 
         $allowedSorts = [
-            'updated_at'      => 'desc',
-            'title'           => 'asc',
-            'rating'          => 'desc',
+            'updated_at' => 'desc',
+            'title' => 'asc',
+            'rating' => 'desc',
             'personal_rating' => 'desc',
-            'release_date'    => 'desc',
-            'runtime'         => 'desc',
+            'release_date' => 'desc',
+            'runtime' => 'desc',
         ];
 
         /**
@@ -152,8 +152,6 @@ class MovieController extends Controller
         ));
     }
 
-
-
     public function create()
     {
         // TMDB tür listesini al (gelişmiş arama dropdown'u için)
@@ -184,16 +182,19 @@ class MovieController extends Controller
         }
 
         $query = mb_strtolower((string) $request->input('query', ''), 'UTF-8');
-        if (!$query) return response()->json([]);
+        if (! $query) {
+            return response()->json([]);
+        }
 
         // Import sayfası smart=1 parametresi gönderir → yazım hatası toleranslı arama
         if ($request->boolean('smart')) {
             $result = $this->tmdb->smartSearch($query);
+
             return response()->json([
-                'results'         => collect($result['results'])->take(6),
-                'corrected'       => $result['corrected'],
+                'results' => collect($result['results'])->take(6),
+                'corrected' => $result['corrected'],
                 'corrected_query' => $result['corrected_query'],
-                'suggestions'     => collect($result['suggestions'])->take(5),
+                'suggestions' => collect($result['suggestions'])->take(5),
             ]);
         }
 
@@ -213,27 +214,26 @@ class MovieController extends Controller
      * TMDB Discover API'yi kullanarak filtrelenmiş sonuçlar döner.
      * Query varsa search + client-side filter, yoksa pure discover.
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     protected function handleDiscoverSearch(Request $request)
     {
         $filters = [
-            'query'       => $request->input('query'),
-            'year'        => $request->input('year'),
-            'year_from'   => $request->input('year_from'),
-            'year_to'     => $request->input('year_to'),
-            'genre'       => $request->input('genre'),
-            'min_rating'  => $request->input('min_rating'),
+            'query' => $request->input('query'),
+            'year' => $request->input('year'),
+            'year_from' => $request->input('year_from'),
+            'year_to' => $request->input('year_to'),
+            'genre' => $request->input('genre'),
+            'min_rating' => $request->input('min_rating'),
             'runtime_min' => $request->input('runtime_min'),
             'runtime_max' => $request->input('runtime_max'),
-            'sort_by'     => $request->input('sort_by', 'popularity.desc'),
-            'page'        => $request->input('page', 1), // 🆕 Sayfa numarası
+            'sort_by' => $request->input('sort_by', 'popularity.desc'),
+            'page' => $request->input('page', 1), // 🆕 Sayfa numarası
         ];
 
         // Boş değerleri temizle (page hariç)
         $page = $filters['page'];
-        $filters = array_filter($filters, fn($v) => $v !== null && $v !== '');
+        $filters = array_filter($filters, fn ($v) => $v !== null && $v !== '');
         $filters['page'] = $page;
 
         // En az bir filtre olmalı (page hariç)
@@ -250,30 +250,32 @@ class MovieController extends Controller
 
             // Query varsa client-side filtreleme yap
             // (TMDB search API yıl dışında filtre desteklemiyor)
-            if (!empty($filters['query'])) {
+            if (! empty($filters['query'])) {
                 // Yıl filtresi
-                if (!empty($filters['year_from'])) {
+                if (! empty($filters['year_from'])) {
                     $results = $results->filter(function ($movie) use ($filters) {
                         $year = substr($movie['release_date'] ?? '', 0, 4);
+
                         return $year >= $filters['year_from'];
                     });
                 }
-                if (!empty($filters['year_to'])) {
+                if (! empty($filters['year_to'])) {
                     $results = $results->filter(function ($movie) use ($filters) {
                         $year = substr($movie['release_date'] ?? '', 0, 4);
+
                         return $year <= $filters['year_to'];
                     });
                 }
 
                 // Puan filtresi
-                if (!empty($filters['min_rating'])) {
+                if (! empty($filters['min_rating'])) {
                     $results = $results->filter(function ($movie) use ($filters) {
                         return ($movie['vote_average'] ?? 0) >= $filters['min_rating'];
                     });
                 }
 
                 // Tür filtresi
-                if (!empty($filters['genre'])) {
+                if (! empty($filters['genre'])) {
                     $results = $results->filter(function ($movie) use ($filters) {
                         return in_array((int) $filters['genre'], $movie['genre_ids'] ?? []);
                     });
@@ -292,9 +294,9 @@ class MovieController extends Controller
              * gösterip göstermeyeceğine karar verir.
              */
             return response()->json([
-                'results'       => $results->values(),
-                'page'          => $data['page'] ?? 1,
-                'total_pages'   => min($data['total_pages'] ?? 1, 500), // TMDB max 500 sayfa
+                'results' => $results->values(),
+                'page' => $data['page'] ?? 1,
+                'total_pages' => min($data['total_pages'] ?? 1, 500), // TMDB max 500 sayfa
                 'total_results' => $data['total_results'] ?? 0,
             ]);
         }
@@ -316,6 +318,7 @@ class MovieController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Bu içerik zaten arşivinde mevcut!'], 400);
             }
+
             return back()->with('error', 'Bu içerik zaten arşivinde mevcut!');
         }
 
@@ -339,36 +342,36 @@ class MovieController extends Controller
                 $runtime = $data['episode_run_time'][0] ?? $data['last_episode_to_air']['runtime'] ?? null;
 
                 $user->movies()->create([
-                    'tmdb_id'      => $data['id'],
-                    'media_type'   => 'tv',
-                    'title'        => $data['name'] ?? $data['original_name'],
-                    'director'     => $creator,
-                    'genres'       => $genres,
-                    'poster_path'  => $data['poster_path'],
-                    'rating'       => $data['vote_average'],
-                    'runtime'      => $runtime,
-                    'overview'     => empty($data['overview']) ? null : $data['overview'],
+                    'tmdb_id' => $data['id'],
+                    'media_type' => 'tv',
+                    'title' => $data['name'] ?? $data['original_name'],
+                    'director' => $creator,
+                    'genres' => $genres,
+                    'poster_path' => $data['poster_path'],
+                    'rating' => $data['vote_average'],
+                    'runtime' => $runtime,
+                    'overview' => empty($data['overview']) ? null : $data['overview'],
                     'release_date' => $data['first_air_date'] ?? null,
-                    'is_watched'   => $isWatched,
-                    'watched_at'   => $isWatched ? now() : null,
+                    'is_watched' => $isWatched,
+                    'watched_at' => $isWatched ? now() : null,
                 ]);
             } else {
                 // Film: credits.crew → yönetmen, title → başlık
                 $director = collect($data['credits']['crew'] ?? [])->firstWhere('job', 'Director')['name'] ?? 'Bilinmiyor';
 
                 $user->movies()->create([
-                    'tmdb_id'      => $data['id'],
-                    'media_type'   => 'movie',
-                    'title'        => $data['title'],
-                    'director'     => $director,
-                    'genres'       => $genres,
-                    'poster_path'  => $data['poster_path'],
-                    'rating'       => $data['vote_average'],
-                    'runtime'      => $data['runtime'],
-                    'overview'     => empty($data['overview']) ? null : $data['overview'],
+                    'tmdb_id' => $data['id'],
+                    'media_type' => 'movie',
+                    'title' => $data['title'],
+                    'director' => $director,
+                    'genres' => $genres,
+                    'poster_path' => $data['poster_path'],
+                    'rating' => $data['vote_average'],
+                    'runtime' => $data['runtime'],
+                    'overview' => empty($data['overview']) ? null : $data['overview'],
                     'release_date' => $data['release_date'],
-                    'is_watched'   => $isWatched,
-                    'watched_at'   => $isWatched ? now() : null,
+                    'is_watched' => $isWatched,
+                    'watched_at' => $isWatched ? now() : null,
                 ]);
             }
 
@@ -378,12 +381,14 @@ class MovieController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => true, 'message' => $message]);
             }
+
             return redirect()->route('movies.index')->with('success', $message);
         }
 
         if ($request->wantsJson()) {
             return response()->json(['success' => false, 'message' => 'Bilgiler alınamadı.'], 500);
         }
+
         return back()->with('error', 'Bilgiler alınamadı.');
     }
 
@@ -404,9 +409,10 @@ class MovieController extends Controller
         // Bu filmin TMDB ID'si varsa benzer film önerilerini çek (24 saat cache)
         $similarMovies = [];
         if ($movie->tmdb_id) {
-            $cacheKey = 'movie_similar_' . $movie->tmdb_id;
+            $cacheKey = 'movie_similar_'.$movie->tmdb_id;
             $similarMovies = Cache::remember($cacheKey, now()->addHours(24), function () use ($movie) {
                 $response = $this->tmdb->getSimilar($movie->tmdb_id);
+
                 return $response?->successful() ? ($response->json()['results'] ?? []) : [];
             });
             $similarMovies = collect($similarMovies)->take(6);
@@ -424,19 +430,20 @@ class MovieController extends Controller
 
         if ($request->has('personal_rating')) {
             $movie->update([
-                'personal_rating' => $request->personal_rating
+                'personal_rating' => $request->personal_rating,
             ]);
 
             if ($request->wantsJson()) {
                 return response()->json(['success' => true, 'message' => 'Puan kaydedildi.']);
             }
+
             return back();
         }
 
-        $newWatchedStatus = !$movie->is_watched;
+        $newWatchedStatus = ! $movie->is_watched;
         $movie->update([
             'is_watched' => $newWatchedStatus,
-            'watched_at' => $newWatchedStatus ? ($movie->watched_at ?? now()) : null
+            'watched_at' => $newWatchedStatus ? ($movie->watched_at ?? now()) : null,
         ]);
 
         return back()->with('success', 'Film durumu güncellendi.');
@@ -446,6 +453,7 @@ class MovieController extends Controller
     {
         $this->authorize('delete', $movie);
         $movie->delete();
+
         return back()->with('success', 'Film silindi.');
     }
 
@@ -453,6 +461,4 @@ class MovieController extends Controller
     {
         return view('movies.import');
     }
-
-
 }
