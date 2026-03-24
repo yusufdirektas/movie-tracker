@@ -142,4 +142,17 @@ class ProfileTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('required autofocus autocomplete="name"', false);
     }
+
+    public function test_profile_page_contains_avatar_preview_confirmation_step(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/profile');
+
+        $response->assertOk();
+        $response->assertSee('Önizlemeye Geç');
+        $response->assertSee('Onayla ve Kaydet');
+    }
 }

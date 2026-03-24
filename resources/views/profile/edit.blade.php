@@ -36,36 +36,48 @@
                 </button>
             </div>
             
-            {{-- Cropper Area --}}
+            {{-- Cropper + Preview Area --}}
             <div class="p-4">
-                <div class="relative bg-slate-950 rounded-xl overflow-hidden" style="height: 400px;">
-                    <img id="cropper-image" src="" alt="Crop preview" class="max-w-full">
+                <div x-show="step === 'edit'">
+                    <div class="relative bg-slate-950 rounded-xl overflow-hidden" style="height: 400px;">
+                        <img id="cropper-image" src="" alt="Crop preview" class="max-w-full">
+                    </div>
+
+                    {{-- Zoom & Rotate Controls --}}
+                    <div class="flex items-center justify-center gap-4 mt-4">
+                        <button type="button" @click="zoom(-0.1)"
+                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Uzaklaştır">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button type="button" @click="zoom(0.1)"
+                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Yakınlaştır">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <div class="w-px h-6 bg-slate-700"></div>
+                        <button type="button" @click="rotate(-90)"
+                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Sola Döndür">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        <button type="button" @click="rotate(90)"
+                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Sağa Döndür">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                        <div class="w-px h-6 bg-slate-700"></div>
+                        <button type="button" @click="reset()"
+                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Sıfırla">
+                            <i class="fas fa-sync"></i>
+                        </button>
+                    </div>
                 </div>
-                
-                {{-- Zoom & Rotate Controls --}}
-                <div class="flex items-center justify-center gap-4 mt-4">
-                    <button type="button" @click="zoom(-0.1)" 
-                            class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Uzaklaştır">
-                        <i class="fas fa-search-minus"></i>
-                    </button>
-                    <button type="button" @click="zoom(0.1)" 
-                            class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Yakınlaştır">
-                        <i class="fas fa-search-plus"></i>
-                    </button>
-                    <div class="w-px h-6 bg-slate-700"></div>
-                    <button type="button" @click="rotate(-90)" 
-                            class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Sola Döndür">
-                        <i class="fas fa-undo"></i>
-                    </button>
-                    <button type="button" @click="rotate(90)" 
-                            class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Sağa Döndür">
-                        <i class="fas fa-redo"></i>
-                    </button>
-                    <div class="w-px h-6 bg-slate-700"></div>
-                    <button type="button" @click="reset()" 
-                            class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Sıfırla">
-                        <i class="fas fa-sync"></i>
-                    </button>
+
+                <div x-show="step === 'preview'" x-cloak>
+                    <h4 class="text-white font-semibold mb-3 flex items-center gap-2">
+                        <i class="fas fa-eye text-indigo-400"></i> Önizleme
+                    </h4>
+                    <div class="bg-slate-950 rounded-xl p-6 flex items-center justify-center min-h-[400px]">
+                        <img :src="previewDataUrl" alt="Avatar önizleme"
+                             class="w-48 h-48 rounded-full object-cover border-4 border-slate-700 shadow-2xl">
+                    </div>
                 </div>
             </div>
             
@@ -75,12 +87,22 @@
                         class="px-4 py-2 text-slate-400 hover:text-white transition">
                     İptal
                 </button>
-                <button type="button" @click="saveCroppedImage()" 
+                <button type="button" x-show="step === 'edit'" @click="generatePreview()"
+                        class="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-medium transition flex items-center gap-2">
+                    <i class="fas fa-eye"></i>
+                    <span>Önizlemeye Geç</span>
+                </button>
+                <button type="button" x-show="step === 'preview'" @click="backToEdit()"
+                        :disabled="saving"
+                        class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition">
+                    Geri
+                </button>
+                <button type="button" x-show="step === 'preview'" @click="saveCroppedImage()" 
                         :disabled="saving"
                         class="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-500/50 text-white rounded-xl font-medium transition flex items-center gap-2">
                     <i class="fas fa-check" x-show="!saving"></i>
                     <i class="fas fa-spinner fa-spin" x-show="saving"></i>
-                    <span x-text="saving ? 'Kaydediliyor...' : 'Kaydet'"></span>
+                    <span x-text="saving ? 'Kaydediliyor...' : 'Onayla ve Kaydet'"></span>
                 </button>
             </div>
         </div>
@@ -310,7 +332,10 @@
 function avatarCropper() {
     return {
         showModal: false,
+        step: 'edit',
         cropper: null,
+        previewDataUrl: '',
+        previewBlob: null,
         saving: false,
         
         // Dosya seçildiğinde modal aç
@@ -335,7 +360,9 @@ function avatarCropper() {
             reader.onload = (e) => {
                 const image = document.getElementById('cropper-image');
                 image.src = e.target.result;
-                
+                this.step = 'edit';
+                this.previewDataUrl = '';
+                this.previewBlob = null;
                 this.showModal = true;
                 
                 // Modal açıldıktan sonra cropper'ı başlat
@@ -368,12 +395,39 @@ function avatarCropper() {
         // Modal kapat
         closeCropper() {
             this.showModal = false;
+            this.step = 'edit';
+            this.previewDataUrl = '';
+            this.previewBlob = null;
             if (this.cropper) {
                 this.cropper.destroy();
                 this.cropper = null;
             }
             // Input'u temizle (aynı dosya tekrar seçilebilsin)
             document.getElementById('avatar-input').value = '';
+        },
+
+        generatePreview() {
+            if (!this.cropper) return;
+
+            const canvas = this.cropper.getCroppedCanvas({
+                width: 400,
+                height: 400,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high',
+            });
+
+            if (!canvas) return;
+
+            this.previewDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            canvas.toBlob((blob) => {
+                if (!blob) return;
+                this.previewBlob = blob;
+                this.step = 'preview';
+            }, 'image/jpeg', 0.9);
+        },
+
+        backToEdit() {
+            this.step = 'edit';
         },
         
         // Zoom
@@ -399,47 +453,35 @@ function avatarCropper() {
         
         // Kırpılmış görseli kaydet
         async saveCroppedImage() {
-            if (!this.cropper || this.saving) return;
+            if (!this.previewBlob || this.saving) return;
             
             this.saving = true;
             
             try {
-                // Kırpılmış canvas'ı al (400x400 piksel, avatar için yeterli)
-                const canvas = this.cropper.getCroppedCanvas({
-                    width: 400,
-                    height: 400,
-                    imageSmoothingEnabled: true,
-                    imageSmoothingQuality: 'high',
-                });
-                
-                // Canvas'ı Blob'a çevir
-                canvas.toBlob(async (blob) => {
-                    // FormData oluştur
-                    const formData = new FormData();
-                    formData.append('avatar', blob, 'avatar.jpg');
-                    formData.append('_token', '{{ csrf_token() }}');
-                    
-                    try {
-                        // AJAX ile gönder
-                        const response = await fetch('{{ route("profile.avatar.update") }}', {
-                            method: 'POST',
-                            body: formData,
-                        });
-                        
-                        if (response.ok) {
-                            // Başarılı - sayfayı yenile
-                            window.location.reload();
-                        } else {
-                            const data = await response.json();
-                            alert(data.message || 'Avatar yüklenirken bir hata oluştu.');
-                            this.saving = false;
-                        }
-                    } catch (error) {
-                        console.error('Upload error:', error);
-                        alert('Avatar yüklenirken bir hata oluştu.');
+                const formData = new FormData();
+                formData.append('avatar', this.previewBlob, 'avatar.jpg');
+                formData.append('_token', '{{ csrf_token() }}');
+
+                try {
+                    // AJAX ile gönder
+                    const response = await fetch('{{ route("profile.avatar.update") }}', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (response.ok) {
+                        // Başarılı - sayfayı yenile
+                        window.location.reload();
+                    } else {
+                        const data = await response.json();
+                        alert(data.message || 'Avatar yüklenirken bir hata oluştu.');
                         this.saving = false;
                     }
-                }, 'image/jpeg', 0.9); // JPEG formatı, %90 kalite
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    alert('Avatar yüklenirken bir hata oluştu.');
+                    this.saving = false;
+                }
                 
             } catch (error) {
                 console.error('Crop error:', error);
