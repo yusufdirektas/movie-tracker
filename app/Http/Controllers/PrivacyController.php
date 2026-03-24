@@ -41,9 +41,16 @@ class PrivacyController extends Controller
             abort(403);
         }
 
-        $collection->update([
-            'is_public' => !$collection->is_public
-        ]);
+        $updates = [
+            'is_public' => !$collection->is_public,
+        ];
+
+        if (!$collection->is_public && blank($collection->share_token)) {
+            $updates['share_token'] = (string) Str::uuid();
+        }
+
+        $collection->update($updates);
+        $collection->refresh();
 
         $status = $collection->is_public ? 'Koleksiyon artık herkese açık!' : 'Koleksiyon artık gizli.';
         return back()->with('success', $status);

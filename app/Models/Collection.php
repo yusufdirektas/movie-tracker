@@ -31,6 +31,10 @@ class Collection extends Model
         'share_token',
     ];
 
+    protected $casts = [
+        'is_public' => 'boolean',
+    ];
+
     /**
      * Model boot metodu
      */
