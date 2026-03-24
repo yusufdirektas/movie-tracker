@@ -13,7 +13,23 @@
 --}}
 
 @if ($imageUrl())
-<div x-data="{ loaded: false, error: false }" class="relative w-full h-full overflow-hidden {{ $class }}">
+<div
+    x-data="{
+        loaded: false,
+        error: false,
+        init() {
+            // Alpine bind edilmeden önce görsel yüklenmiş olabilir.
+            if (this.$refs.poster?.complete) {
+                if (this.$refs.poster.naturalWidth > 0) {
+                    this.loaded = true;
+                } else {
+                    this.error = true;
+                }
+            }
+        }
+    }"
+    class="relative w-full h-full overflow-hidden {{ $class }}"
+>
     {{-- Skeleton Loading --}}
     <div x-show="!loaded && !error" class="absolute inset-0 bg-slate-800 animate-pulse flex items-center justify-center">
         <svg class="w-12 h-12 text-slate-700 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -31,7 +47,8 @@
     </div>
 
     {{-- Gerçek Resim --}}
-    <img 
+    <img
+        x-ref="poster"
         src="{{ $imageUrl() }}"
         alt="{{ $alt }}"
         loading="lazy"
