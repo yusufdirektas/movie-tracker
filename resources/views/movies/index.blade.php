@@ -188,8 +188,8 @@
         </div>
 
         {{-- SIRALAMA & TÜR DROPDOWN'LARI (AJAX) --}}
-        <div class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
+        <div class="mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3 flex-wrap">
                 <span class="text-slate-500 text-xs font-bold uppercase tracking-widest hidden sm:inline-block">
                     <i class="fas fa-sort mr-1"></i> Sırala
                 </span>
@@ -213,6 +213,20 @@
                         <option value="{{ $g }}">{{ $g }}</option>
                     @endforeach
                 </select>
+
+                {{-- 🆕 GELİŞMİŞ FİLTRELER BUTONU --}}
+                <button @click="showAdvanced = !showAdvanced"
+                    class="ml-2 px-4 py-2 text-sm font-bold rounded-xl transition-all flex items-center gap-2"
+                    :class="showAdvanced || hasAdvancedFilters()
+                        ? 'bg-indigo-500 text-white'
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'">
+                    <i class="fas fa-sliders-h"></i>
+                    <span class="hidden sm:inline">Gelişmiş</span>
+                    {{-- Aktif filtre sayısı badge --}}
+                    <span x-show="hasAdvancedFilters() && !showAdvanced"
+                          class="bg-white text-indigo-600 text-xs font-black px-1.5 py-0.5 rounded-full"
+                          x-text="countAdvancedFilters()" style="display: none;"></span>
+                </button>
             </div>
 
             {{-- 📚 DIŞA AKTAR (EXPORT) BUTONLARI --}}
@@ -225,6 +239,175 @@
                 </a>
             </div>
         </div>
+
+        {{-- ============================================================================
+             📚 GELİŞMİŞ FİLTRELER PANELİ (Advanced Filters Panel)
+
+             Bu panel x-show ile gösterilir/gizlenir.
+             x-transition direktifleri smooth animasyon sağlar.
+
+             @KAVRAM: x-transition
+             - enter: Panel görünürken uygulanan class'lar
+             - leave: Panel gizlenirken uygulanan class'lar
+             - transform: Translate, scale gibi dönüşümler
+             - opacity: Şeffaflık geçişleri
+
+             @KAVRAM: x-model
+             - İki yönlü veri bağlama (two-way data binding)
+             - Input değişince Alpine state güncellenir
+             - Alpine state değişince input güncellenir
+        ============================================================================ --}}
+        <div x-show="showAdvanced"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 -translate-y-2"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-2"
+             class="mb-8 bg-slate-900/80 border border-slate-700 rounded-2xl p-6 backdrop-blur-sm"
+             style="display: none;">
+
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-white font-bold flex items-center gap-2">
+                    <i class="fas fa-sliders-h text-indigo-400"></i>
+                    Gelişmiş Filtreler
+                </h3>
+                <button @click="clearAdvancedFilters()"
+                    class="text-xs text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1">
+                    <i class="fas fa-eraser"></i> Temizle
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                {{-- 📅 YIL ARALIĞI --}}
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fas fa-calendar text-indigo-400"></i> Yayın Yılı
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="number" x-model="yearFrom" @change="_fetch()"
+                            placeholder="1900" min="1900" max="2030"
+                            class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600">
+                        <span class="text-slate-600 self-center">-</span>
+                        <input type="number" x-model="yearTo" @change="_fetch()"
+                            placeholder="2026" min="1900" max="2030"
+                            class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600">
+                    </div>
+                </div>
+
+                {{-- ⏱️ SÜRE ARALIĞI --}}
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fas fa-clock text-amber-400"></i> Süre (dk)
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="number" x-model="runtimeMin" @change="_fetch()"
+                            placeholder="0" min="0" max="500"
+                            class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600">
+                        <span class="text-slate-600 self-center">-</span>
+                        <input type="number" x-model="runtimeMax" @change="_fetch()"
+                            placeholder="∞" min="0" max="500"
+                            class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600">
+                    </div>
+                </div>
+
+                {{-- ⭐ MİNİMUM PUAN --}}
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fas fa-star text-yellow-400"></i> Min. TMDB Puanı
+                    </label>
+                    <select x-model="ratingMin" @change="_fetch()"
+                        class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer">
+                        <option value="">Hepsi</option>
+                        <option value="9">9+ Başyapıt</option>
+                        <option value="8">8+ Harika</option>
+                        <option value="7">7+ İyi</option>
+                        <option value="6">6+ Ortalama Üstü</option>
+                        <option value="5">5+ Ortalama</option>
+                    </select>
+                </div>
+
+                {{-- 🎬 MEDYA TİPİ (Film/Dizi) --}}
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fas fa-film text-purple-400"></i> Tür
+                    </label>
+                    <select x-model="mediaType" @change="_fetch()"
+                        class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer">
+                        <option value="">Film & Dizi</option>
+                        <option value="movie">Sadece Filmler</option>
+                        <option value="tv">Sadece Diziler</option>
+                    </select>
+                </div>
+
+                {{-- 🎥 YÖNETMEN --}}
+                <div class="space-y-2 md:col-span-2">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fas fa-user-tie text-emerald-400"></i> Yönetmen
+                    </label>
+                    <input type="text" x-model="director" @input.debounce.500ms="_fetch()"
+                        list="directorSuggestions"
+                        placeholder="Yönetmen adı yazın..."
+                        class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600">
+                    {{-- 📚 DATALIST: Native HTML5 autocomplete önerisi --}}
+                    <datalist id="directorSuggestions">
+                        @foreach($availableDirectors as $d)
+                            <option value="{{ $d }}">
+                        @endforeach
+                    </datalist>
+                </div>
+
+            </div>
+
+            {{-- Aktif filtre özeti --}}
+            <div x-show="hasAdvancedFilters()" class="mt-4 pt-4 border-t border-slate-800" style="display: none;">
+                <div class="flex flex-wrap gap-2">
+                    <span class="text-xs text-slate-500">Aktif filtreler:</span>
+
+                    <template x-if="yearFrom || yearTo">
+                        <span class="inline-flex items-center gap-1 bg-indigo-500/20 text-indigo-300 text-xs px-2 py-1 rounded-full">
+                            <i class="fas fa-calendar"></i>
+                            <span x-text="(yearFrom || '...') + ' - ' + (yearTo || '...')"></span>
+                            <button @click="yearFrom = ''; yearTo = ''; _fetch()" class="hover:text-white ml-1">×</button>
+                        </span>
+                    </template>
+
+                    <template x-if="runtimeMin || runtimeMax">
+                        <span class="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 text-xs px-2 py-1 rounded-full">
+                            <i class="fas fa-clock"></i>
+                            <span x-text="(runtimeMin || '0') + ' - ' + (runtimeMax || '∞') + ' dk'"></span>
+                            <button @click="runtimeMin = ''; runtimeMax = ''; _fetch()" class="hover:text-white ml-1">×</button>
+                        </span>
+                    </template>
+
+                    <template x-if="ratingMin">
+                        <span class="inline-flex items-center gap-1 bg-yellow-500/20 text-yellow-300 text-xs px-2 py-1 rounded-full">
+                            <i class="fas fa-star"></i>
+                            <span x-text="ratingMin + '+'"></span>
+                            <button @click="ratingMin = ''; _fetch()" class="hover:text-white ml-1">×</button>
+                        </span>
+                    </template>
+
+                    <template x-if="mediaType">
+                        <span class="inline-flex items-center gap-1 bg-purple-500/20 text-purple-300 text-xs px-2 py-1 rounded-full">
+                            <i class="fas fa-film"></i>
+                            <span x-text="mediaType === 'movie' ? 'Film' : 'Dizi'"></span>
+                            <button @click="mediaType = ''; _fetch()" class="hover:text-white ml-1">×</button>
+                        </span>
+                    </template>
+
+                    <template x-if="director">
+                        <span class="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 text-xs px-2 py-1 rounded-full">
+                            <i class="fas fa-user-tie"></i>
+                            <span x-text="director"></span>
+                            <button @click="director = ''; _fetch()" class="hover:text-white ml-1">×</button>
+                        </span>
+                    </template>
+                </div>
+            </div>
+        </div>
+
         {{-- FİLM GRİD ALANI (AJAX ile güncellenir) --}}
         <div x-ref="movieGrid" class="relative transition-opacity duration-300" :class="{ 'opacity-40 pointer-events-none': loading }">
             {{-- Yükleniyor göstergesi --}}
@@ -314,15 +497,52 @@
     </div>
 @push('scripts')
 <script>
+/**
+ * 📚 ALPINE.JS BİLEŞEN FONKSİYONU
+ *
+ * Alpine.js'de x-data="movieFilter()" şeklinde bir fonksiyon çağrıldığında,
+ * bu fonksiyonun döndürdüğü obje, o elementin "state"i olur.
+ *
+ * @KAVRAM: Reaktivite
+ * - State değiştiğinde (örn: this.search = 'matrix')
+ * - Alpine otomatik olarak DOM'u günceller (x-model, x-show, x-text vs.)
+ *
+ * @KAVRAM: Methods
+ * - Obje içindeki fonksiyonlar, o komponentin metodlarıdır
+ * - @click="setFilter('all')" → setFilter metodu çağrılır
+ */
 function movieFilter() {
     return {
+        // ==========================================
+        // 📦 STATE (Durum Değişkenleri)
+        // ==========================================
         selectedMovies: [],
         loading: false,
+
+        // Temel filtreler
         filter: '{{ request('filter', 'all') }}',
         search: '{{ request('search') }}',
         sort: '{{ $sort }}',
         genre: '{{ request('genre') }}',
 
+        // 🆕 Gelişmiş filtreler
+        showAdvanced: {{ !empty(array_filter($advancedFilters)) ? 'true' : 'false' }},
+        yearFrom: '{{ $advancedFilters['yearFrom'] ?? '' }}',
+        yearTo: '{{ $advancedFilters['yearTo'] ?? '' }}',
+        runtimeMin: '{{ $advancedFilters['runtimeMin'] ?? '' }}',
+        runtimeMax: '{{ $advancedFilters['runtimeMax'] ?? '' }}',
+        ratingMin: '{{ $advancedFilters['ratingMin'] ?? '' }}',
+        director: '{{ $advancedFilters['director'] ?? '' }}',
+        mediaType: '{{ $advancedFilters['mediaType'] ?? '' }}',
+
+        // ==========================================
+        // 🚀 LIFECYCLE HOOKS (Yaşam Döngüsü)
+        // ==========================================
+
+        /**
+         * init() metodu, Alpine bileşeni DOM'a bağlandığında otomatik çalışır.
+         * jQuery'deki $(document).ready() veya Vue'daki mounted() gibi.
+         */
         init() {
             // Sayfalandırma linkleri için event delegation
             this.$refs.movieGrid.addEventListener('click', (e) => {
@@ -333,16 +553,28 @@ function movieFilter() {
                 }
             });
 
-            // Tarayıcı geri/ileri butonları
+            // Tarayıcı geri/ileri butonları (History API)
             window.addEventListener('popstate', () => {
                 const params = new URLSearchParams(window.location.search);
                 this.filter = params.get('filter') || 'all';
                 this.search = params.get('search') || '';
                 this.sort = params.get('sort') || 'updated_at';
                 this.genre = params.get('genre') || '';
+                // 🆕 Gelişmiş filtreleri de geri yükle
+                this.yearFrom = params.get('year_from') || '';
+                this.yearTo = params.get('year_to') || '';
+                this.runtimeMin = params.get('runtime_min') || '';
+                this.runtimeMax = params.get('runtime_max') || '';
+                this.ratingMin = params.get('rating_min') || '';
+                this.director = params.get('director') || '';
+                this.mediaType = params.get('media_type') || '';
                 this._fetch(false);
             });
         },
+
+        // ==========================================
+        // 🎯 ACTION METHODS (Eylem Metodları)
+        // ==========================================
 
         setFilter(newFilter) {
             this.filter = newFilter;
@@ -361,19 +593,91 @@ function movieFilter() {
             this._fetch();
         },
 
+        /**
+         * 🆕 Gelişmiş filtrelerin aktif olup olmadığını kontrol eder.
+         * UI'da badge göstermek için kullanılır.
+         */
+        hasAdvancedFilters() {
+            return this.yearFrom || this.yearTo || this.runtimeMin || this.runtimeMax ||
+                   this.ratingMin || this.director || this.mediaType;
+        },
+
+        /**
+         * 🆕 Aktif gelişmiş filtre sayısını hesaplar (badge için).
+         */
+        countAdvancedFilters() {
+            let count = 0;
+            if (this.yearFrom || this.yearTo) count++;
+            if (this.runtimeMin || this.runtimeMax) count++;
+            if (this.ratingMin) count++;
+            if (this.director) count++;
+            if (this.mediaType) count++;
+            return count;
+        },
+
+        /**
+         * 🆕 Tüm gelişmiş filtreleri temizler.
+         */
+        clearAdvancedFilters() {
+            this.yearFrom = '';
+            this.yearTo = '';
+            this.runtimeMin = '';
+            this.runtimeMax = '';
+            this.ratingMin = '';
+            this.director = '';
+            this.mediaType = '';
+            this._fetch();
+        },
+
+        // ==========================================
+        // 🔧 HELPER METHODS (Yardımcı Metodlar)
+        // ==========================================
+
+        /**
+         * URL query string'i oluşturur.
+         *
+         * 📚 URLSearchParams API'si:
+         * - Modern JavaScript'te URL parametreleri oluşturmak için kullanılır
+         * - Otomatik encoding yapar (boşluk → %20, türkçe karakterler vs.)
+         */
         _buildUrl() {
             const params = new URLSearchParams();
+
+            // Temel filtreler
             if (this.filter && this.filter !== 'all') params.set('filter', this.filter);
             if (this.search) params.set('search', this.search);
             if (this.sort && this.sort !== 'updated_at') params.set('sort', this.sort);
             if (this.genre) params.set('genre', this.genre);
+
+            // 🆕 Gelişmiş filtreler
+            if (this.yearFrom) params.set('year_from', this.yearFrom);
+            if (this.yearTo) params.set('year_to', this.yearTo);
+            if (this.runtimeMin) params.set('runtime_min', this.runtimeMin);
+            if (this.runtimeMax) params.set('runtime_max', this.runtimeMax);
+            if (this.ratingMin) params.set('rating_min', this.ratingMin);
+            if (this.director) params.set('director', this.director);
+            if (this.mediaType) params.set('media_type', this.mediaType);
+
             const qs = params.toString();
             return '{{ route("movies.index") }}' + (qs ? '?' + qs : '');
         },
 
+        /**
+         * AJAX ile film listesini günceller.
+         *
+         * 📚 async/await:
+         * - Promise tabanlı asenkron işlemleri senkron gibi yazmamızı sağlar
+         * - fetch() bir Promise döner, await ile sonucunu bekleriz
+         *
+         * 📚 X-Requested-With header:
+         * - Laravel'de request()->ajax() metodunun true dönmesi için gerekli
+         * - AJAX isteklerini normal isteklerden ayırt etmeye yarar
+         */
         async _fetch(pushState = true) {
             this.loading = true;
             const url = this._buildUrl();
+
+            // 📚 History API: URL'i değiştir ama sayfa yenilenmesin
             if (pushState) window.history.pushState({}, '', url);
 
             try {
@@ -381,6 +685,9 @@ function movieFilter() {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 this.$refs.movieGrid.innerHTML = await res.text();
+
+                // 📚 $nextTick: DOM güncellemesi bittikten sonra çalıştır
+                // Alpine.initTree: Yeni eklenen HTML'deki Alpine direktiflerini aktifleştir
                 this.$nextTick(() => Alpine.initTree(this.$refs.movieGrid));
             } catch (err) {
                 console.error('Filtre hatası:', err);

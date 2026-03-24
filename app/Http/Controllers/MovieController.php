@@ -50,10 +50,28 @@ class MovieController extends Controller
         // Kod bir hikaye okur gibi yukarıdan aşağıya akıyor.
         // ---------------------------------------------------------------------
 
+        // ---------------------------------------------------------------------
+        // 📚 FİLTRE PARAMETRELERİNİ ALMA (Request Input)
+        //
+        // request->input('key', 'default') → URL'den parametre alır
+        // Örn: /movies?search=matrix&year_from=1999 → $search='matrix', $yearFrom=1999
+        //
+        // mb_strtolower() → Türkçe karakterleri de küçük harfe çevirir (İ→i, Ş→ş)
+        // ---------------------------------------------------------------------
+
         $filter = $request->input('filter', 'all');
         $search = mb_strtolower($request->input('search'), 'UTF-8');
         $genre = $request->input('genre');
         $sort = $request->input('sort', 'updated_at');
+
+        // 🆕 GELİŞMİŞ ARAMA PARAMETRELERİ
+        $yearFrom = $request->input('year_from');
+        $yearTo = $request->input('year_to');
+        $runtimeMin = $request->input('runtime_min');
+        $runtimeMax = $request->input('runtime_max');
+        $ratingMin = $request->input('rating_min');
+        $director = $request->input('director');
+        $mediaType = $request->input('media_type');
 
         $allowedSorts = [
             'updated_at'      => 'desc',
@@ -82,12 +100,24 @@ class MovieController extends Controller
          *   SELECT * FROM movies WHERE user_id = 1                        (1 sorgu)
          *   SELECT * FROM collections WHERE movie_id IN (1,2,3...)        (1 sorgu)
          *   (toplam 2 sorgu!)
+         *
+         * 📚 SCOPE ZİNCİRLEME (Method Chaining)
+         *
+         * Laravel Eloquent'te scope'lar zincirleme çağrılabilir.
+         * Her scope, query builder nesnesini döndürür.
+         * Boş değerler için scope içinde kontrol yapılır, böylece
+         * controller'da if-else karmaşası olmaz.
          */
         $query = $user->movies()
             ->with('collections')  // 🚀 EAGER LOADING - N+1 sorununu çözer
             ->watched()
             ->searchByTitle($search)
             ->filterByGenre($genre)
+            ->filterByYearRange($yearFrom, $yearTo)      // 🆕 Yıl filtresi
+            ->filterByRuntime($runtimeMin, $runtimeMax)  // 🆕 Süre filtresi
+            ->filterByRating($ratingMin)                 // 🆕 Puan filtresi
+            ->filterByDirector($director)               // 🆕 Yönetmen filtresi
+            ->filterByMediaType($mediaType)             // 🆕 Film/Dizi filtresi
             ->applySort($sort, $allowedSorts);
 
         if ($filter === 'favorites') {
@@ -99,8 +129,17 @@ class MovieController extends Controller
         // Türleri yine Model üzerinden alıyoruz
         $availableGenres = Movie::getAvailableGenres($user->id, true);
 
+        // 🆕 Yönetmenleri al (Gelişmiş arama için)
+        $availableDirectors = Movie::getAvailableDirectors($user->id, true);
+
         // Koleksiyonlar (Toplu işlem toolbar'ı için)
         $collections = $user->collections()->orderBy('name')->get();
+
+        // 🆕 Gelişmiş filtreleri view'a gönder (form değerlerini korumak için)
+        $advancedFilters = compact(
+            'yearFrom', 'yearTo', 'runtimeMin', 'runtimeMax',
+            'ratingMin', 'director', 'mediaType'
+        );
 
         if ($request->ajax()) {
             return view('movies.partials._grid', compact('movies'));
@@ -109,7 +148,7 @@ class MovieController extends Controller
         return view('movies.index', compact(
             'movies', 'search', 'filter', 'genre', 'availableGenres', 'sort',
             'totalMovies', 'watchedCount', 'totalHours', 'remainingMinutes', 'highestRated',
-            'collections'
+            'collections', 'availableDirectors', 'advancedFilters'
         ));
     }
 
