@@ -152,7 +152,7 @@ class ProfileTest extends TestCase
             ->get('/profile');
 
         $response->assertOk();
-        $response->assertSee('Önizlemeye Geç');
+        $response->assertSee('Fotoğraf Önizleme');
         $response->assertSee('Onayla ve Kaydet');
     }
 }

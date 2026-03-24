@@ -9,9 +9,9 @@
 @endsection
 
 @section('content')
-<div class="space-y-6 max-w-4xl mx-auto" x-data="avatarCropper()">
+<div class="space-y-6 max-w-4xl mx-auto" x-data="avatarUploader()">
 
-    {{-- 📚 AVATAR KIRPMA MODAL --}}
+    {{-- 📚 AVATAR ÖNİZLEME MODAL --}}
     <div x-show="showModal" 
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
@@ -22,82 +22,34 @@
          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
          x-cloak>
         
-        <div class="bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-slate-700"
-             @click.outside="closeCropper()">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-hidden border border-slate-700"
+             @click.outside="closePreview()">
             
             {{-- Modal Header --}}
             <div class="flex items-center justify-between p-4 border-b border-slate-700">
                 <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                    <i class="fas fa-crop-alt text-indigo-400"></i>
-                    Fotoğrafı Düzenle
+                    <i class="fas fa-eye text-indigo-400"></i>
+                    Fotoğraf Önizleme
                 </h3>
-                <button @click="closeCropper()" class="text-slate-400 hover:text-white transition">
+                <button @click="closePreview()" class="text-slate-400 hover:text-white transition">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
             
-            {{-- Cropper + Preview Area --}}
             <div class="p-4">
-                <div x-show="step === 'edit'">
-                    <div class="relative bg-slate-950 rounded-xl overflow-hidden" style="height: 400px;">
-                        <img id="cropper-image" src="" alt="Crop preview" class="max-w-full">
-                    </div>
-
-                    {{-- Zoom & Rotate Controls --}}
-                    <div class="flex items-center justify-center gap-4 mt-4">
-                        <button type="button" @click="zoom(-0.1)"
-                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Uzaklaştır">
-                            <i class="fas fa-search-minus"></i>
-                        </button>
-                        <button type="button" @click="zoom(0.1)"
-                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Yakınlaştır">
-                            <i class="fas fa-search-plus"></i>
-                        </button>
-                        <div class="w-px h-6 bg-slate-700"></div>
-                        <button type="button" @click="rotate(-90)"
-                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Sola Döndür">
-                            <i class="fas fa-undo"></i>
-                        </button>
-                        <button type="button" @click="rotate(90)"
-                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Sağa Döndür">
-                            <i class="fas fa-redo"></i>
-                        </button>
-                        <div class="w-px h-6 bg-slate-700"></div>
-                        <button type="button" @click="reset()"
-                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition" title="Sıfırla">
-                            <i class="fas fa-sync"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div x-show="step === 'preview'" x-cloak>
-                    <h4 class="text-white font-semibold mb-3 flex items-center gap-2">
-                        <i class="fas fa-eye text-indigo-400"></i> Önizleme
-                    </h4>
-                    <div class="bg-slate-950 rounded-xl p-6 flex items-center justify-center min-h-[400px]">
-                        <img :src="previewDataUrl" alt="Avatar önizleme"
-                             class="w-48 h-48 rounded-full object-cover border-4 border-slate-700 shadow-2xl">
-                    </div>
+                <div class="bg-slate-950 rounded-xl p-6 flex items-center justify-center min-h-[320px]">
+                    <img :src="previewDataUrl" alt="Avatar önizleme"
+                         class="w-48 h-48 rounded-full object-cover border-4 border-slate-700 shadow-2xl">
                 </div>
             </div>
             
             {{-- Modal Footer --}}
             <div class="flex items-center justify-end gap-3 p-4 border-t border-slate-700 bg-slate-800/50">
-                <button type="button" @click="closeCropper()" 
+                <button type="button" @click="closePreview()" 
                         class="px-4 py-2 text-slate-400 hover:text-white transition">
                     İptal
                 </button>
-                <button type="button" x-show="step === 'edit'" @click="generatePreview()"
-                        class="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-medium transition flex items-center gap-2">
-                    <i class="fas fa-eye"></i>
-                    <span>Önizlemeye Geç</span>
-                </button>
-                <button type="button" x-show="step === 'preview'" @click="backToEdit()"
-                        :disabled="saving"
-                        class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition">
-                    Geri
-                </button>
-                <button type="button" x-show="step === 'preview'" @click="saveCroppedImage()" 
+                <button type="button" @click="saveAvatar()"
                         :disabled="saving"
                         class="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-500/50 text-white rounded-xl font-medium transition flex items-center gap-2">
                     <i class="fas fa-check" x-show="!saving"></i>
@@ -135,7 +87,7 @@
                        id="avatar-input"
                        accept="image/*"
                        class="hidden"
-                       @change="openCropper($event)">
+                       @change="openPreview($event)">
                 
                 <p class="text-slate-500 text-xs mt-3">Tıkla ve fotoğraf seç</p>
 
@@ -317,29 +269,22 @@
 
 </div>
 
-{{-- Alpine.js Avatar Cropper --}}
+{{-- Alpine.js Avatar Uploader --}}
 <script>
 /**
- * 📚 AVATAR CROPPER
- * 
- * @KAVRAM: Cropper.js
- * - Görsel kırpma kütüphanesi
- * - aspectRatio: 1 → Kare kırpma (avatar için ideal)
- * - viewMode: 1 → Görsel canvas dışına çıkamaz
- * - getCroppedCanvas() → Kırpılmış görseli canvas olarak al
- * - toBlob() → Canvas'ı Blob'a çevir (upload için)
+ * 📚 AVATAR UPLOADER
+ *
+ * Akış: Dosya seç → Önizleme → Onayla ve Kaydet
  */
-function avatarCropper() {
+function avatarUploader() {
     return {
         showModal: false,
-        step: 'edit',
-        cropper: null,
         previewDataUrl: '',
-        previewBlob: null,
+        selectedFile: null,
         saving: false,
         
-        // Dosya seçildiğinde modal aç
-        openCropper(event) {
+        // Dosya seçildiğinde önizleme modalını aç
+        openPreview(event) {
             const file = event.target.files[0];
             if (!file) return;
             
@@ -349,117 +294,41 @@ function avatarCropper() {
                 return;
             }
             
-            // Dosya boyutu kontrolü (max 10MB raw, kırpıldıktan sonra küçülecek)
+            // Dosya boyutu kontrolü (max 10MB)
             if (file.size > 10 * 1024 * 1024) {
                 alert('Dosya boyutu 10MB\'dan küçük olmalı.');
                 return;
             }
             
-            // Görseli oku ve cropper'a yükle
+            // Görseli oku ve önizlemeye bas
             const reader = new FileReader();
             reader.onload = (e) => {
-                const image = document.getElementById('cropper-image');
-                image.src = e.target.result;
-                this.step = 'edit';
-                this.previewDataUrl = '';
-                this.previewBlob = null;
+                this.selectedFile = file;
+                this.previewDataUrl = e.target.result;
                 this.showModal = true;
-                
-                // Modal açıldıktan sonra cropper'ı başlat
-                this.$nextTick(() => {
-                    // Önceki cropper varsa yok et
-                    if (this.cropper) {
-                        this.cropper.destroy();
-                    }
-                    
-                    this.cropper = new Cropper(image, {
-                        aspectRatio: 1,        // Kare kırpma
-                        viewMode: 1,           // Görsel sınırları içinde kal
-                        dragMode: 'move',      // Görseli sürükle
-                        autoCropArea: 0.8,     // Başlangıç kırpma alanı %80
-                        restore: false,
-                        guides: true,          // Izgara çizgileri
-                        center: true,          // Merkez çizgisi
-                        highlight: false,
-                        cropBoxMovable: true,
-                        cropBoxResizable: true,
-                        toggleDragModeOnDblclick: false,
-                        responsive: true,
-                        background: true,      // Şeffaf arka plan deseni
-                    });
-                });
             };
             reader.readAsDataURL(file);
         },
         
         // Modal kapat
-        closeCropper() {
+        closePreview() {
             this.showModal = false;
-            this.step = 'edit';
             this.previewDataUrl = '';
-            this.previewBlob = null;
-            if (this.cropper) {
-                this.cropper.destroy();
-                this.cropper = null;
-            }
+            this.selectedFile = null;
+            this.saving = false;
             // Input'u temizle (aynı dosya tekrar seçilebilsin)
             document.getElementById('avatar-input').value = '';
         },
-
-        generatePreview() {
-            if (!this.cropper) return;
-
-            const canvas = this.cropper.getCroppedCanvas({
-                width: 400,
-                height: 400,
-                imageSmoothingEnabled: true,
-                imageSmoothingQuality: 'high',
-            });
-
-            if (!canvas) return;
-
-            this.previewDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-            canvas.toBlob((blob) => {
-                if (!blob) return;
-                this.previewBlob = blob;
-                this.step = 'preview';
-            }, 'image/jpeg', 0.9);
-        },
-
-        backToEdit() {
-            this.step = 'edit';
-        },
         
-        // Zoom
-        zoom(ratio) {
-            if (this.cropper) {
-                this.cropper.zoom(ratio);
-            }
-        },
-        
-        // Rotate
-        rotate(degree) {
-            if (this.cropper) {
-                this.cropper.rotate(degree);
-            }
-        },
-        
-        // Reset
-        reset() {
-            if (this.cropper) {
-                this.cropper.reset();
-            }
-        },
-        
-        // Kırpılmış görseli kaydet
-        async saveCroppedImage() {
-            if (!this.previewBlob || this.saving) return;
-            
+        // Önizlemesi görülen görseli kaydet
+        async saveAvatar() {
+            if (!this.selectedFile || this.saving) return;
+             
             this.saving = true;
-            
+             
             try {
                 const formData = new FormData();
-                formData.append('avatar', this.previewBlob, 'avatar.jpg');
+                formData.append('avatar', this.selectedFile, this.selectedFile.name || 'avatar.jpg');
                 formData.append('_token', '{{ csrf_token() }}');
 
                 try {
@@ -473,8 +342,13 @@ function avatarCropper() {
                         // Başarılı - sayfayı yenile
                         window.location.reload();
                     } else {
-                        const data = await response.json();
-                        alert(data.message || 'Avatar yüklenirken bir hata oluştu.');
+                        let data = null;
+                        try {
+                            data = await response.json();
+                        } catch (e) {
+                            data = null;
+                        }
+                        alert(data?.message || 'Avatar yüklenirken bir hata oluştu.');
                         this.saving = false;
                     }
                 } catch (error) {
@@ -566,34 +440,6 @@ function showcaseSelector() {
         background-color: #4338ca !important;
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3) !important;
-    }
-    
-    /* Cropper.js Dark Theme Overrides */
-    .cropper-container {
-        background-color: #0f172a !important;
-    }
-    .cropper-modal {
-        background-color: rgba(0, 0, 0, 0.7) !important;
-    }
-    .cropper-view-box {
-        outline: 2px solid #6366f1 !important;
-        outline-color: rgba(99, 102, 241, 0.75) !important;
-    }
-    .cropper-line {
-        background-color: #6366f1 !important;
-    }
-    .cropper-point {
-        background-color: #6366f1 !important;
-        width: 10px !important;
-        height: 10px !important;
-        opacity: 1 !important;
-    }
-    .cropper-dashed {
-        border-color: rgba(255, 255, 255, 0.3) !important;
-    }
-    .cropper-center::before,
-    .cropper-center::after {
-        background-color: rgba(255, 255, 255, 0.5) !important;
     }
 </style>
 @endsection
