@@ -34,4 +34,28 @@ class PrivacyControllerTest extends TestCase
         $this->assertTrue($collection->is_public);
         $this->assertNotNull($collection->share_token);
     }
+
+    public function test_opening_public_collection_repairs_missing_share_token(): void
+    {
+        $owner = User::factory()->create();
+
+        $collection = Collection::query()->create([
+            'user_id' => $owner->id,
+            'name' => 'Public Koleksiyon',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => true,
+            'share_token' => null,
+        ]);
+
+        $response = $this
+            ->actingAs($owner)
+            ->get(route('collections.show', $collection));
+
+        $response->assertOk();
+        $collection->refresh();
+        $this->assertNotNull($collection->share_token);
+        $this->assertTrue($collection->is_public);
+    }
 }

@@ -6,6 +6,7 @@ use App\Models\Collection;
 use App\Models\Movie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class CollectionController extends Controller
 {
@@ -37,6 +38,11 @@ class CollectionController extends Controller
     public function show(Collection $collection)
     {
         $this->authorize('view', $collection);
+
+        if ($collection->is_public && blank($collection->share_token)) {
+            $collection->forceFill(['share_token' => (string) Str::uuid()])->save();
+            $collection->refresh();
+        }
 
         // Filmleri user ilişkisiyle birlikte yükle (ileride kullanıcı adı göstermek istersek)
         $collection->load('movies');
