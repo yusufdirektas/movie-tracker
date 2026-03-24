@@ -49,7 +49,7 @@ class WatchlistController extends Controller
 
         // Filtreleri hazırla
         $filters = [
-            'search' => mb_strtolower($request->input('search'), 'UTF-8'),
+            'search' => mb_strtolower((string) $request->input('search', ''), 'UTF-8'),
             'genre'  => $request->input('genre'),
             'sort'   => $request->input('sort', 'updated_at'),
         ];

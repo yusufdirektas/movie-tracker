@@ -60,7 +60,7 @@ class MovieController extends Controller
         // ---------------------------------------------------------------------
 
         $filter = $request->input('filter', 'all');
-        $search = mb_strtolower($request->input('search'), 'UTF-8');
+        $search = mb_strtolower((string) $request->input('search', ''), 'UTF-8');
         $genre = $request->input('genre');
         $sort = $request->input('sort', 'updated_at');
 
@@ -183,7 +183,7 @@ class MovieController extends Controller
             return $this->handleDiscoverSearch($request);
         }
 
-        $query = mb_strtolower($request->input('query'), 'UTF-8');
+        $query = mb_strtolower((string) $request->input('query', ''), 'UTF-8');
         if (!$query) return response()->json([]);
 
         // Import sayfası smart=1 parametresi gönderir → yazım hatası toleranslı arama

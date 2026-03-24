@@ -94,4 +94,17 @@ class MovieControllerTest extends TestCase
             'is_watched' => true,
         ]);
     }
+
+    public function test_api_search_without_query_returns_empty_array_without_error()
+    {
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.api_search'));
+
+        $response
+            ->assertOk()
+            ->assertExactJson([]);
+    }
 }
