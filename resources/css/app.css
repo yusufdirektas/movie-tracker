@@ -7,6 +7,80 @@
     display: none !important;
 }
 
+.ysd-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: #7f8aa8;
+  background: transparent;
+  border: 1px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 38px;
+  transition:
+    max-width 280ms cubic-bezier(0.34, 1.2, 0.64, 1),
+    background 240ms ease,
+    color 240ms ease,
+    border-color 240ms ease,
+    box-shadow 240ms ease,
+    gap 280ms cubic-bezier(0.34, 1.2, 0.64, 1);
+  position: relative;
+}
+
+.ysd-nav-item:hover,
+.ysd-nav-item.is-active {
+  max-width: 240px;
+  gap: 8px;
+  color: #eef2ff;
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.24);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.15), 0 8px 20px rgba(2, 6, 23, 0.35);
+}
+
+.ysd-nav-item.is-active {
+  background: rgba(99, 102, 241, 0.24);
+  border-color: rgba(129, 140, 248, 0.45);
+}
+
+.ysd-nav-item .ysd-nav-icon {
+  width: 18px;
+  min-width: 18px;
+  text-align: center;
+  color: inherit;
+}
+
+.ysd-nav-item .ysd-nav-label {
+  opacity: 0;
+  transform: translateX(-6px);
+  pointer-events: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: opacity 200ms ease, transform 260ms cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.ysd-nav-item:hover .ysd-nav-label,
+.ysd-nav-item.is-active .ysd-nav-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.ysd-nav-item.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: #818cf8;
+  opacity: 0.85;
+}
+
 /* --- GİRİŞ EKRANI (DARK MODE DÜZELTMELERİ) --- */
 
 /* 1. Input Kutularının İçi (Yazı yazdığın yer) */

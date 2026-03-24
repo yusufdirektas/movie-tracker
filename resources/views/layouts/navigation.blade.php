@@ -26,46 +26,54 @@
                     </a>
                 </div>
 
-                <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                    <x-nav-link :href="route('movies.index')" :active="request()->routeIs('movies.index')"
-                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors flex items-center gap-2">
-                        <i class="fas fa-film"></i> {{ __('Film Arşivim') }}
-                    </x-nav-link>
+                <div class="hidden sm:ml-10 sm:flex sm:items-center sm:gap-2">
+                    <a href="{{ route('movies.index') }}"
+                        class="ysd-nav-item {{ request()->routeIs('movies.index') ? 'is-active' : '' }}">
+                        <i class="fas fa-film ysd-nav-icon"></i>
+                        <span class="ysd-nav-label">{{ __('Film Arşivim') }}</span>
+                    </a>
 
-                    <x-nav-link :href="route('movies.watchlist')" :active="request()->routeIs('movies.watchlist')"
-                        class="text-slate-300 hover:text-white hover:border-amber-500 focus:text-white focus:border-amber-500 transition-colors flex items-center gap-2">
-                        <i class="fas fa-bookmark text-amber-500/70"></i> {{ __('İzleme Listem') }}
-                    </x-nav-link>
+                    <a href="{{ route('movies.watchlist') }}"
+                        class="ysd-nav-item {{ request()->routeIs('movies.watchlist') ? 'is-active' : '' }}">
+                        <i class="fas fa-bookmark ysd-nav-icon text-amber-500/80"></i>
+                        <span class="ysd-nav-label">{{ __('İzleme Listem') }}</span>
+                    </a>
 
-                    <x-nav-link :href="route('movies.create')" :active="request()->routeIs('movies.create')"
-                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors flex items-center gap-2">
-                        <i class="fas fa-plus"></i> {{ __('Film Ekle') }}
-                    </x-nav-link>
+                    <a href="{{ route('movies.create') }}"
+                        class="ysd-nav-item {{ request()->routeIs('movies.create') ? 'is-active' : '' }}">
+                        <i class="fas fa-plus ysd-nav-icon"></i>
+                        <span class="ysd-nav-label">{{ __('Film Ekle') }}</span>
+                    </a>
 
-                    <x-nav-link :href="route('movies.recommendations')" :active="request()->routeIs('movies.recommendations')"
-                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors flex items-center gap-2">
-                        <i class="fas fa-magic text-purple-400"></i> {{ __('Sana Özel Öneriler') }}
-                    </x-nav-link>
+                    <a href="{{ route('movies.recommendations') }}"
+                        class="ysd-nav-item {{ request()->routeIs('movies.recommendations') ? 'is-active' : '' }}">
+                        <i class="fas fa-magic ysd-nav-icon text-purple-400"></i>
+                        <span class="ysd-nav-label">{{ __('Sana Özel Öneriler') }}</span>
+                    </a>
 
-                    <x-nav-link :href="route('movies.now_playing')" :active="request()->routeIs('movies.now_playing')"
-                        class="text-slate-300 hover:text-white hover:border-indigo-500 focus:text-white focus:border-indigo-500 transition-colors flex items-center gap-2">
-                        <i class="fas fa-fire text-orange-500"></i> {{ __('Vizyondakiler') }}
-                    </x-nav-link>
+                    <a href="{{ route('movies.now_playing') }}"
+                        class="ysd-nav-item {{ request()->routeIs('movies.now_playing') ? 'is-active' : '' }}">
+                        <i class="fas fa-fire ysd-nav-icon text-orange-500"></i>
+                        <span class="ysd-nav-label">{{ __('Vizyondakiler') }}</span>
+                    </a>
 
-                    <x-nav-link :href="route('collections.index')" :active="request()->routeIs('collections.*')"
-                        class="text-slate-300 hover:text-white hover:border-teal-500 focus:text-white focus:border-teal-500 transition-colors flex items-center gap-2">
-                        <i class="fas fa-layer-group text-teal-400"></i> {{ __('Koleksiyonlarım') }}
-                    </x-nav-link>
+                    <a href="{{ route('collections.index') }}"
+                        class="ysd-nav-item {{ request()->routeIs('collections.*') ? 'is-active' : '' }}">
+                        <i class="fas fa-layer-group ysd-nav-icon text-teal-400"></i>
+                        <span class="ysd-nav-label">{{ __('Koleksiyonlarım') }}</span>
+                    </a>
 
-                    <x-nav-link :href="route('movies.statistics')" :active="request()->routeIs('movies.statistics')"
-                        class="text-indigo-300 hover:text-indigo-200 hover:border-indigo-400 focus:text-indigo-200 focus:border-indigo-400 transition-colors font-bold flex items-center gap-2">
-                        <i class="fas fa-chart-pie"></i> {{ __('İstatistikler') }}
-                    </x-nav-link>
+                    <a href="{{ route('movies.statistics') }}"
+                        class="ysd-nav-item {{ request()->routeIs('movies.statistics') ? 'is-active' : '' }}">
+                        <i class="fas fa-chart-pie ysd-nav-icon"></i>
+                        <span class="ysd-nav-label">{{ __('İstatistikler') }}</span>
+                    </a>
 
-                    <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*') || request()->routeIs('feed')"
-                        class="text-slate-300 hover:text-white hover:border-pink-500 focus:text-white focus:border-pink-500 transition-colors flex items-center gap-2">
-                        <i class="fas fa-users text-pink-400"></i> {{ __('Keşfet') }}
-                    </x-nav-link>
+                    <a href="{{ route('users.index') }}"
+                        class="ysd-nav-item {{ request()->routeIs('users.*') || request()->routeIs('feed') ? 'is-active' : '' }}">
+                        <i class="fas fa-users ysd-nav-icon text-pink-400"></i>
+                        <span class="ysd-nav-label">{{ __('Keşfet') }}</span>
+                    </a>
                 </div>
             </div>
 
