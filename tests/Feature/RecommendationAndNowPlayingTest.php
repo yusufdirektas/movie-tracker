@@ -111,4 +111,48 @@ class RecommendationAndNowPlayingTest extends TestCase
         $response->assertDontSee('Arsivde Olan Vizyon Filmi');
         $response->assertSee('Yeni Vizyon Filmi');
     }
+
+    public function test_recommendations_response_is_cached_for_same_last_movie(): void
+    {
+        Http::fake([
+            'api.themoviedb.org/*/recommendations*' => Http::response([
+                'results' => [
+                    ['id' => 3001, 'title' => 'Cache Oneri'],
+                ],
+            ], 200),
+            'api.themoviedb.org/*' => Http::response(['results' => []], 200),
+        ]);
+
+        $user = User::factory()->create();
+        Movie::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Cache Film',
+            'tmdb_id' => 987,
+            'is_watched' => true,
+        ]);
+
+        $this->actingAs($user)->get(route('movies.recommendations'))->assertOk();
+        $this->actingAs($user)->get(route('movies.recommendations'))->assertOk();
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_now_playing_response_is_cached_between_requests(): void
+    {
+        Http::fake([
+            'api.themoviedb.org/*/now_playing*' => Http::response([
+                'results' => [
+                    ['id' => 4001, 'title' => 'Cache Vizyon Film'],
+                ],
+            ], 200),
+            'api.themoviedb.org/*' => Http::response(['results' => []], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('movies.now_playing'))->assertOk();
+        $this->actingAs($user)->get(route('movies.now_playing'))->assertOk();
+
+        Http::assertSentCount(1);
+    }
 }

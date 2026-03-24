@@ -130,4 +130,16 @@ class ProfileTest extends TestCase
 
         $response->assertOk();
     }
+
+    public function test_profile_page_does_not_force_focus_to_account_information_inputs(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/profile');
+
+        $response->assertOk();
+        $response->assertDontSee('required autofocus autocomplete="name"', false);
+    }
 }
