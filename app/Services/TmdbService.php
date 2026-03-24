@@ -145,6 +145,133 @@ class TmdbService
     }
 
     /**
+     * 1.2. Gelişmiş Film Arama (Discover API)
+     *
+     * 📚 TMDB DISCOVER API
+     *
+     * /search/movie → Sadece isimle arama yapar
+     * /discover/movie → Yıl, tür, puan, süre gibi filtrelerle arama yapar
+     *
+     * Bu metod, kullanıcının gelişmiş filtrelerle TMDB'de film keşfetmesini sağlar.
+     * Tüm parametreler opsiyoneldir - sadece dolu olanlar gönderilir.
+     *
+     * @param array $filters Filtre parametreleri:
+     *   - query: string|null     → Film adı (varsa /search, yoksa /discover kullanılır)
+     *   - year: int|null         → Çıkış yılı (tam eşleşme)
+     *   - year_from: int|null    → Minimum çıkış yılı
+     *   - year_to: int|null      → Maksimum çıkış yılı
+     *   - genre: int|null        → Tür ID'si (TMDB genre ID)
+     *   - min_rating: float|null → Minimum TMDB puanı (0-10)
+     *   - sort_by: string|null   → Sıralama (popularity.desc, vote_average.desc, vb.)
+     *
+     * @return \Illuminate\Http\Client\Response|null
+     *
+     * Kullanım:
+     *   $tmdb->discoverMovies(['year_from' => 2020, 'min_rating' => 7.0]);
+     *   $tmdb->discoverMovies(['query' => 'Batman', 'year' => 2022]);
+     *   $tmdb->discoverMovies(['genre' => 28, 'page' => 2]); // 2. sayfa
+     */
+    public function discoverMovies(array $filters = [])
+    {
+        // Eğer query varsa, önce search endpoint'i kullan ve sonuçları filtrele
+        // Query yoksa discover endpoint'i kullan
+        $hasQuery = !empty($filters['query']);
+
+        // 📚 SAYFALAMA (Pagination)
+        // TMDB her sayfada 20 sonuç döner. page parametresi ile sonraki sayfaları alabiliriz.
+        $page = $filters['page'] ?? 1;
+
+        if ($hasQuery) {
+            // Search endpoint + client-side filtreleme
+            // (TMDB search API filtreleme desteklemiyor, sadece query alıyor)
+            return $this->request('/search/movie', [
+                'query'         => $filters['query'],
+                'include_adult' => false,
+                'year'          => $filters['year'] ?? null, // Search API sadece year destekler
+                'page'          => $page,
+            ]);
+        }
+
+        // Discover endpoint - tüm filtreleri destekler
+        $params = [
+            'include_adult'  => false,
+            'sort_by'        => $filters['sort_by'] ?? 'popularity.desc',
+            'vote_count.gte' => 50, // Çok az oy alan filmleri hariç tut
+            'page'           => $page,
+        ];
+
+        // Yıl filtreleri
+        if (!empty($filters['year'])) {
+            $params['primary_release_year'] = $filters['year'];
+        }
+        if (!empty($filters['year_from'])) {
+            $params['primary_release_date.gte'] = $filters['year_from'] . '-01-01';
+        }
+        if (!empty($filters['year_to'])) {
+            $params['primary_release_date.lte'] = $filters['year_to'] . '-12-31';
+        }
+
+        // Tür filtresi (TMDB genre ID)
+        if (!empty($filters['genre'])) {
+            $params['with_genres'] = $filters['genre'];
+        }
+
+        // Puan filtresi
+        if (!empty($filters['min_rating'])) {
+            $params['vote_average.gte'] = $filters['min_rating'];
+        }
+
+        // Süre filtresi (dakika)
+        if (!empty($filters['runtime_min'])) {
+            $params['with_runtime.gte'] = $filters['runtime_min'];
+        }
+        if (!empty($filters['runtime_max'])) {
+            $params['with_runtime.lte'] = $filters['runtime_max'];
+        }
+
+        return $this->request('/discover/movie', $params);
+    }
+
+    /**
+     * 1.3. TMDB Tür Listesini Getir
+     *
+     * 📚 Genre ID'leri sabit olduğu için cache'lenebilir.
+     * UI'da dropdown için kullanılır.
+     *
+     * @return array Tür listesi [{id: 28, name: "Aksiyon"}, ...]
+     */
+    public function getGenres(): array
+    {
+        $response = $this->request('/genre/movie/list');
+
+        if ($response?->successful()) {
+            return $response->json()['genres'] ?? [];
+        }
+
+        // Fallback: En yaygın türler (API başarısız olursa)
+        return [
+            ['id' => 28, 'name' => 'Aksiyon'],
+            ['id' => 12, 'name' => 'Macera'],
+            ['id' => 16, 'name' => 'Animasyon'],
+            ['id' => 35, 'name' => 'Komedi'],
+            ['id' => 80, 'name' => 'Suç'],
+            ['id' => 99, 'name' => 'Belgesel'],
+            ['id' => 18, 'name' => 'Dram'],
+            ['id' => 10751, 'name' => 'Aile'],
+            ['id' => 14, 'name' => 'Fantastik'],
+            ['id' => 36, 'name' => 'Tarih'],
+            ['id' => 27, 'name' => 'Korku'],
+            ['id' => 10402, 'name' => 'Müzik'],
+            ['id' => 9648, 'name' => 'Gizem'],
+            ['id' => 10749, 'name' => 'Romantik'],
+            ['id' => 878, 'name' => 'Bilim Kurgu'],
+            ['id' => 53, 'name' => 'Gerilim'],
+            ['id' => 10752, 'name' => 'Savaş'],
+            ['id' => 37, 'name' => 'Western'],
+        ];
+    }
+
+    /**
      * 1.1. Akıllı Arama Motoru v3 – Başlık Doğrulamalı + Dil Filtreleme
      *
      * 📚 KÖK SORUNLAR VE ÇÖZÜMLER:

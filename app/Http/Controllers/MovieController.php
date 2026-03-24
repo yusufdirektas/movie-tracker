@@ -156,11 +156,33 @@ class MovieController extends Controller
 
     public function create()
     {
-        return view('movies.create');
+        // TMDB tür listesini al (gelişmiş arama dropdown'u için)
+        $tmdbGenres = $this->tmdb->getGenres();
+
+        return view('movies.create', compact('tmdbGenres'));
     }
 
+    /**
+     * 📚 API ARAMA ENDPOINT'İ
+     *
+     * Bu endpoint 3 farklı modda çalışır:
+     *
+     * 1. Normal Arama (?query=batman)
+     *    → Basit film adı araması, create sayfası için
+     *
+     * 2. Akıllı Arama (?query=batman&smart=1)
+     *    → Yazım hatası toleranslı, import sayfası için
+     *
+     * 3. Gelişmiş Arama (?discover=1&year_from=2020&min_rating=7)
+     *    → TMDB Discover API ile filtreleme
+     */
     public function apiSearch(Request $request)
     {
+        // 🆕 Gelişmiş arama modu (Discover API)
+        if ($request->boolean('discover')) {
+            return $this->handleDiscoverSearch($request);
+        }
+
         $query = mb_strtolower($request->input('query'), 'UTF-8');
         if (!$query) return response()->json([]);
 
@@ -183,6 +205,101 @@ class MovieController extends Controller
         }
 
         return response()->json([]);
+    }
+
+    /**
+     * 📚 GELİŞMİŞ ARAMA İŞLEYİCİSİ (Discover API)
+     *
+     * TMDB Discover API'yi kullanarak filtrelenmiş sonuçlar döner.
+     * Query varsa search + client-side filter, yoksa pure discover.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    protected function handleDiscoverSearch(Request $request)
+    {
+        $filters = [
+            'query'       => $request->input('query'),
+            'year'        => $request->input('year'),
+            'year_from'   => $request->input('year_from'),
+            'year_to'     => $request->input('year_to'),
+            'genre'       => $request->input('genre'),
+            'min_rating'  => $request->input('min_rating'),
+            'runtime_min' => $request->input('runtime_min'),
+            'runtime_max' => $request->input('runtime_max'),
+            'sort_by'     => $request->input('sort_by', 'popularity.desc'),
+            'page'        => $request->input('page', 1), // 🆕 Sayfa numarası
+        ];
+
+        // Boş değerleri temizle (page hariç)
+        $page = $filters['page'];
+        $filters = array_filter($filters, fn($v) => $v !== null && $v !== '');
+        $filters['page'] = $page;
+
+        // En az bir filtre olmalı (page hariç)
+        $filtersWithoutPage = array_diff_key($filters, ['page' => true]);
+        if (empty($filtersWithoutPage)) {
+            return response()->json(['results' => [], 'page' => 1, 'total_pages' => 0]);
+        }
+
+        $response = $this->tmdb->discoverMovies($filters);
+
+        if ($response?->successful()) {
+            $data = $response->json();
+            $results = collect($data['results'] ?? []);
+
+            // Query varsa client-side filtreleme yap
+            // (TMDB search API yıl dışında filtre desteklemiyor)
+            if (!empty($filters['query'])) {
+                // Yıl filtresi
+                if (!empty($filters['year_from'])) {
+                    $results = $results->filter(function ($movie) use ($filters) {
+                        $year = substr($movie['release_date'] ?? '', 0, 4);
+                        return $year >= $filters['year_from'];
+                    });
+                }
+                if (!empty($filters['year_to'])) {
+                    $results = $results->filter(function ($movie) use ($filters) {
+                        $year = substr($movie['release_date'] ?? '', 0, 4);
+                        return $year <= $filters['year_to'];
+                    });
+                }
+
+                // Puan filtresi
+                if (!empty($filters['min_rating'])) {
+                    $results = $results->filter(function ($movie) use ($filters) {
+                        return ($movie['vote_average'] ?? 0) >= $filters['min_rating'];
+                    });
+                }
+
+                // Tür filtresi
+                if (!empty($filters['genre'])) {
+                    $results = $results->filter(function ($movie) use ($filters) {
+                        return in_array((int) $filters['genre'], $movie['genre_ids'] ?? []);
+                    });
+                }
+            }
+
+            /**
+             * 📚 SAYFALAMA BİLGİSİ
+             *
+             * TMDB API her yanıtta şunları döner:
+             * - page: Mevcut sayfa numarası
+             * - total_pages: Toplam sayfa sayısı
+             * - total_results: Toplam sonuç sayısı
+             *
+             * Frontend bu bilgiyi kullanarak "Daha fazla yükle" butonunu
+             * gösterip göstermeyeceğine karar verir.
+             */
+            return response()->json([
+                'results'       => $results->values(),
+                'page'          => $data['page'] ?? 1,
+                'total_pages'   => min($data['total_pages'] ?? 1, 500), // TMDB max 500 sayfa
+                'total_results' => $data['total_results'] ?? 0,
+            ]);
+        }
+
+        return response()->json(['results' => [], 'page' => 1, 'total_pages' => 0]);
     }
 
     public function store(StoreMovieRequest $request)
