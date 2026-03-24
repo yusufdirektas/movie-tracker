@@ -187,7 +187,7 @@
             </div>
         </div>
 
-        {{-- SIRALAMA & TÜR DROPDOWN'LARI (AJAX) --}}
+        {{-- SIRALAMA & GELİŞMİŞ DROPDOWN'LARI (AJAX) --}}
         <div class="mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3 flex-wrap">
                 <span class="text-slate-500 text-xs font-bold uppercase tracking-widest hidden sm:inline-block">
@@ -201,17 +201,6 @@
                     <option value="personal_rating">Kişisel Puan</option>
                     <option value="release_date">Yayın Tarihi</option>
                     <option value="runtime">Süre</option>
-                </select>
-
-                <span class="text-slate-500 text-xs font-bold uppercase tracking-widest hidden sm:inline-block ml-4">
-                    <i class="fas fa-filter mr-1"></i> Tür
-                </span>
-                <select x-model="genre" @change="_fetch()"
-                    class="bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer max-w-[150px] truncate">
-                    <option value="">Tüm Türler</option>
-                    @foreach($availableGenres as $g)
-                        <option value="{{ $g }}">{{ $g }}</option>
-                    @endforeach
                 </select>
 
                 {{-- 🆕 GELİŞMİŞ FİLTRELER BUTONU --}}
@@ -278,7 +267,21 @@
                 </button>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+
+                {{-- 🎭 TÜRLER (Genre) --}}
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fas fa-masks-theater text-pink-400"></i> Tür
+                    </label>
+                    <select x-model="genre" @change="_fetch()"
+                        class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer">
+                        <option value="">Tüm Türler</option>
+                        @foreach($availableGenres as $g)
+                            <option value="{{ $g }}">{{ $g }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
                 {{-- 📅 YIL ARALIĞI --}}
                 <div class="space-y-2">
@@ -331,7 +334,7 @@
                 {{-- 🎬 MEDYA TİPİ (Film/Dizi) --}}
                 <div class="space-y-2">
                     <label class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                        <i class="fas fa-film text-purple-400"></i> Tür
+                        <i class="fas fa-film text-purple-400"></i> Medya Tipi
                     </label>
                     <select x-model="mediaType" @change="_fetch()"
                         class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer">
@@ -342,7 +345,7 @@
                 </div>
 
                 {{-- 🎥 YÖNETMEN --}}
-                <div class="space-y-2 md:col-span-2">
+                <div class="space-y-2 lg:col-span-5">
                     <label class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                         <i class="fas fa-user-tie text-emerald-400"></i> Yönetmen
                     </label>

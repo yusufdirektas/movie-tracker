@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Movie;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -95,5 +96,25 @@ class ProfileTest extends TestCase
             ->assertRedirect('/profile');
 
         $this->assertNotNull($user->fresh());
+    }
+
+    public function test_public_user_profile_page_handles_string_release_date_without_crashing(): void
+    {
+        $viewer = User::factory()->create();
+        $profileOwner = User::factory()->create([
+            'is_public' => true,
+        ]);
+
+        Movie::factory()->create([
+            'user_id' => $profileOwner->id,
+            'is_watched' => false,
+            'release_date' => '2023-01-01',
+        ]);
+
+        $response = $this
+            ->actingAs($viewer)
+            ->get(route('users.show', $profileOwner));
+
+        $response->assertOk();
     }
 }
