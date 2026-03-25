@@ -1,4 +1,23 @@
-<nav x-data="{ open: false }" @keydown.escape.window="open = false" class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50" aria-label="Ana navigasyon">
+<nav
+    x-data="{
+        open: false,
+        toggleMenu() {
+            this.open = !this.open;
+        },
+        closeMenu() {
+            this.open = false;
+        }
+    }"
+    x-init="$watch('open', (value) => {
+        if (value) {
+            $nextTick(() => $refs.firstMobileLink?.focus());
+            return;
+        }
+        $nextTick(() => $refs.menuToggle?.focus());
+    })"
+    @keydown.escape.window="closeMenu()"
+    class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50"
+    aria-label="Ana navigasyon">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-20">
             <div class="flex">
@@ -148,7 +167,7 @@
             </div>
 
             <div class="-mr-2 flex items-center sm:hidden">
-                <button @click="open = ! open"
+                <button x-ref="menuToggle" @click="toggleMenu()"
                     class="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 transition duration-150 ease-in-out"
                     :aria-expanded="open.toString()"
                     aria-controls="mobile-menu"
@@ -168,6 +187,8 @@
     <div id="mobile-menu" :class="{ 'block': open, 'hidden': !open }" :aria-hidden="(!open).toString()" class="hidden sm:hidden bg-slate-900 border-t border-slate-800">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('movies.index')" :active="request()->routeIs('movies.index')"
+                x-ref="firstMobileLink"
+                x-on:click="closeMenu()"
                 aria-label="Film Arşivim"
                 :aria-current="request()->routeIs('movies.index') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
@@ -175,6 +196,7 @@
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.watchlist')" :active="request()->routeIs('movies.watchlist')"
+                x-on:click="closeMenu()"
                 aria-label="İzleme Listem"
                 :aria-current="request()->routeIs('movies.watchlist') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-amber-500 flex items-center gap-2">
@@ -182,6 +204,7 @@
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.create')" :active="request()->routeIs('movies.create')"
+                x-on:click="closeMenu()"
                 aria-label="Film Ekle"
                 :aria-current="request()->routeIs('movies.create') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
@@ -189,6 +212,7 @@
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.recommendations')" :active="request()->routeIs('movies.recommendations')"
+                x-on:click="closeMenu()"
                 aria-label="Sana Özel Öneriler"
                 :aria-current="request()->routeIs('movies.recommendations') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
@@ -196,6 +220,7 @@
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.now_playing')" :active="request()->routeIs('movies.now_playing')"
+                x-on:click="closeMenu()"
                 aria-label="Vizyondakiler"
                 :aria-current="request()->routeIs('movies.now_playing') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
@@ -203,6 +228,7 @@
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('collections.index')" :active="request()->routeIs('collections.*')"
+                x-on:click="closeMenu()"
                 aria-label="Koleksiyonlarım"
                 :aria-current="request()->routeIs('collections.*') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-teal-500 flex items-center gap-2">
@@ -210,6 +236,7 @@
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.statistics')" :active="request()->routeIs('movies.statistics')"
+                x-on:click="closeMenu()"
                 aria-label="İstatistikler"
                 :aria-current="request()->routeIs('movies.statistics') ? 'page' : null"
                 class="text-indigo-400 font-bold hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
@@ -217,6 +244,7 @@
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*') || request()->routeIs('feed')"
+                x-on:click="closeMenu()"
                 aria-label="Keşfet"
                 :aria-current="request()->routeIs('users.*') || request()->routeIs('feed') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-pink-500 flex items-center gap-2">
@@ -231,13 +259,14 @@
             </div>
 
             <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile.edit')" class="text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
+                <x-responsive-nav-link :href="route('profile.edit')" x-on:click="closeMenu()" class="text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
                     <i class="fas fa-user-circle w-5 text-center"></i> {{ __('Profil') }}
                 </x-responsive-nav-link>
 
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <x-responsive-nav-link :href="route('logout')"
+                        x-on:click="closeMenu()"
                         onclick="event.preventDefault();
                                         this.closest('form').submit();"
                         class="text-red-400 hover:text-red-300 hover:bg-slate-800 flex items-center gap-2">

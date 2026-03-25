@@ -136,9 +136,12 @@ class MovieControllerTest extends TestCase
         $response->assertSee('data-nav-group', false);
         $response->assertSee('data-nav-item', false);
         $response->assertSee('aria-label="Film Arşivim"', false);
-        $response->assertSee('@keydown.escape.window="open = false"', false);
+        $response->assertSee('@keydown.escape.window="closeMenu()"', false);
         $response->assertSee(':aria-hidden="(!open).toString()"', false);
         $response->assertSee('aria-label="İzleme Listem"', false);
         $response->assertSee('aria-label="Sana Özel Öneriler"', false);
+        $response->assertSee('x-ref="menuToggle"', false);
+        $response->assertSee('x-ref="firstMobileLink"', false);
+        $response->assertSee("x-on:click=\"closeMenu()\"", false);
     }
 }
