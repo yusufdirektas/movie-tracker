@@ -160,4 +160,19 @@ class MovieControllerTest extends TestCase
         $response->assertRedirect(route('movies.index'));
         $this->assertDatabaseMissing('movies', ['id' => $movie->id]);
     }
+
+    public function test_movie_show_renders_collection_dropdown_opening_upwards(): void
+    {
+        $user = User::factory()->create();
+        $movie = Movie::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.show', $movie));
+
+        $response->assertOk();
+        $response->assertSee('bottom-full mb-2 w-72', false);
+    }
 }

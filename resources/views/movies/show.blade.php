@@ -171,7 +171,7 @@
                             </button>
 
                             <div x-show="open" @click.away="open = false" x-transition
-                                class="absolute left-0 top-full mt-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                                class="absolute left-0 bottom-full mb-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
 
                                 @if($collections->isEmpty())
                                     <div class="p-4 text-center">
