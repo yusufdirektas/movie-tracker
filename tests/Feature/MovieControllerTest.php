@@ -276,4 +276,25 @@ class MovieControllerTest extends TestCase
             'id' => $movie->id,
         ]);
     }
+
+    public function test_duplicate_movie_store_sets_actionable_error_flash_message(): void
+    {
+        $user = User::factory()->create();
+
+        Movie::factory()->create([
+            'user_id' => $user->id,
+            'tmdb_id' => 777,
+            'media_type' => 'movie',
+        ]);
+
+        $response = $this->actingAs($user)->from(route('movies.create'))->post(route('movies.store'), [
+            'tmdb_id' => 777,
+            'is_watched' => '1',
+            'media_type' => 'movie',
+        ]);
+
+        $response->assertRedirect(route('movies.create'));
+        $response->assertSessionHas('error', 'Bu içerik zaten arşivinde mevcut!');
+        $response->assertSessionHas('error_action', 'Aramaya dönüp farklı bir içerik seçebilirsin.');
+    }
 }

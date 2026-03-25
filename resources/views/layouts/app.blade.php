@@ -44,17 +44,39 @@
         <main class="py-12">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-                {{-- Başarı Mesajı Bildirimi --}}
+                {{-- Başarı / Hata Bildirimleri --}}
                 @if(session('success'))
-                    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/50 p-4 rounded-xl flex items-center gap-3 text-emerald-400">
-                        <i class="fas fa-check-circle"></i> {{ session('success') }}
+                    <div x-data="{ show: true }" x-show="show" x-transition x-cloak
+                        role="status" aria-live="polite"
+                        class="mb-6 bg-emerald-500/10 border border-emerald-500/50 p-4 rounded-xl text-emerald-300">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-check-circle mt-0.5"></i>
+                            <div class="flex-1">
+                                <p class="font-semibold">{{ session('success') }}</p>
+                            </div>
+                            <button type="button" @click="show = false" class="text-emerald-300/70 hover:text-emerald-200 transition-colors" aria-label="Başarı mesajını kapat">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
                     </div>
                 @endif
 
-                {{-- Hata Mesajı Bildirimi --}}
                 @if(session('error'))
-                    <div class="mb-6 bg-red-500/10 border border-red-500/50 p-4 rounded-xl flex items-center gap-3 text-red-400">
-                        <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+                    <div x-data="{ show: true }" x-show="show" x-transition x-cloak
+                        role="alert" aria-live="assertive"
+                        class="mb-6 bg-red-500/10 border border-red-500/50 p-4 rounded-xl text-red-300">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-exclamation-circle mt-0.5"></i>
+                            <div class="flex-1">
+                                <p class="font-semibold">{{ session('error') }}</p>
+                                @if(session('error_action'))
+                                    <p class="text-xs text-red-200/80 mt-1">{{ session('error_action') }}</p>
+                                @endif
+                            </div>
+                            <button type="button" @click="show = false" class="text-red-300/70 hover:text-red-200 transition-colors" aria-label="Hata mesajını kapat">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
                     </div>
                 @endif
 

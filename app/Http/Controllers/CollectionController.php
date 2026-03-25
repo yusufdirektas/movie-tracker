@@ -6,6 +6,7 @@ use App\Models\Collection;
 use App\Models\Movie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class CollectionController extends Controller
@@ -123,6 +124,12 @@ class CollectionController extends Controller
 
         // Zaten ekli mi?
         if ($collection->movies()->where('movie_id', $movie->id)->exists()) {
+            Log::info('collection.add_movie.duplicate', [
+                'user_id' => Auth::id(),
+                'collection_id' => $collection->id,
+                'movie_id' => $movie->id,
+            ]);
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
@@ -130,7 +137,9 @@ class CollectionController extends Controller
                 ], 409);
             }
 
-            return back()->with('error', 'Bu film zaten bu koleksiyonda!');
+            return back()
+                ->with('error', 'Bu film zaten bu koleksiyonda!')
+                ->with('error_action', 'Koleksiyon detayından mevcut filmleri kontrol edebilirsin.');
         }
 
         $collection->movies()->attach($movie->id);

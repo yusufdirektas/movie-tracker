@@ -203,4 +203,32 @@ class CollectionControllerTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_duplicate_collection_add_sets_actionable_error_flash_message(): void
+    {
+        $user = User::factory()->create();
+        $collection = Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Tekrar Test',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+        $movie = Movie::factory()->create([
+            'user_id' => $user->id,
+        ]);
+        $collection->movies()->attach($movie->id);
+
+        $response = $this
+            ->actingAs($user)
+            ->from(route('movies.show', $movie))
+            ->post(route('collections.addMovie', $collection), [
+                'movie_id' => $movie->id,
+            ]);
+
+        $response->assertRedirect(route('movies.show', $movie));
+        $response->assertSessionHas('error', 'Bu film zaten bu koleksiyonda!');
+        $response->assertSessionHas('error_action', 'Koleksiyon detayından mevcut filmleri kontrol edebilirsin.');
+    }
 }

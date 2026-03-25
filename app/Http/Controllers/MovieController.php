@@ -10,6 +10,7 @@ use App\Services\TmdbService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class MovieController extends Controller
@@ -316,11 +317,19 @@ class MovieController extends Controller
             ->exists();
 
         if ($alreadyExists) {
+            Log::info('movie.store.duplicate', [
+                'user_id' => $user->id,
+                'tmdb_id' => $request->tmdb_id,
+                'media_type' => $mediaType,
+            ]);
+
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Bu içerik zaten arşivinde mevcut!'], 400);
             }
 
-            return back()->with('error', 'Bu içerik zaten arşivinde mevcut!');
+            return back()
+                ->with('error', 'Bu içerik zaten arşivinde mevcut!')
+                ->with('error_action', 'Aramaya dönüp farklı bir içerik seçebilirsin.');
         }
 
         // media_type'a göre film veya dizi detayını çek
@@ -390,7 +399,15 @@ class MovieController extends Controller
             return response()->json(['success' => false, 'message' => 'Bilgiler alınamadı.'], 500);
         }
 
-        return back()->with('error', 'Bilgiler alınamadı.');
+        Log::warning('movie.store.tmdb_fetch_failed', [
+            'user_id' => $user->id,
+            'tmdb_id' => $request->tmdb_id,
+            'media_type' => $mediaType,
+        ]);
+
+        return back()
+            ->with('error', 'İçerik bilgileri şu anda alınamadı.')
+            ->with('error_action', 'Birkaç saniye sonra tekrar deneyebilirsin.');
     }
 
     /**
