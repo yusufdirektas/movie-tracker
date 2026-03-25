@@ -454,7 +454,7 @@ class MovieController extends Controller
         $this->authorize('delete', $movie);
         $movie->delete();
 
-        return back()->with('success', 'Film silindi.');
+        return redirect()->route('movies.index')->with('success', 'Film silindi.');
     }
 
     public function import()

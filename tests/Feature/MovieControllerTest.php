@@ -144,4 +144,20 @@ class MovieControllerTest extends TestCase
         $response->assertSee('x-ref="firstMobileLink"', false);
         $response->assertSee("x-on:click=\"closeMenu()\"", false);
     }
+
+    public function test_deleting_movie_redirects_to_movies_index_instead_of_back(): void
+    {
+        $user = User::factory()->create();
+        $movie = Movie::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->from(route('movies.show', $movie))
+            ->delete(route('movies.destroy', $movie));
+
+        $response->assertRedirect(route('movies.index'));
+        $this->assertDatabaseMissing('movies', ['id' => $movie->id]);
+    }
 }
