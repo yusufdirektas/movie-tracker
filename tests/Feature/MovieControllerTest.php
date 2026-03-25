@@ -123,4 +123,18 @@ class MovieControllerTest extends TestCase
         $user->refresh();
         $this->assertNotNull($user->share_token);
     }
+
+    public function test_movie_index_contains_accessible_desktop_nav_items(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.index'));
+
+        $response->assertOk();
+        $response->assertSee('data-nav-group', false);
+        $response->assertSee('data-nav-item', false);
+        $response->assertSee('aria-label="Film Arşivim"', false);
+    }
 }

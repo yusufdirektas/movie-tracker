@@ -26,10 +26,11 @@
                     </a>
                 </div>
 
-                <div class="hidden sm:ml-10 sm:flex sm:items-center sm:gap-2">
+                <div class="hidden sm:ml-10 sm:flex sm:items-center sm:gap-2" data-nav-group>
                     <a href="{{ route('movies.index') }}"
                         class="ysd-nav-item {{ request()->routeIs('movies.index') ? 'is-active' : '' }}"
                         aria-label="Film Arşivim"
+                        data-nav-item
                         @if (request()->routeIs('movies.index')) aria-current="page" @endif>
                         <i class="fas fa-film ysd-nav-icon"></i>
                         <span class="ysd-nav-label">{{ __('Film Arşivim') }}</span>
@@ -38,6 +39,7 @@
                     <a href="{{ route('movies.watchlist') }}"
                         class="ysd-nav-item {{ request()->routeIs('movies.watchlist') ? 'is-active' : '' }}"
                         aria-label="İzleme Listem"
+                        data-nav-item
                         @if (request()->routeIs('movies.watchlist')) aria-current="page" @endif>
                         <i class="fas fa-bookmark ysd-nav-icon text-amber-500/80"></i>
                         <span class="ysd-nav-label">{{ __('İzleme Listem') }}</span>
@@ -46,6 +48,7 @@
                     <a href="{{ route('movies.create') }}"
                         class="ysd-nav-item {{ request()->routeIs('movies.create') ? 'is-active' : '' }}"
                         aria-label="Film Ekle"
+                        data-nav-item
                         @if (request()->routeIs('movies.create')) aria-current="page" @endif>
                         <i class="fas fa-plus ysd-nav-icon"></i>
                         <span class="ysd-nav-label">{{ __('Film Ekle') }}</span>
@@ -54,6 +57,7 @@
                     <a href="{{ route('movies.recommendations') }}"
                         class="ysd-nav-item {{ request()->routeIs('movies.recommendations') ? 'is-active' : '' }}"
                         aria-label="Sana Özel Öneriler"
+                        data-nav-item
                         @if (request()->routeIs('movies.recommendations')) aria-current="page" @endif>
                         <i class="fas fa-magic ysd-nav-icon text-purple-400"></i>
                         <span class="ysd-nav-label">{{ __('Sana Özel Öneriler') }}</span>
@@ -62,6 +66,7 @@
                     <a href="{{ route('movies.now_playing') }}"
                         class="ysd-nav-item {{ request()->routeIs('movies.now_playing') ? 'is-active' : '' }}"
                         aria-label="Vizyondakiler"
+                        data-nav-item
                         @if (request()->routeIs('movies.now_playing')) aria-current="page" @endif>
                         <i class="fas fa-fire ysd-nav-icon text-orange-500"></i>
                         <span class="ysd-nav-label">{{ __('Vizyondakiler') }}</span>
@@ -70,6 +75,7 @@
                     <a href="{{ route('collections.index') }}"
                         class="ysd-nav-item {{ request()->routeIs('collections.*') ? 'is-active' : '' }}"
                         aria-label="Koleksiyonlarım"
+                        data-nav-item
                         @if (request()->routeIs('collections.*')) aria-current="page" @endif>
                         <i class="fas fa-layer-group ysd-nav-icon text-teal-400"></i>
                         <span class="ysd-nav-label">{{ __('Koleksiyonlarım') }}</span>
@@ -78,6 +84,7 @@
                     <a href="{{ route('movies.statistics') }}"
                         class="ysd-nav-item {{ request()->routeIs('movies.statistics') ? 'is-active' : '' }}"
                         aria-label="İstatistikler"
+                        data-nav-item
                         @if (request()->routeIs('movies.statistics')) aria-current="page" @endif>
                         <i class="fas fa-chart-pie ysd-nav-icon"></i>
                         <span class="ysd-nav-label">{{ __('İstatistikler') }}</span>
@@ -86,6 +93,7 @@
                     <a href="{{ route('users.index') }}"
                         class="ysd-nav-item {{ request()->routeIs('users.*') || request()->routeIs('feed') ? 'is-active' : '' }}"
                         aria-label="Keşfet"
+                        data-nav-item
                         @if (request()->routeIs('users.*') || request()->routeIs('feed')) aria-current="page" @endif>
                         <i class="fas fa-users ysd-nav-icon text-pink-400"></i>
                         <span class="ysd-nav-label">{{ __('Keşfet') }}</span>
