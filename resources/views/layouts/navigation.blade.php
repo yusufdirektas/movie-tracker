@@ -1,4 +1,4 @@
-<nav x-data="{ open: false }" class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50" aria-label="Ana navigasyon">
+<nav x-data="{ open: false }" @keydown.escape.window="open = false" class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50" aria-label="Ana navigasyon">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-20">
             <div class="flex">
@@ -165,7 +165,7 @@
         </div>
     </div>
 
-    <div id="mobile-menu" :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden bg-slate-900 border-t border-slate-800">
+    <div id="mobile-menu" :class="{ 'block': open, 'hidden': !open }" :aria-hidden="(!open).toString()" class="hidden sm:hidden bg-slate-900 border-t border-slate-800">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('movies.index')" :active="request()->routeIs('movies.index')"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
