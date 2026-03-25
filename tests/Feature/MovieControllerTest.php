@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Movie;
+use App\Models\Collection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -185,5 +186,94 @@ class MovieControllerTest extends TestCase
         $view->assertSee('Poster yüklenemedi');
         $view->assertSee('Tekrar Dene');
         $view->assertSee('x-bind:src="imageSrc"', false);
+    }
+
+    public function test_movie_index_does_not_eager_load_collections_in_grid_query(): void
+    {
+        $user = User::factory()->create();
+        Movie::factory()->count(3)->create([
+            'user_id' => $user->id,
+            'is_watched' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.index'));
+
+        $response->assertOk();
+
+        $movies = $response->viewData('movies');
+        $this->assertNotNull($movies);
+
+        foreach ($movies as $movie) {
+            $this->assertFalse($movie->relationLoaded('collections'));
+        }
+    }
+
+    public function test_user_can_complete_create_rate_collection_and_delete_flow(): void
+    {
+        Http::fake([
+            'api.themoviedb.org/*' => Http::response([
+                'id' => 603,
+                'title' => 'The Matrix',
+                'poster_path' => '/matrix.jpg',
+                'vote_average' => 8.2,
+                'runtime' => 136,
+                'overview' => 'Neo test',
+                'release_date' => '1999-03-31',
+                'genres' => [
+                    ['id' => 28, 'name' => 'Aksiyon'],
+                ],
+                'credits' => [
+                    'crew' => [
+                        ['job' => 'Director', 'name' => 'Wachowski'],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $collection = Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Favoriler',
+            'description' => null,
+            'icon' => 'heart',
+            'color' => '#ef4444',
+            'is_public' => false,
+        ]);
+
+        $this->actingAs($user)->post(route('movies.store'), [
+            'tmdb_id' => 603,
+            'is_watched' => '1',
+        ])->assertRedirect(route('movies.index'));
+
+        $movie = Movie::query()
+            ->where('user_id', $user->id)
+            ->where('tmdb_id', 603)
+            ->firstOrFail();
+
+        $this->actingAs($user)->putJson(route('movies.update', $movie), [
+            'personal_rating' => 5,
+        ])->assertOk()->assertJson([
+            'success' => true,
+        ]);
+
+        $this->actingAs($user)->postJson(route('collections.addMovie', $collection), [
+            'movie_id' => $movie->id,
+        ])->assertOk()->assertJson([
+            'success' => true,
+        ]);
+
+        $this->assertDatabaseHas('collection_movie', [
+            'collection_id' => $collection->id,
+            'movie_id' => $movie->id,
+        ]);
+
+        $this->actingAs($user)->delete(route('movies.destroy', $movie))
+            ->assertRedirect(route('movies.index'));
+
+        $this->assertDatabaseMissing('movies', [
+            'id' => $movie->id,
+        ]);
     }
 }

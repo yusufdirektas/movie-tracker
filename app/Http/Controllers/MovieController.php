@@ -41,7 +41,10 @@ class MovieController extends Controller
         $totalHours = floor($totalMinutes / 60);
         $remainingMinutes = $totalMinutes % 60;
         // `clone` etmezsek yukarıdaki sum() ve count() sonrası query bozulabilir. Zaten modelin yeni bir query nesnesi oluşturduğundan yukarıda sıkıntı yok ama en doğrusu ayrı çalışmak.
-        $highestRated = $user->movies()->watched()->orderByDesc('rating')->first();
+        $highestRated = $user->movies()
+            ->watched()
+            ->orderByDesc('rating')
+            ->first(['id', 'title', 'poster_path', 'rating']);
 
         // ---------------------------------------------------------------------
         // 📚 REFACTORING (KOD İYİLEŞTİRME) SONRASI:
@@ -83,33 +86,31 @@ class MovieController extends Controller
         ];
 
         /**
-         * 📚 EAGER LOADING (with('collections'))
-         *
-         * Neden ekliyoruz?
-         * - View'da her filmin koleksiyonlarını gösteriyorsak, her film için
-         *   ayrı bir SQL sorgusu atılır (N+1 problemi).
-         * - with('collections') ile tüm koleksiyonlar TEK sorguda yüklenir.
-         *
-         * Önceki durum (20 film için):
-         *   SELECT * FROM movies WHERE user_id = 1           (1 sorgu)
-         *   SELECT * FROM collections WHERE movie_id = 1     (1. film)
-         *   SELECT * FROM collections WHERE movie_id = 2     (2. film)
-         *   ... (toplam 21 sorgu!)
-         *
-         * Şimdiki durum:
-         *   SELECT * FROM movies WHERE user_id = 1                        (1 sorgu)
-         *   SELECT * FROM collections WHERE movie_id IN (1,2,3...)        (1 sorgu)
-         *   (toplam 2 sorgu!)
-         *
          * 📚 SCOPE ZİNCİRLEME (Method Chaining)
          *
          * Laravel Eloquent'te scope'lar zincirleme çağrılabilir.
          * Her scope, query builder nesnesini döndürür.
          * Boş değerler için scope içinde kontrol yapılır, böylece
          * controller'da if-else karmaşası olmaz.
+         *
+         * Not: Index grid görünümünde koleksiyon ilişkisi kullanılmadığı için
+         * burada eager-loading yapılmıyor; gereksiz sorgu/memory yükü engelleniyor.
          */
         $query = $user->movies()
-            ->with('collections')  // 🚀 EAGER LOADING - N+1 sorununu çözer
+            ->select([
+                'id',
+                'user_id',
+                'title',
+                'poster_path',
+                'rating',
+                'personal_rating',
+                'director',
+                'runtime',
+                'release_date',
+                'is_watched',
+                'watched_at',
+                'updated_at',
+            ])
             ->watched()
             ->searchByTitle($search)
             ->filterByGenre($genre)
