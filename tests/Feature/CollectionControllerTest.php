@@ -114,4 +114,93 @@ class CollectionControllerTest extends TestCase
             'movie_id' => $otherUsersMovie->id,
         ]);
     }
+
+    public function test_user_can_add_movie_to_collection_with_json_response(): void
+    {
+        $user = User::factory()->create();
+        $collection = Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Aksiyon',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+        $movie = Movie::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('collections.addMovie', $collection), [
+                'movie_id' => $movie->id,
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'collection_id' => $collection->id,
+                'movie_id' => $movie->id,
+            ]);
+
+        $this->assertDatabaseHas('collection_movie', [
+            'collection_id' => $collection->id,
+            'movie_id' => $movie->id,
+        ]);
+    }
+
+    public function test_user_gets_conflict_json_when_movie_already_in_collection(): void
+    {
+        $user = User::factory()->create();
+        $collection = Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Drama',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+        $movie = Movie::factory()->create([
+            'user_id' => $user->id,
+        ]);
+        $collection->movies()->attach($movie->id);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('collections.addMovie', $collection), [
+                'movie_id' => $movie->id,
+            ]);
+
+        $response
+            ->assertStatus(409)
+            ->assertJson([
+                'success' => false,
+            ]);
+    }
+
+    public function test_user_cannot_add_movie_to_another_users_collection_with_json_request(): void
+    {
+        $owner = User::factory()->create();
+        $viewer = User::factory()->create();
+        $collection = Collection::query()->create([
+            'user_id' => $owner->id,
+            'name' => 'Gizli',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+        $movie = Movie::factory()->create([
+            'user_id' => $viewer->id,
+        ]);
+
+        $response = $this
+            ->actingAs($viewer)
+            ->postJson(route('collections.addMovie', $collection), [
+                'movie_id' => $movie->id,
+            ]);
+
+        $response->assertForbidden();
+    }
 }

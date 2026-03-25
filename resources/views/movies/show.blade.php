@@ -163,7 +163,49 @@
                         </form>
 
                         {{-- Koleksiyona Ekle Dropdown --}}
-                        <div x-data="{ open: false }" class="relative">
+                        <div x-data="{
+                                open: false,
+                                addingCollectionId: null,
+                                addedCollectionIds: @json($movieCollectionIds),
+                                toast: { show: false, type: 'success', message: '' },
+                                isAdded(collectionId) {
+                                    return this.addedCollectionIds.includes(collectionId);
+                                },
+                                showToast(type, message) {
+                                    this.toast = { show: true, type, message };
+                                    setTimeout(() => this.toast.show = false, 2200);
+                                },
+                                async addToCollection(collectionId) {
+                                    if (this.isAdded(collectionId) || this.addingCollectionId !== null) return;
+                                    this.addingCollectionId = collectionId;
+
+                                    try {
+                                        const response = await fetch(`/collections/${collectionId}/movies`, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                                'Accept': 'application/json',
+                                            },
+                                            body: JSON.stringify({ movie_id: {{ $movie->id }} }),
+                                        });
+
+                                        const data = await response.json().catch(() => ({}));
+
+                                        if (response.ok) {
+                                            this.addedCollectionIds.push(collectionId);
+                                            this.showToast('success', data.message || 'Film koleksiyona eklendi!');
+                                        } else {
+                                            this.showToast('error', data.message || 'Koleksiyona eklenemedi.');
+                                        }
+                                    } catch (error) {
+                                        this.showToast('error', 'Bir bağlantı hatası oluştu.');
+                                    } finally {
+                                        this.addingCollectionId = null;
+                                    }
+                                }
+                            }"
+                            class="relative">
                             <button @click="open = !open" type="button"
                                 class="bg-teal-600/20 hover:bg-teal-600 text-teal-400 hover:text-white px-6 py-3 rounded-2xl text-sm font-black transition-all border border-teal-500/30 flex items-center gap-2">
                                 <i class="fas fa-layer-group"></i> Koleksiyona Ekle
@@ -184,7 +226,7 @@
                                 @else
                                     <div class="p-2 max-h-60 overflow-y-auto">
                                         @foreach($collections as $col)
-                                            @if(in_array($col->id, $movieCollectionIds))
+                                            <template x-if="isAdded({{ $col->id }})">
                                                 {{-- Zaten ekliyse --}}
                                                 <div class="flex items-center gap-3 p-3 rounded-xl bg-teal-900/20 border border-teal-500/20">
                                                     <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
@@ -194,25 +236,32 @@
                                                     <span class="text-teal-400 text-sm font-bold flex-1 truncate">{{ $col->name }}</span>
                                                     <i class="fas fa-check-circle text-teal-500 text-xs"></i>
                                                 </div>
-                                            @else
+                                            </template>
+                                            <template x-if="!isAdded({{ $col->id }})">
                                                 {{-- Ekle butonu --}}
-                                                <form action="{{ route('collections.addMovie', $col) }}" method="POST">
-                                                    @csrf
-                                                    <input type="hidden" name="movie_id" value="{{ $movie->id }}">
-                                                    <button type="submit"
-                                                        class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 transition-all text-left">
+                                                <button type="button"
+                                                    @click="addToCollection({{ $col->id }})"
+                                                    :disabled="addingCollectionId === {{ $col->id }}"
+                                                    class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 transition-all text-left disabled:opacity-60 disabled:cursor-not-allowed">
                                                         <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
                                                             style="background-color: {{ $col->color }}20; color: {{ $col->color }};">
                                                             <i class="fas fa-{{ $col->icon }}"></i>
                                                         </div>
                                                         <span class="text-slate-300 text-sm font-bold flex-1 truncate">{{ $col->name }}</span>
-                                                        <i class="fas fa-plus text-slate-600 text-xs"></i>
-                                                    </button>
-                                                </form>
-                                            @endif
+                                                        <i class="fas" :class="addingCollectionId === {{ $col->id }} ? 'fa-spinner fa-spin text-slate-500 text-xs' : 'fa-plus text-slate-600 text-xs'"></i>
+                                                </button>
+                                            </template>
                                         @endforeach
                                     </div>
                                 @endif
+                            </div>
+
+                            <div x-show="toast.show" x-transition x-cloak
+                                class="absolute left-0 -bottom-14 z-[60] px-4 py-2 rounded-xl text-xs font-bold border"
+                                :class="toast.type === 'success'
+                                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                                    : 'bg-red-500/15 text-red-300 border-red-500/40'">
+                                <span x-text="toast.message"></span>
                             </div>
                         </div>
 

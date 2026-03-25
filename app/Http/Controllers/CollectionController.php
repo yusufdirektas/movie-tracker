@@ -123,10 +123,26 @@ class CollectionController extends Controller
 
         // Zaten ekli mi?
         if ($collection->movies()->where('movie_id', $movie->id)->exists()) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bu film zaten bu koleksiyonda!',
+                ], 409);
+            }
+
             return back()->with('error', 'Bu film zaten bu koleksiyonda!');
         }
 
         $collection->movies()->attach($movie->id);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Film koleksiyona eklendi!',
+                'collection_id' => $collection->id,
+                'movie_id' => $movie->id,
+            ]);
+        }
 
         return back()->with('success', 'Film koleksiyona eklendi!');
     }
