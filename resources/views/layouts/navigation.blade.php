@@ -168,41 +168,57 @@
     <div id="mobile-menu" :class="{ 'block': open, 'hidden': !open }" :aria-hidden="(!open).toString()" class="hidden sm:hidden bg-slate-900 border-t border-slate-800">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('movies.index')" :active="request()->routeIs('movies.index')"
+                aria-label="Film Arşivim"
+                :aria-current="request()->routeIs('movies.index') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
                 <i class="fas fa-film w-5 text-center"></i> {{ __('Film Arşivim') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.watchlist')" :active="request()->routeIs('movies.watchlist')"
+                aria-label="İzleme Listem"
+                :aria-current="request()->routeIs('movies.watchlist') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-amber-500 flex items-center gap-2">
                 <i class="fas fa-bookmark w-5 text-center text-amber-500/70"></i> {{ __('İzleme Listem') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.create')" :active="request()->routeIs('movies.create')"
+                aria-label="Film Ekle"
+                :aria-current="request()->routeIs('movies.create') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
                 <i class="fas fa-plus w-5 text-center"></i> {{ __('Film Ekle') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.recommendations')" :active="request()->routeIs('movies.recommendations')"
+                aria-label="Sana Özel Öneriler"
+                :aria-current="request()->routeIs('movies.recommendations') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
                 <i class="fas fa-magic w-5 text-center text-purple-400"></i> {{ __('Sana Özel Öneriler') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.now_playing')" :active="request()->routeIs('movies.now_playing')"
+                aria-label="Vizyondakiler"
+                :aria-current="request()->routeIs('movies.now_playing') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
                 <i class="fas fa-fire w-5 text-center text-orange-500"></i> {{ __('Vizyondakiler') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('collections.index')" :active="request()->routeIs('collections.*')"
+                aria-label="Koleksiyonlarım"
+                :aria-current="request()->routeIs('collections.*') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-teal-500 flex items-center gap-2">
                 <i class="fas fa-layer-group w-5 text-center text-teal-400"></i> {{ __('Koleksiyonlarım') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('movies.statistics')" :active="request()->routeIs('movies.statistics')"
+                aria-label="İstatistikler"
+                :aria-current="request()->routeIs('movies.statistics') ? 'page' : null"
                 class="text-indigo-400 font-bold hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
                 <i class="fas fa-chart-pie w-5 text-center mr-1"></i> {{ __('İstatistikler') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*') || request()->routeIs('feed')"
+                aria-label="Keşfet"
+                :aria-current="request()->routeIs('users.*') || request()->routeIs('feed') ? 'page' : null"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-pink-500 flex items-center gap-2">
                 <i class="fas fa-users w-5 text-center text-pink-400"></i> {{ __('Keşfet') }}
             </x-responsive-nav-link>
