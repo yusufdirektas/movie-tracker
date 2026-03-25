@@ -15,8 +15,11 @@
 @if ($imageUrl())
 <div
     x-data="{
+        baseUrl: @js($imageUrl()),
+        imageSrc: @js($imageUrl()),
         loaded: false,
         error: false,
+        retryCount: 0,
         init() {
             // Alpine bind edilmeden önce görsel yüklenmiş olabilir.
             if (this.$refs.poster?.complete) {
@@ -26,6 +29,13 @@
                     this.error = true;
                 }
             }
+        },
+        retry() {
+            this.retryCount++;
+            this.error = false;
+            this.loaded = false;
+            const separator = this.baseUrl.includes('?') ? '&' : '?';
+            this.imageSrc = `${this.baseUrl}${separator}retry=${this.retryCount}`;
         }
     }"
     class="relative w-full h-full overflow-hidden {{ $class }}"
@@ -39,17 +49,24 @@
     </div>
 
     {{-- Hata Durumu --}}
-    <div x-show="error" x-cloak class="absolute inset-0 bg-slate-900 flex items-center justify-center">
+    <div x-show="error" x-cloak class="absolute inset-0 bg-slate-900/95 flex items-center justify-center p-4">
         <div class="text-center">
-            <i class="fas fa-image text-4xl text-slate-700 mb-2"></i>
-            <p class="text-slate-600 text-xs">Yüklenemedi</p>
+            <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-slate-800/70 border border-slate-700 flex items-center justify-center">
+                <i class="fas fa-image text-2xl text-slate-600"></i>
+            </div>
+            <p class="text-slate-400 text-xs font-bold mb-3">Poster yüklenemedi</p>
+            <button type="button"
+                @click="retry()"
+                class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border border-indigo-500/30 transition">
+                <i class="fas fa-rotate-right mr-1"></i> Tekrar Dene
+            </button>
         </div>
     </div>
 
     {{-- Gerçek Resim --}}
     <img
         x-ref="poster"
-        src="{{ $imageUrl() }}"
+        x-bind:src="imageSrc"
         alt="{{ $alt }}"
         loading="lazy"
         decoding="async"

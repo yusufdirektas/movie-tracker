@@ -175,4 +175,15 @@ class MovieControllerTest extends TestCase
         $response->assertOk();
         $response->assertSee('bottom-full mb-2 w-72', false);
     }
+
+    public function test_movie_poster_component_includes_retry_ui_for_failed_images(): void
+    {
+        $view = $this->blade(
+            '<x-movie-poster path="/poster.jpg" alt="Poster Test" />'
+        );
+
+        $view->assertSee('Poster yüklenemedi');
+        $view->assertSee('Tekrar Dene');
+        $view->assertSee('x-bind:src="imageSrc"', false);
+    }
 }
