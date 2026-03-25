@@ -1,4 +1,4 @@
-<nav x-data="{ open: false }" class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+<nav x-data="{ open: false }" class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50" aria-label="Ana navigasyon">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-20">
             <div class="flex">
@@ -28,49 +28,65 @@
 
                 <div class="hidden sm:ml-10 sm:flex sm:items-center sm:gap-2">
                     <a href="{{ route('movies.index') }}"
-                        class="ysd-nav-item {{ request()->routeIs('movies.index') ? 'is-active' : '' }}">
+                        class="ysd-nav-item {{ request()->routeIs('movies.index') ? 'is-active' : '' }}"
+                        aria-label="Film Arşivim"
+                        @if (request()->routeIs('movies.index')) aria-current="page" @endif>
                         <i class="fas fa-film ysd-nav-icon"></i>
                         <span class="ysd-nav-label">{{ __('Film Arşivim') }}</span>
                     </a>
 
                     <a href="{{ route('movies.watchlist') }}"
-                        class="ysd-nav-item {{ request()->routeIs('movies.watchlist') ? 'is-active' : '' }}">
+                        class="ysd-nav-item {{ request()->routeIs('movies.watchlist') ? 'is-active' : '' }}"
+                        aria-label="İzleme Listem"
+                        @if (request()->routeIs('movies.watchlist')) aria-current="page" @endif>
                         <i class="fas fa-bookmark ysd-nav-icon text-amber-500/80"></i>
                         <span class="ysd-nav-label">{{ __('İzleme Listem') }}</span>
                     </a>
 
                     <a href="{{ route('movies.create') }}"
-                        class="ysd-nav-item {{ request()->routeIs('movies.create') ? 'is-active' : '' }}">
+                        class="ysd-nav-item {{ request()->routeIs('movies.create') ? 'is-active' : '' }}"
+                        aria-label="Film Ekle"
+                        @if (request()->routeIs('movies.create')) aria-current="page" @endif>
                         <i class="fas fa-plus ysd-nav-icon"></i>
                         <span class="ysd-nav-label">{{ __('Film Ekle') }}</span>
                     </a>
 
                     <a href="{{ route('movies.recommendations') }}"
-                        class="ysd-nav-item {{ request()->routeIs('movies.recommendations') ? 'is-active' : '' }}">
+                        class="ysd-nav-item {{ request()->routeIs('movies.recommendations') ? 'is-active' : '' }}"
+                        aria-label="Sana Özel Öneriler"
+                        @if (request()->routeIs('movies.recommendations')) aria-current="page" @endif>
                         <i class="fas fa-magic ysd-nav-icon text-purple-400"></i>
                         <span class="ysd-nav-label">{{ __('Sana Özel Öneriler') }}</span>
                     </a>
 
                     <a href="{{ route('movies.now_playing') }}"
-                        class="ysd-nav-item {{ request()->routeIs('movies.now_playing') ? 'is-active' : '' }}">
+                        class="ysd-nav-item {{ request()->routeIs('movies.now_playing') ? 'is-active' : '' }}"
+                        aria-label="Vizyondakiler"
+                        @if (request()->routeIs('movies.now_playing')) aria-current="page" @endif>
                         <i class="fas fa-fire ysd-nav-icon text-orange-500"></i>
                         <span class="ysd-nav-label">{{ __('Vizyondakiler') }}</span>
                     </a>
 
                     <a href="{{ route('collections.index') }}"
-                        class="ysd-nav-item {{ request()->routeIs('collections.*') ? 'is-active' : '' }}">
+                        class="ysd-nav-item {{ request()->routeIs('collections.*') ? 'is-active' : '' }}"
+                        aria-label="Koleksiyonlarım"
+                        @if (request()->routeIs('collections.*')) aria-current="page" @endif>
                         <i class="fas fa-layer-group ysd-nav-icon text-teal-400"></i>
                         <span class="ysd-nav-label">{{ __('Koleksiyonlarım') }}</span>
                     </a>
 
                     <a href="{{ route('movies.statistics') }}"
-                        class="ysd-nav-item {{ request()->routeIs('movies.statistics') ? 'is-active' : '' }}">
+                        class="ysd-nav-item {{ request()->routeIs('movies.statistics') ? 'is-active' : '' }}"
+                        aria-label="İstatistikler"
+                        @if (request()->routeIs('movies.statistics')) aria-current="page" @endif>
                         <i class="fas fa-chart-pie ysd-nav-icon"></i>
                         <span class="ysd-nav-label">{{ __('İstatistikler') }}</span>
                     </a>
 
                     <a href="{{ route('users.index') }}"
-                        class="ysd-nav-item {{ request()->routeIs('users.*') || request()->routeIs('feed') ? 'is-active' : '' }}">
+                        class="ysd-nav-item {{ request()->routeIs('users.*') || request()->routeIs('feed') ? 'is-active' : '' }}"
+                        aria-label="Keşfet"
+                        @if (request()->routeIs('users.*') || request()->routeIs('feed')) aria-current="page" @endif>
                         <i class="fas fa-users ysd-nav-icon text-pink-400"></i>
                         <span class="ysd-nav-label">{{ __('Keşfet') }}</span>
                     </a>
@@ -125,7 +141,10 @@
 
             <div class="-mr-2 flex items-center sm:hidden">
                 <button @click="open = ! open"
-                    class="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 focus:outline-none transition duration-150 ease-in-out">
+                    class="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 transition duration-150 ease-in-out"
+                    :aria-expanded="open.toString()"
+                    aria-controls="mobile-menu"
+                    aria-label="Mobil menüyü aç/kapat">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{ 'hidden': open, 'inline-flex': !open }" class="inline-flex"
                             stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -138,7 +157,7 @@
         </div>
     </div>
 
-    <div :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden bg-slate-900 border-t border-slate-800">
+    <div id="mobile-menu" :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden bg-slate-900 border-t border-slate-800">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('movies.index')" :active="request()->routeIs('movies.index')"
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">

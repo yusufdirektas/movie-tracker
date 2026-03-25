@@ -30,6 +30,19 @@
   position: relative;
 }
 
+.ysd-nav-item:focus-visible {
+  outline: none;
+  max-width: 240px;
+  gap: 8px;
+  color: #eef2ff;
+  background: rgba(99, 102, 241, 0.16);
+  border-color: rgba(129, 140, 248, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.25),
+    0 0 0 3px rgba(99, 102, 241, 0.35),
+    0 8px 20px rgba(2, 6, 23, 0.35);
+}
+
 .ysd-nav-item:hover,
 .ysd-nav-item.is-active {
   max-width: 240px;
@@ -63,7 +76,8 @@
 }
 
 .ysd-nav-item:hover .ysd-nav-label,
-.ysd-nav-item.is-active .ysd-nav-label {
+.ysd-nav-item.is-active .ysd-nav-label,
+.ysd-nav-item:focus-visible .ysd-nav-label {
   opacity: 1;
   transform: translateX(0);
 }
