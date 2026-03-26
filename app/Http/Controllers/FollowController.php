@@ -38,7 +38,9 @@ class FollowController extends Controller
 
         // Zaten takip ediyorsan
         if ($currentUser->isFollowing($user)) {
-            return back()->with('info', 'Bu kullanıcıyı zaten takip ediyorsunuz.');
+            return back()
+                ->with('info', 'Bu kullanıcıyı zaten takip ediyorsunuz.')
+                ->with('info_action', 'Profildeki "Takibi Bırak" butonunu kullanabilirsin.');
         }
 
         $currentUser->follow($user);
@@ -72,7 +74,9 @@ class FollowController extends Controller
 
         // Takip etmiyorsan
         if (! $currentUser->isFollowing($user)) {
-            return back()->with('info', 'Bu kullanıcıyı zaten takip etmiyorsunuz.');
+            return back()
+                ->with('info', 'Bu kullanıcıyı zaten takip etmiyorsunuz.')
+                ->with('info_action', 'Takip etmek için profildeki "Takip Et" butonunu kullanabilirsin.');
         }
 
         $currentUser->unfollow($user);

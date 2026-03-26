@@ -80,6 +80,25 @@
                     </div>
                 @endif
 
+                @if(session('info'))
+                    <div x-data="{ show: true }" x-show="show" x-transition x-cloak
+                        role="status" aria-live="polite"
+                        class="mb-6 bg-sky-500/10 border border-sky-500/50 p-4 rounded-xl text-sky-300">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-info-circle mt-0.5"></i>
+                            <div class="flex-1">
+                                <p class="font-semibold">{{ session('info') }}</p>
+                                @if(session('info_action'))
+                                    <p class="text-xs text-sky-200/80 mt-1">{{ session('info_action') }}</p>
+                                @endif
+                            </div>
+                            <button type="button" @click="show = false" class="text-sky-300/70 hover:text-sky-200 transition-colors" aria-label="Bilgi mesajını kapat">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Dinamik İçerik --}}
                 @yield('content')
 

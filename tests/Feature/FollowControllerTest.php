@@ -87,4 +87,35 @@ class FollowControllerTest extends TestCase
         $followersResponse->assertOk();
         $followingResponse->assertOk();
     }
+
+    public function test_follow_duplicate_sets_info_action_message(): void
+    {
+        $follower = User::factory()->create();
+        $target = User::factory()->create();
+        $follower->follow($target);
+
+        $response = $this
+            ->actingAs($follower)
+            ->from(route('users.show', $target))
+            ->post(route('users.follow', $target));
+
+        $response->assertRedirect(route('users.show', $target));
+        $response->assertSessionHas('info', 'Bu kullanıcıyı zaten takip ediyorsunuz.');
+        $response->assertSessionHas('info_action', 'Profildeki "Takibi Bırak" butonunu kullanabilirsin.');
+    }
+
+    public function test_unfollow_without_following_sets_info_action_message(): void
+    {
+        $follower = User::factory()->create();
+        $target = User::factory()->create();
+
+        $response = $this
+            ->actingAs($follower)
+            ->from(route('users.show', $target))
+            ->delete(route('users.unfollow', $target));
+
+        $response->assertRedirect(route('users.show', $target));
+        $response->assertSessionHas('info', 'Bu kullanıcıyı zaten takip etmiyorsunuz.');
+        $response->assertSessionHas('info_action', 'Takip etmek için profildeki "Takip Et" butonunu kullanabilirsin.');
+    }
 }
