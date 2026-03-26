@@ -203,4 +203,45 @@ class BulkActionControllerTest extends TestCase
         $response->assertSessionHas('info', 'Koleksiyona eklenecek uygun film bulunamadı.');
         $response->assertSessionHas('info_action', 'Seçim yapıp tekrar deneyebilirsin.');
     }
+
+    public function test_bulk_mark_as_watched_returns_info_when_no_owned_movie_selected(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $othersMovie = Movie::factory()->create([
+            'user_id' => $otherUser->id,
+            'is_watched' => false,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('movies.bulk.watched'), [
+                'movie_ids' => [$othersMovie->id],
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('info', 'İşaretlenecek uygun film bulunamadı.');
+        $response->assertSessionHas('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
+    }
+
+    public function test_bulk_mark_as_unwatched_returns_info_when_no_owned_movie_selected(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $othersMovie = Movie::factory()->create([
+            'user_id' => $otherUser->id,
+            'is_watched' => true,
+            'watched_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('movies.bulk.unwatched'), [
+                'movie_ids' => [$othersMovie->id],
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('info', 'Güncellenecek uygun film bulunamadı.');
+        $response->assertSessionHas('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
+    }
 }
