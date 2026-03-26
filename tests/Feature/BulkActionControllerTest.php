@@ -158,4 +158,49 @@ class BulkActionControllerTest extends TestCase
 
         $response->assertNotFound();
     }
+
+    public function test_bulk_delete_returns_info_when_no_owned_movie_selected(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $othersMovie = Movie::factory()->create(['user_id' => $otherUser->id]);
+
+        $response = $this
+            ->actingAs($user)
+            ->delete(route('movies.bulk.delete'), [
+                'movie_ids' => [$othersMovie->id],
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('info', 'Silinecek uygun film bulunamadı.');
+        $response->assertSessionHas('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
+    }
+
+    public function test_bulk_add_to_collection_returns_info_when_no_owned_movie_selected(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $collection = Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Bos Ekleme',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+
+        $othersMovie = Movie::factory()->create(['user_id' => $otherUser->id]);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('movies.bulk.collection'), [
+                'collection_id' => $collection->id,
+                'movie_ids' => [$othersMovie->id],
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('info', 'Koleksiyona eklenecek uygun film bulunamadı.');
+        $response->assertSessionHas('info_action', 'Seçim yapıp tekrar deneyebilirsin.');
+    }
 }

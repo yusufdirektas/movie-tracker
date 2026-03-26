@@ -24,6 +24,12 @@ class BulkActionController extends Controller
             ->where('user_id', Auth::id())
             ->delete();
 
+        if ($deletedCount === 0) {
+            return back()
+                ->with('info', 'Silinecek uygun film bulunamadı.')
+                ->with('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
+        }
+
         return back()->with('success', $deletedCount . ' film başarıyla silindi.');
     }
 
@@ -51,6 +57,12 @@ class BulkActionController extends Controller
             ]);
         }
 
+        if ($movies->isEmpty()) {
+            return back()
+                ->with('info', 'İşaretlenecek uygun film bulunamadı.')
+                ->with('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
+        }
+
         return back()->with('success', $movies->count() . ' film izlendi olarak işaretlendi.');
     }
 
@@ -70,6 +82,12 @@ class BulkActionController extends Controller
                 'is_watched' => false,
                 'watched_at' => null
             ]);
+
+        if ($updatedCount === 0) {
+            return back()
+                ->with('info', 'Güncellenecek uygun film bulunamadı.')
+                ->with('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
+        }
 
         return back()->with('success', $updatedCount . ' film izlenmedi olarak işaretlendi.');
     }
@@ -93,6 +111,12 @@ class BulkActionController extends Controller
             ->where('user_id', Auth::id())
             ->pluck('id')
             ->toArray();
+
+        if (empty($validMovieIds)) {
+            return back()
+                ->with('info', 'Koleksiyona eklenecek uygun film bulunamadı.')
+                ->with('info_action', 'Seçim yapıp tekrar deneyebilirsin.');
+        }
 
         // syncWithoutDetaching ile mevcutları koruyarak yenilerini ekleriz
         $collection->movies()->syncWithoutDetaching($validMovieIds);
