@@ -297,4 +297,17 @@ class MovieControllerTest extends TestCase
         $response->assertSessionHas('error', 'Bu içerik zaten arşivinde mevcut!');
         $response->assertSessionHas('error_action', 'Aramaya dönüp farklı bir içerik seçebilirsin.');
     }
+
+    public function test_movie_create_page_uses_global_flash_instead_of_local_duplicate_alerts(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.create'));
+
+        $response->assertOk();
+        $response->assertDontSee("session('success')", false);
+        $response->assertDontSee("session('error')", false);
+    }
 }
