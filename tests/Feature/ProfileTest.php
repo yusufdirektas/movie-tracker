@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Movie;
+use App\Models\Collection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -167,5 +168,35 @@ class ProfileTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('alert(', false);
         $response->assertSee('x-show="notice.show"', false);
+    }
+
+    public function test_profile_page_contains_recent_activities_card(): void
+    {
+        $user = User::factory()->create();
+
+        Movie::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Aktivite Film',
+            'is_watched' => true,
+            'watched_at' => now(),
+        ]);
+
+        Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Aktivite Koleksiyon',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/profile');
+
+        $response->assertOk();
+        $response->assertSee('Son Aktiviteler');
+        $response->assertSee('Aktivite Film');
+        $response->assertSee('Aktivite Koleksiyon');
     }
 }

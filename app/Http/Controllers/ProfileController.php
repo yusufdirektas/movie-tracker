@@ -34,9 +34,52 @@ class ProfileController extends Controller
             ->orderBy('title')
             ->get();
 
+        $recentMovieActivities = $user->movies()
+            ->latest('updated_at')
+            ->take(6)
+            ->get()
+            ->map(function ($movie) {
+                if (! empty($movie->watched_at)) {
+                    return [
+                        'icon' => 'fa-check-circle',
+                        'icon_class' => 'text-emerald-400',
+                        'title' => $movie->title,
+                        'description' => 'İzlendi olarak işaretlendi',
+                        'at' => $movie->watched_at,
+                    ];
+                }
+
+                return [
+                    'icon' => 'fa-film',
+                    'icon_class' => 'text-indigo-400',
+                    'title' => $movie->title,
+                    'description' => 'Film kaydı güncellendi',
+                    'at' => $movie->updated_at,
+                ];
+            });
+
+        $recentCollectionActivities = $user->collections()
+            ->latest('updated_at')
+            ->take(4)
+            ->get()
+            ->map(fn ($collection) => [
+                'icon' => 'fa-layer-group',
+                'icon_class' => 'text-teal-400',
+                'title' => $collection->name,
+                'description' => 'Koleksiyon güncellendi',
+                'at' => $collection->updated_at,
+            ]);
+
+        $recentActivities = $recentMovieActivities
+            ->concat($recentCollectionActivities)
+            ->sortByDesc('at')
+            ->take(8)
+            ->values();
+
         return view('profile.edit', [
             'user' => $user,
             'availableMovies' => $availableMovies,
+            'recentActivities' => $recentActivities,
         ]);
     }
 

@@ -247,6 +247,35 @@
         @endif
     </div>
 
+    {{-- Son Aktiviteler --}}
+    <div class="p-8 bg-slate-900 border border-slate-800 shadow-2xl rounded-3xl">
+        <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+            <i class="fas fa-clock-rotate-left text-cyan-400"></i> Son Aktiviteler
+        </h3>
+        <p class="text-sm text-slate-400 mb-6">Hesabında en son yaptığın işlemleri hızlıca gör.</p>
+
+        @if($recentActivities->isEmpty())
+            <div class="text-slate-500 text-sm bg-slate-950/70 border border-slate-800 rounded-2xl p-4">
+                Henüz görüntülenecek aktivite yok.
+            </div>
+        @else
+            <div class="space-y-3">
+                @foreach($recentActivities as $activity)
+                    <div class="flex items-start gap-3 p-3 rounded-2xl border border-slate-800 bg-slate-950/60">
+                        <div class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center {{ $activity['icon_class'] }}">
+                            <i class="fas {{ $activity['icon'] }}"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-bold text-white truncate">{{ $activity['title'] }}</p>
+                            <p class="text-xs text-slate-400">{{ $activity['description'] }}</p>
+                        </div>
+                        <span class="text-[11px] text-slate-500 whitespace-nowrap">{{ \Carbon\Carbon::parse($activity['at'])->diffForHumans() }}</span>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
     {{-- Profil Bilgileri --}}
     <div class="p-8 bg-slate-900 border border-slate-800 shadow-2xl rounded-3xl">
         <div class="max-w-xl">
