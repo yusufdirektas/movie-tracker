@@ -96,6 +96,43 @@ class MovieControllerTest extends TestCase
         ]);
     }
 
+    public function test_storing_unwatched_movie_redirects_to_watchlist(): void
+    {
+        Http::fake([
+            'api.themoviedb.org/*' => Http::response([
+                'id' => 551,
+                'title' => 'Watchlist Test Film',
+                'poster_path' => '/watch.jpg',
+                'vote_average' => 7.9,
+                'runtime' => 121,
+                'overview' => 'Watchlist test',
+                'release_date' => '2000-01-01',
+                'genres' => [
+                    ['id' => 18, 'name' => 'Dram'],
+                ],
+                'credits' => [
+                    'crew' => [
+                        ['job' => 'Director', 'name' => 'Test Director'],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('movies.store'), [
+            'tmdb_id' => 551,
+            'is_watched' => '0',
+        ]);
+
+        $response->assertRedirect(route('movies.watchlist'));
+        $this->assertDatabaseHas('movies', [
+            'user_id' => $user->id,
+            'tmdb_id' => 551,
+            'is_watched' => false,
+        ]);
+    }
+
     public function test_api_search_without_query_returns_empty_array_without_error()
     {
         $user = User::factory()->create();

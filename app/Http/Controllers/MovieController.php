@@ -392,7 +392,9 @@ class MovieController extends Controller
                 return response()->json(['success' => true, 'message' => $message]);
             }
 
-            return redirect()->route('movies.index')->with('success', $message);
+            return redirect()
+                ->route($isWatched ? 'movies.index' : 'movies.watchlist')
+                ->with('success', $message);
         }
 
         if ($request->wantsJson()) {
