@@ -310,4 +310,26 @@ class MovieControllerTest extends TestCase
         $response->assertDontSee("session('success')", false);
         $response->assertDontSee("session('error')", false);
     }
+
+    public function test_watchlist_index_does_not_eager_load_collections_in_grid_query(): void
+    {
+        $user = User::factory()->create();
+        Movie::factory()->count(3)->create([
+            'user_id' => $user->id,
+            'is_watched' => false,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.watchlist'));
+
+        $response->assertOk();
+
+        $movies = $response->viewData('movies');
+        $this->assertNotNull($movies);
+
+        foreach ($movies as $movie) {
+            $this->assertFalse($movie->relationLoaded('collections'));
+        }
+    }
 }

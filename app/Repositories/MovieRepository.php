@@ -74,7 +74,18 @@ class MovieRepository implements MovieRepositoryInterface
     {
         $query = Movie::query()
             ->where('user_id', $userId)
-            ->with('collections')
+            ->select([
+                'id',
+                'user_id',
+                'title',
+                'poster_path',
+                'rating',
+                'director',
+                'runtime',
+                'release_date',
+                'is_watched',
+                'updated_at',
+            ])
             ->unwatched();
 
         $query = $this->applyFilters($query, $filters);
