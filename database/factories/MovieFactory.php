@@ -25,6 +25,7 @@ class MovieFactory extends Factory
             'overview' => $this->faker->paragraph(),
             'release_date' => $this->faker->date(),
             'is_watched' => true,
+            'watch_priority' => 2,
             'watched_at' => now(),
         ];
     }

@@ -27,6 +27,7 @@ class UpdateMovieRequest extends FormRequest
         return [
             'personal_rating' => ['sometimes', 'required', 'integer', 'min:1', 'max:5'],
             'personal_note' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'watch_priority' => ['sometimes', 'required', 'integer', 'in:1,2,3'],
         ];
     }
 
@@ -37,6 +38,7 @@ class UpdateMovieRequest extends FormRequest
             'personal_rating.min'     => 'Puan en az 1 olmalıdır.',
             'personal_rating.max'     => 'Puan en fazla 5 olabilir.',
             'personal_note.max'       => 'Kişisel not en fazla 1000 karakter olabilir.',
+            'watch_priority.in'       => 'Öncelik değeri geçersiz.',
         ];
     }
 }

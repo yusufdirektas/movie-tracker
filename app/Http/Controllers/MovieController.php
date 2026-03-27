@@ -470,6 +470,18 @@ class MovieController extends Controller
             return back();
         }
 
+        if ($request->has('watch_priority')) {
+            $movie->update([
+                'watch_priority' => (int) $request->input('watch_priority'),
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Öncelik güncellendi.']);
+            }
+
+            return back()->with('success', 'İzleme önceliği güncellendi.');
+        }
+
         $newWatchedStatus = ! $movie->is_watched;
         $movie->update([
             'is_watched' => $newWatchedStatus,

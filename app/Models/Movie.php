@@ -42,11 +42,13 @@ class Movie extends Model
         'overview',
         'release_date',
         'is_watched',
+        'watch_priority',
         'watched_at',
     ];
 
     protected $casts = [
         'is_watched' => 'boolean',
+        'watch_priority' => 'integer',
         'watched_at' => 'date',
         'release_date' => 'date',
         'genres' => 'array', // JSON → PHP array otomatik dönüşüm

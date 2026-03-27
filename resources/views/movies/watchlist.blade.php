@@ -52,6 +52,7 @@
                     <option value="updated_at">Son Eklenen</option>
                     <option value="title">İsme Göre (A-Z)</option>
                     <option value="rating">TMDB Puanı</option>
+                    <option value="watch_priority">Önceliğe Göre</option>
                     <option value="release_date">Yayın Tarihi</option>
                     <option value="runtime">Süre</option>
                 </select>

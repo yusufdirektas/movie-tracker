@@ -37,6 +37,7 @@ class MovieRepository implements MovieRepositoryInterface
         'updated_at'      => 'desc',
         'title'           => 'asc',
         'rating'          => 'desc',
+        'watch_priority'  => 'asc',
         'personal_rating' => 'desc',
         'release_date'    => 'desc',
         'runtime'         => 'desc',
@@ -84,6 +85,7 @@ class MovieRepository implements MovieRepositoryInterface
                 'runtime',
                 'release_date',
                 'is_watched',
+                'watch_priority',
                 'updated_at',
             ])
             ->unwatched();

@@ -119,5 +119,51 @@ class WatchlistControllerTest extends TestCase
         $response->assertSee('Ajax Watchlist Filmi');
         $response->assertDontSee('İzleme <span class="text-indigo-500">Listem</span>', false);
     }
+
+    public function test_watchlist_priority_sort_orders_high_to_low_priority(): void
+    {
+        $user = User::factory()->create();
+
+        Movie::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Dusuk Oncelik Film',
+            'is_watched' => false,
+            'watch_priority' => 3,
+        ]);
+        Movie::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Yuksek Oncelik Film',
+            'is_watched' => false,
+            'watch_priority' => 1,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.watchlist', ['sort' => 'watch_priority']));
+
+        $response->assertOk();
+        $response->assertSeeInOrder(['Yuksek Oncelik Film', 'Dusuk Oncelik Film']);
+    }
+
+    public function test_watchlist_grid_contains_priority_labels_and_select(): void
+    {
+        $user = User::factory()->create();
+
+        Movie::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Oncelik Etiket Film',
+            'is_watched' => false,
+            'watch_priority' => 1,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.watchlist'));
+
+        $response->assertOk();
+        $response->assertSee('Öncelik');
+        $response->assertSee('Yüksek Öncelik');
+        $response->assertSee('name="watch_priority"', false);
+    }
 }
 

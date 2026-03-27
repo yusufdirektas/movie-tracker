@@ -372,4 +372,27 @@ class MovieControllerTest extends TestCase
         $response->assertSee('Notu Kaydet');
         $response->assertSee('Not denemesi');
     }
+
+    public function test_user_can_update_watch_priority(): void
+    {
+        $user = User::factory()->create();
+        $movie = Movie::factory()->create([
+            'user_id' => $user->id,
+            'is_watched' => false,
+            'watch_priority' => 2,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patch(route('movies.update', $movie), [
+                'watch_priority' => 1,
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'İzleme önceliği güncellendi.');
+        $this->assertDatabaseHas('movies', [
+            'id' => $movie->id,
+            'watch_priority' => 1,
+        ]);
+    }
 }

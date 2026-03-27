@@ -62,6 +62,30 @@
                             {{ $movie->title }}
                         </a>
 
+                        @php
+                            $priorityMeta = match ((int) ($movie->watch_priority ?? 2)) {
+                                1 => ['label' => 'Yüksek Öncelik', 'class' => 'bg-red-500/15 text-red-300 border-red-500/30'],
+                                3 => ['label' => 'Düşük Öncelik', 'class' => 'bg-slate-700/40 text-slate-300 border-slate-600/40'],
+                                default => ['label' => 'Normal Öncelik', 'class' => 'bg-amber-500/15 text-amber-300 border-amber-500/30'],
+                            };
+                        @endphp
+
+                        <form action="{{ route('movies.update', $movie) }}" method="POST" class="mb-3">
+                            @csrf
+                            @method('PATCH')
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Öncelik</span>
+                                <select name="watch_priority"
+                                    class="text-[11px] font-bold rounded-lg border px-2 py-1 bg-slate-900 text-slate-200 border-slate-700 focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500"
+                                    onchange="this.form.submit()">
+                                    <option value="1" @selected((int) ($movie->watch_priority ?? 2) === 1)>Yüksek</option>
+                                    <option value="2" @selected((int) ($movie->watch_priority ?? 2) === 2)>Normal</option>
+                                    <option value="3" @selected((int) ($movie->watch_priority ?? 2) === 3)>Düşük</option>
+                                </select>
+                                <span class="text-[10px] px-2 py-1 rounded-full border {{ $priorityMeta['class'] }}">{{ $priorityMeta['label'] }}</span>
+                            </div>
+                        </form>
+
                         <p class="text-indigo-400/80 text-[10px] font-bold uppercase tracking-wider mb-2 truncate"
                             title="{{ $movie->director ?? 'Bilinmiyor' }}">
                             <i class="fas fa-bullhorn mr-1"></i> {{ $movie->director ?? 'Bilinmiyor' }}
