@@ -55,6 +55,8 @@ class Collection extends Model
     public function movies(): BelongsToMany
     {
         return $this->belongsToMany(Movie::class, 'collection_movie')
+            ->withPivot('sort_order')
+            ->orderBy('collection_movie.sort_order')
             ->withTimestamps();
     }
 }

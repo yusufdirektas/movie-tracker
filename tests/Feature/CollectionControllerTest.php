@@ -231,4 +231,76 @@ class CollectionControllerTest extends TestCase
         $response->assertSessionHas('error', 'Bu film zaten bu koleksiyonda!');
         $response->assertSessionHas('error_action', 'Koleksiyon detayından mevcut filmleri kontrol edebilirsin.');
     }
+
+    public function test_collection_reorder_updates_pivot_sort_order(): void
+    {
+        $user = User::factory()->create();
+        $collection = Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Siralama',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+        $movieA = Movie::factory()->create(['user_id' => $user->id]);
+        $movieB = Movie::factory()->create(['user_id' => $user->id]);
+        $movieC = Movie::factory()->create(['user_id' => $user->id]);
+
+        $collection->movies()->attach($movieA->id, ['sort_order' => 1]);
+        $collection->movies()->attach($movieB->id, ['sort_order' => 2]);
+        $collection->movies()->attach($movieC->id, ['sort_order' => 3]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('collections.reorderMovies', $collection), [
+                'movie_ids' => [$movieC->id, $movieA->id, $movieB->id],
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('collection_movie', [
+            'collection_id' => $collection->id,
+            'movie_id' => $movieC->id,
+            'sort_order' => 1,
+        ]);
+        $this->assertDatabaseHas('collection_movie', [
+            'collection_id' => $collection->id,
+            'movie_id' => $movieA->id,
+            'sort_order' => 2,
+        ]);
+        $this->assertDatabaseHas('collection_movie', [
+            'collection_id' => $collection->id,
+            'movie_id' => $movieB->id,
+            'sort_order' => 3,
+        ]);
+    }
+
+    public function test_collection_reorder_rejects_invalid_payload(): void
+    {
+        $user = User::factory()->create();
+        $collection = Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Siralama Hata',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+        $movieA = Movie::factory()->create(['user_id' => $user->id]);
+        $movieB = Movie::factory()->create(['user_id' => $user->id]);
+
+        $collection->movies()->attach($movieA->id, ['sort_order' => 1]);
+        $collection->movies()->attach($movieB->id, ['sort_order' => 2]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('collections.reorderMovies', $collection), [
+                'movie_ids' => [$movieA->id],
+            ]);
+
+        $response->assertStatus(422);
+    }
 }

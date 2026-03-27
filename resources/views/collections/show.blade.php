@@ -110,9 +110,15 @@
         @else
             <div id="dropZone" class="w-full"
                  ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                <div id="collectionGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                     @foreach($collection->movies as $movie)
-                        <div class="group relative">
+                        <div class="group relative collection-movie-item"
+                            data-collection-movie-id="{{ $movie->id }}"
+                            draggable="true"
+                            ondragstart="handleCollectionDragStart(event)"
+                            ondragend="handleCollectionDragEnd(event)"
+                            ondragover="handleCollectionDragOver(event)"
+                            ondrop="handleCollectionDrop(event)">
                             <a href="{{ route('movies.show', $movie) }}"
                                 class="block bg-slate-900 rounded-2xl overflow-hidden border border-slate-800/50 hover:border-teal-500/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
                             <div class="aspect-[2/3] relative overflow-hidden bg-slate-800">
@@ -369,6 +375,72 @@ function copyToClipboard(elementId) {
                     window.location.reload();
                 }
             });
+        }
+    }
+
+    // ─── KOLEKSİYON İÇİ SIRALAMA (DRAG & DROP) ───
+    let draggedCollectionMovieId = null;
+
+    function handleCollectionDragStart(e) {
+        draggedCollectionMovieId = e.currentTarget.dataset.collectionMovieId;
+        e.dataTransfer.effectAllowed = 'move';
+        e.currentTarget.classList.add('opacity-50');
+    }
+
+    function handleCollectionDragEnd(e) {
+        e.currentTarget.classList.remove('opacity-50');
+        document.querySelectorAll('.collection-movie-item').forEach(el => {
+            el.classList.remove('ring-2', 'ring-teal-500');
+        });
+    }
+
+    function handleCollectionDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        e.currentTarget.classList.add('ring-2', 'ring-teal-500');
+    }
+
+    async function handleCollectionDrop(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('ring-2', 'ring-teal-500');
+
+        const targetId = e.currentTarget.dataset.collectionMovieId;
+        if (!draggedCollectionMovieId || !targetId || draggedCollectionMovieId === targetId) return;
+
+        const grid = document.getElementById('collectionGrid');
+        const draggedEl = grid.querySelector(`[data-collection-movie-id="${draggedCollectionMovieId}"]`);
+        const targetEl = grid.querySelector(`[data-collection-movie-id="${targetId}"]`);
+        if (!draggedEl || !targetEl) return;
+
+        const nodes = [...grid.querySelectorAll('.collection-movie-item')];
+        const draggedIndex = nodes.indexOf(draggedEl);
+        const targetIndex = nodes.indexOf(targetEl);
+
+        if (draggedIndex < targetIndex) {
+            targetEl.after(draggedEl);
+        } else {
+            targetEl.before(draggedEl);
+        }
+
+        const orderedIds = [...grid.querySelectorAll('.collection-movie-item')]
+            .map(el => parseInt(el.dataset.collectionMovieId, 10));
+
+        try {
+            const response = await fetch('{{ route("collections.reorderMovies", $collection) }}', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ movie_ids: orderedIds })
+            });
+
+            if (!response.ok) {
+                window.location.reload();
+            }
+        } catch (error) {
+            window.location.reload();
         }
     }
 </script>

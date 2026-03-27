@@ -48,6 +48,15 @@ class CollectionController extends Controller
         // Filmleri user ilişkisiyle birlikte yükle (ileride kullanıcı adı göstermek istersek)
         $collection->load('movies');
 
+        if ($collection->movies->isNotEmpty() && $collection->movies->every(fn ($movie) => (int) ($movie->pivot->sort_order ?? 0) === 0)) {
+            $syncData = [];
+            foreach ($collection->movies->values() as $index => $movie) {
+                $syncData[$movie->id] = ['sort_order' => $index + 1];
+            }
+            $collection->movies()->syncWithoutDetaching($syncData);
+            $collection->load('movies');
+        }
+
         return view('collections.show', compact('collection'));
     }
 
@@ -142,7 +151,10 @@ class CollectionController extends Controller
                 ->with('error_action', 'Koleksiyon detayından mevcut filmleri kontrol edebilirsin.');
         }
 
-        $collection->movies()->attach($movie->id);
+        $nextOrder = ((int) $collection->movies()->max('collection_movie.sort_order')) + 1;
+        $collection->movies()->attach($movie->id, [
+            'sort_order' => $nextOrder,
+        ]);
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -179,7 +191,12 @@ class CollectionController extends Controller
         $newIds = array_diff($validMovieIds, $existingIds);
 
         if (! empty($newIds)) {
-            $collection->movies()->attach($newIds);
+            $startOrder = ((int) $collection->movies()->max('collection_movie.sort_order')) + 1;
+            $syncData = [];
+            foreach (array_values($newIds) as $offset => $movieId) {
+                $syncData[$movieId] = ['sort_order' => $startOrder + $offset];
+            }
+            $collection->movies()->attach($syncData);
         }
 
         $count = count($newIds);
@@ -202,5 +219,40 @@ class CollectionController extends Controller
         $collection->movies()->detach($movie->id);
 
         return back()->with('success', 'Film koleksiyondan çıkarıldı!');
+    }
+
+    /**
+     * Koleksiyondaki film sıralamasını güncelle
+     */
+    public function reorderMovies(Request $request, Collection $collection)
+    {
+        $this->authorize('update', $collection);
+
+        $validated = $request->validate([
+            'movie_ids' => ['required', 'array'],
+            'movie_ids.*' => ['integer', 'distinct'],
+        ]);
+
+        $ownedIds = $collection->movies()->pluck('movies.id')->toArray();
+        $requestedIds = array_values(array_map('intval', $validated['movie_ids']));
+
+        if (count($requestedIds) !== count($ownedIds) || array_diff($requestedIds, $ownedIds) || array_diff($ownedIds, $requestedIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Geçersiz sıralama verisi.',
+            ], 422);
+        }
+
+        $syncData = [];
+        foreach ($requestedIds as $index => $movieId) {
+            $syncData[$movieId] = ['sort_order' => $index + 1];
+        }
+
+        $collection->movies()->syncWithoutDetaching($syncData);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Sıralama güncellendi.',
+        ]);
     }
 }

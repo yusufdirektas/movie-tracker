@@ -112,6 +112,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/collections/{collection}/movies', [CollectionController::class, 'addMovie'])->name('collections.addMovie');
     Route::post('/collections/{collection}/movies/bulk', [CollectionController::class, 'addMovies'])->name('collections.addMovies');
     Route::delete('/collections/{collection}/movies/{movie}', [CollectionController::class, 'removeMovie'])->name('collections.removeMovie');
+    Route::patch('/collections/{collection}/movies/reorder', [CollectionController::class, 'reorderMovies'])->name('collections.reorderMovies');
 });
 
 // --- 6. TOPLU İŞLEM ROTALARI (BULK ACTIONS) ---
