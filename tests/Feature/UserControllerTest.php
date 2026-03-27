@@ -108,6 +108,8 @@ class UserControllerTest extends TestCase
         $response->assertSee('Takip Ettigim Izlenen Film');
         $response->assertDontSee('Takip Ettigim Izlenmeyen Film');
         $response->assertDontSee('Takip Etmedigim Film');
+        $response->assertSee('data-testid="feed-activity-card"', false);
+        $response->assertSee('profilini aç');
     }
 
     public function test_public_profile_shows_recent_activities_card_when_enabled(): void

@@ -26,7 +26,7 @@
     @else
         <div class="space-y-4">
             @foreach($activities as $movie)
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition-all">
+                <div data-testid="feed-activity-card" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition-all">
                     <div class="flex gap-4">
                         {{-- Film Poster --}}
                         <div class="w-16 h-24 flex-shrink-0">
@@ -74,6 +74,14 @@
                                         {{ \Carbon\Carbon::parse($movie->watched_at)->diffForHumans() }}
                                     </span>
                                 @endif
+                            </div>
+
+                            <div class="mt-3">
+                                <a href="{{ route('users.show', $movie->user) }}"
+                                   class="inline-flex items-center gap-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+                                    <i class="fas fa-arrow-up-right-from-square"></i>
+                                    {{ $movie->user->name }} profilini aç
+                                </a>
                             </div>
                         </div>
                     </div>
