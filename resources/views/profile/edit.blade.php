@@ -157,6 +157,21 @@
                         <p class="text-xs text-slate-500 mt-1 ml-8">Kapalıysa sadece takip edenler profilinizi görebilir</p>
                     </div>
 
+                    <div class="mb-4">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox"
+                                   name="show_recent_activities"
+                                   value="1"
+                                   {{ $user->show_recent_activities ? 'checked' : '' }}
+                                   class="w-5 h-5 rounded bg-slate-800 border-slate-600 text-indigo-500 focus:ring-indigo-500/20">
+                            <span class="text-slate-300">
+                                <i class="fas fa-clock-rotate-left text-cyan-400 mr-1"></i>
+                                Son aktiviteler kartı profilimde görünsün
+                            </span>
+                        </label>
+                        <p class="text-xs text-slate-500 mt-1 ml-8">Kapalıysa son aktiviteler sadece senin profil düzenleme ekranında görünür.</p>
+                    </div>
+
                     <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition">
                         <i class="fas fa-save mr-1"></i> Kaydet
                     </button>

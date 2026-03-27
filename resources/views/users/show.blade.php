@@ -109,6 +109,37 @@
         </div>
     @endif
 
+    @if($user->show_recent_activities)
+        <div data-testid="recent-activities-card" class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-clock-rotate-left text-cyan-400"></i>
+                    Son Aktiviteler
+                </h2>
+                <span class="text-xs text-slate-500">{{ $recentActivities->count() }} kayıt</span>
+            </div>
+
+            @if($recentActivities->isNotEmpty())
+                <div class="space-y-3">
+                    @foreach($recentActivities as $activity)
+                        <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/70">
+                            <i class="fas {{ $activity['icon'] }} {{ $activity['icon_class'] }} mt-0.5"></i>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-semibold text-slate-100 truncate">{{ $activity['title'] }}</p>
+                                <p class="text-xs text-slate-400">{{ $activity['description'] }}</p>
+                            </div>
+                            <span class="text-[11px] text-slate-500 whitespace-nowrap">{{ $activity['at']->diffForHumans() }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="text-sm text-slate-500 bg-slate-800/40 border border-dashed border-slate-700 rounded-xl p-4">
+                    Henüz gösterilecek aktivite yok.
+                </div>
+            @endif
+        </div>
+    @endif
+
     {{-- SEKMELER --}}
     <div x-data="{ activeTab: 'recent' }" class="mb-8">
         {{-- Sekme Başlıkları --}}

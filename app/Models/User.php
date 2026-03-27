@@ -22,6 +22,7 @@ class User extends Authenticatable
         'email',
         'password',
         'is_public',
+        'show_recent_activities',
         'share_token',
         'avatar',
         'bio',
@@ -61,6 +62,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_public' => 'boolean',
+            'show_recent_activities' => 'boolean',
             // JSON alanı otomatik array'e çevrilir
             'showcase_movies' => 'array',
         ];

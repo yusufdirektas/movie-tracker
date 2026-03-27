@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Movie;
+use App\Models\Collection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -107,5 +108,62 @@ class UserControllerTest extends TestCase
         $response->assertSee('Takip Ettigim Izlenen Film');
         $response->assertDontSee('Takip Ettigim Izlenmeyen Film');
         $response->assertDontSee('Takip Etmedigim Film');
+    }
+
+    public function test_public_profile_shows_recent_activities_card_when_enabled(): void
+    {
+        $viewer = User::factory()->create();
+        $profileOwner = User::factory()->create([
+            'is_public' => true,
+            'show_recent_activities' => true,
+        ]);
+
+        Movie::factory()->create([
+            'user_id' => $profileOwner->id,
+            'title' => 'Profil Aktivite Filmi',
+            'is_watched' => true,
+            'watched_at' => now(),
+        ]);
+
+        Collection::query()->create([
+            'user_id' => $profileOwner->id,
+            'name' => 'Profil Aktivite Koleksiyon',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($viewer)
+            ->get(route('users.show', $profileOwner));
+
+        $response->assertOk();
+        $response->assertSee('data-testid="recent-activities-card"', false);
+        $response->assertSee('Profil Aktivite Filmi');
+        $response->assertSee('Profil Aktivite Koleksiyon');
+    }
+
+    public function test_public_profile_hides_recent_activities_card_when_disabled(): void
+    {
+        $viewer = User::factory()->create();
+        $profileOwner = User::factory()->create([
+            'is_public' => true,
+            'show_recent_activities' => false,
+        ]);
+
+        Movie::factory()->create([
+            'user_id' => $profileOwner->id,
+            'title' => 'Gizli Aktivite Filmi',
+            'is_watched' => true,
+            'watched_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($viewer)
+            ->get(route('users.show', $profileOwner));
+
+        $response->assertOk();
+        $response->assertDontSee('data-testid="recent-activities-card"', false);
     }
 }

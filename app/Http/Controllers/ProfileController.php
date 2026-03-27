@@ -155,11 +155,13 @@ class ProfileController extends Controller
         $request->validate([
             'bio' => ['nullable', 'string', 'max:500'],
             'is_public' => ['boolean'],
+            'show_recent_activities' => ['boolean'],
         ]);
 
         $request->user()->update([
             'bio' => $request->bio,
             'is_public' => $request->boolean('is_public'),
+            'show_recent_activities' => $request->boolean('show_recent_activities'),
         ]);
 
         return Redirect::route('profile.edit')->with('status', 'bio-updated');

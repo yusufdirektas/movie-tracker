@@ -199,4 +199,28 @@ class ProfileTest extends TestCase
         $response->assertSee('Aktivite Film');
         $response->assertSee('Aktivite Koleksiyon');
     }
+
+    public function test_user_can_update_recent_activities_visibility_setting(): void
+    {
+        $user = User::factory()->create([
+            'is_public' => true,
+            'show_recent_activities' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patch(route('profile.bio.update'), [
+                'bio' => 'Yeni bio',
+                'is_public' => '1',
+                // Checkbox işaretli değilmiş gibi gönderilmiyor.
+            ]);
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('profile.edit'));
+
+        $user->refresh();
+        $this->assertFalse($user->show_recent_activities);
+        $this->assertSame('Yeni bio', $user->bio);
+    }
 }
