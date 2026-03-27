@@ -223,4 +223,28 @@ class ProfileTest extends TestCase
         $this->assertFalse($user->show_recent_activities);
         $this->assertSame('Yeni bio', $user->bio);
     }
+
+    public function test_user_can_enable_recent_activities_visibility_setting(): void
+    {
+        $user = User::factory()->create([
+            'is_public' => true,
+            'show_recent_activities' => false,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patch(route('profile.bio.update'), [
+                'bio' => 'Açık aktivite akışı',
+                'is_public' => '1',
+                'show_recent_activities' => '1',
+            ]);
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('profile.edit'));
+
+        $user->refresh();
+        $this->assertTrue($user->show_recent_activities);
+        $this->assertSame('Açık aktivite akışı', $user->bio);
+    }
 }

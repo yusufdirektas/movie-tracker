@@ -166,4 +166,26 @@ class UserControllerTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('data-testid="recent-activities-card"', false);
     }
+
+    public function test_own_private_profile_hides_recent_activities_card_when_disabled(): void
+    {
+        $profileOwner = User::factory()->create([
+            'is_public' => false,
+            'show_recent_activities' => false,
+        ]);
+
+        Movie::factory()->create([
+            'user_id' => $profileOwner->id,
+            'title' => 'Sahip Gizli Aktivite Filmi',
+            'is_watched' => true,
+            'watched_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($profileOwner)
+            ->get(route('users.show', $profileOwner));
+
+        $response->assertOk();
+        $response->assertDontSee('data-testid="recent-activities-card"', false);
+    }
 }
