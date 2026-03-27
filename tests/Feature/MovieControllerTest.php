@@ -332,4 +332,44 @@ class MovieControllerTest extends TestCase
             $this->assertFalse($movie->relationLoaded('collections'));
         }
     }
+
+    public function test_user_can_update_personal_note_from_movie_detail(): void
+    {
+        $user = User::factory()->create();
+        $movie = Movie::factory()->create([
+            'user_id' => $user->id,
+            'personal_note' => null,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patch(route('movies.update', $movie), [
+                'personal_note' => 'Bu filmin finali cok etkileyiciydi.',
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'Kişisel not kaydedildi.');
+        $this->assertDatabaseHas('movies', [
+            'id' => $movie->id,
+            'personal_note' => 'Bu filmin finali cok etkileyiciydi.',
+        ]);
+    }
+
+    public function test_movie_show_contains_quick_notes_section(): void
+    {
+        $user = User::factory()->create();
+        $movie = Movie::factory()->create([
+            'user_id' => $user->id,
+            'personal_note' => 'Not denemesi',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.show', $movie));
+
+        $response->assertOk();
+        $response->assertSee('Hızlı Notlarım');
+        $response->assertSee('Notu Kaydet');
+        $response->assertSee('Not denemesi');
+    }
 }

@@ -446,6 +446,18 @@ class MovieController extends Controller
     {
         $this->authorize('update', $movie);
 
+        if ($request->has('personal_note')) {
+            $movie->update([
+                'personal_note' => $request->input('personal_note'),
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Not kaydedildi.']);
+            }
+
+            return back()->with('success', 'Kişisel not kaydedildi.');
+        }
+
         if ($request->has('personal_rating')) {
             $movie->update([
                 'personal_rating' => $request->personal_rating,

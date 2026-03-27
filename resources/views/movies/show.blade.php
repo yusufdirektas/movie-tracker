@@ -152,6 +152,33 @@
                         </div>
                     @endif
 
+                    {{-- Hızlı Notlar --}}
+                    <div class="mb-8">
+                        <h3 class="text-slate-500 font-black mb-3 uppercase text-[10px] tracking-widest">Hızlı Notlarım</h3>
+                        <form action="{{ route('movies.update', $movie) }}" method="POST" class="space-y-3">
+                            @csrf
+                            @method('PATCH')
+                            <textarea
+                                name="personal_note"
+                                rows="4"
+                                maxlength="1000"
+                                placeholder="Bu film hakkında kısa notlarını yaz..."
+                                class="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition">{{ old('personal_note', $movie->personal_note) }}</textarea>
+
+                            @error('personal_note')
+                                <p class="text-xs text-red-400">{{ $message }}</p>
+                            @enderror
+
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] text-slate-500">Maksimum 1000 karakter</span>
+                                <button type="submit"
+                                    class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-bold transition border border-slate-600">
+                                    <i class="fas fa-sticky-note mr-1"></i> Notu Kaydet
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
                     {{-- Aksiyon Butonları --}}
                     <div class="flex flex-wrap gap-4 items-start">
                         <form action="{{ route('movies.update', $movie) }}" method="POST">

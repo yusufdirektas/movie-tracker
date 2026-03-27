@@ -37,6 +37,7 @@ class Movie extends Model
         'poster_path',
         'rating',
         'personal_rating',
+        'personal_note',
         'runtime',
         'overview',
         'release_date',
