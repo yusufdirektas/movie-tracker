@@ -211,4 +211,38 @@ class UserControllerTest extends TestCase
         $stats = $response->viewData('stats');
         $this->assertSame(3, $stats['watched_count']);
     }
+
+    public function test_own_profile_empty_states_show_actionable_ctas(): void
+    {
+        $owner = User::factory()->create([
+            'is_public' => false,
+            'show_recent_activities' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($owner)
+            ->get(route('users.show', $owner));
+
+        $response->assertOk();
+        $response->assertSee('İlk filmini ekle');
+        $response->assertSee('Watchlist\'e film ekle', false);
+        $response->assertSee('Bir filmi 4+ puanlayınca burada görünecek.');
+    }
+
+    public function test_other_user_profile_empty_states_do_not_show_owner_ctas(): void
+    {
+        $viewer = User::factory()->create();
+        $owner = User::factory()->create([
+            'is_public' => true,
+            'show_recent_activities' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($viewer)
+            ->get(route('users.show', $owner));
+
+        $response->assertOk();
+        $response->assertDontSee('İlk filmini ekle');
+        $response->assertDontSee('Watchlist\'e film ekle', false);
+    }
 }

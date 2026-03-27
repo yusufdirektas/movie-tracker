@@ -203,6 +203,13 @@
                 <div class="text-center py-12 bg-slate-900/50 rounded-xl border border-slate-800">
                     <i class="fas fa-clock text-3xl text-slate-700 mb-3"></i>
                     <p class="text-slate-500">Henüz izlenen film yok</p>
+                    @if($isOwnProfile)
+                        <a href="{{ route('movies.create') }}"
+                           class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">
+                            <i class="fas fa-plus-circle"></i>
+                            İlk filmini ekle
+                        </a>
+                    @endif
                 </div>
             @endif
         </div>
@@ -239,6 +246,9 @@
                 <div class="text-center py-12 bg-slate-900/50 rounded-xl border border-slate-800">
                     <i class="fas fa-heart text-3xl text-slate-700 mb-3"></i>
                     <p class="text-slate-500">Henüz favori film yok</p>
+                    @if($isOwnProfile)
+                        <p class="text-xs text-slate-600 mt-2">Bir filmi 4+ puanlayınca burada görünecek.</p>
+                    @endif
                 </div>
             @endif
         </div>
@@ -271,6 +281,13 @@
                 <div class="text-center py-12 bg-slate-900/50 rounded-xl border border-slate-800">
                     <i class="fas fa-bookmark text-3xl text-slate-700 mb-3"></i>
                     <p class="text-slate-500">İzlenecek listesi boş</p>
+                    @if($isOwnProfile)
+                        <a href="{{ route('movies.create') }}"
+                           class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">
+                            <i class="fas fa-magic"></i>
+                            Watchlist'e film ekle
+                        </a>
+                    @endif
                 </div>
             @endif
         </div>
