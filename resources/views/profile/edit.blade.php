@@ -91,6 +91,19 @@
                 
                 <p class="text-slate-500 text-xs mt-3">Tıkla ve fotoğraf seç</p>
 
+                <div x-show="notice.show" x-transition x-cloak class="mt-3 w-full max-w-xs text-xs rounded-xl border px-3 py-2"
+                     :class="notice.type === 'error'
+                        ? 'bg-red-500/10 border-red-500/40 text-red-300'
+                        : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300'">
+                    <div class="flex items-start gap-2">
+                        <i class="fas mt-0.5" :class="notice.type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'"></i>
+                        <span class="flex-1" x-text="notice.message"></span>
+                        <button type="button" class="opacity-70 hover:opacity-100" @click="notice.show = false" aria-label="Avatar mesajını kapat">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
                 @if($user->avatar)
                     <form id="delete-avatar-form" action="{{ route('profile.avatar.delete') }}" method="POST">
                         @csrf
@@ -282,6 +295,11 @@ function avatarUploader() {
         previewDataUrl: '',
         selectedFile: null,
         saving: false,
+        notice: { show: false, type: 'success', message: '' },
+
+        showNotice(type, message) {
+            this.notice = { show: true, type, message };
+        },
         
         // Dosya seçildiğinde önizleme modalını aç
         openPreview(event) {
@@ -290,13 +308,13 @@ function avatarUploader() {
             
             // Dosya tipi kontrolü
             if (!file.type.startsWith('image/')) {
-                alert('Lütfen bir görsel dosyası seçin.');
+                this.showNotice('error', 'Lütfen bir görsel dosyası seçin.');
                 return;
             }
             
             // Dosya boyutu kontrolü (max 10MB)
             if (file.size > 10 * 1024 * 1024) {
-                alert('Dosya boyutu 10MB\'dan küçük olmalı.');
+                this.showNotice('error', 'Dosya boyutu 10MB\'dan küçük olmalı.');
                 return;
             }
             
@@ -348,18 +366,18 @@ function avatarUploader() {
                         } catch (e) {
                             data = null;
                         }
-                        alert(data?.message || 'Avatar yüklenirken bir hata oluştu.');
+                        this.showNotice('error', data?.message || 'Avatar yüklenirken bir hata oluştu.');
                         this.saving = false;
                     }
                 } catch (error) {
                     console.error('Upload error:', error);
-                    alert('Avatar yüklenirken bir hata oluştu.');
+                    this.showNotice('error', 'Avatar yüklenirken bir hata oluştu.');
                     this.saving = false;
                 }
                 
             } catch (error) {
                 console.error('Crop error:', error);
-                alert('Görsel işlenirken bir hata oluştu.');
+                this.showNotice('error', 'Görsel işlenirken bir hata oluştu.');
                 this.saving = false;
             }
         }

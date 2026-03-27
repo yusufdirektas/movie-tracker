@@ -155,4 +155,17 @@ class ProfileTest extends TestCase
         $response->assertSee('Fotoğraf Önizleme');
         $response->assertSee('Onayla ve Kaydet');
     }
+
+    public function test_profile_page_uses_inline_avatar_notice_instead_of_browser_alerts(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/profile');
+
+        $response->assertOk();
+        $response->assertDontSee('alert(', false);
+        $response->assertSee('x-show="notice.show"', false);
+    }
 }
