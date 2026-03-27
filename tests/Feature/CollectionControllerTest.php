@@ -303,4 +303,72 @@ class CollectionControllerTest extends TestCase
 
         $response->assertStatus(422);
     }
+
+    public function test_collection_show_can_filter_movies_by_watch_status_and_search(): void
+    {
+        $user = User::factory()->create();
+        $collection = Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Filtre Koleksiyon',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+
+        $watchedMovie = Movie::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Matrix',
+            'is_watched' => true,
+        ]);
+        $watchlistMovie = Movie::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Interstellar',
+            'is_watched' => false,
+        ]);
+
+        $collection->movies()->attach($watchedMovie->id, ['sort_order' => 1]);
+        $collection->movies()->attach($watchlistMovie->id, ['sort_order' => 2]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('collections.show', $collection).'?watch=watched&search=mat');
+
+        $response->assertOk();
+        $response->assertSee('Matrix');
+        $response->assertDontSee('Interstellar');
+        $response->assertSee('Sürükle-bırak kapalı');
+    }
+
+    public function test_collection_show_can_sort_movies_by_title(): void
+    {
+        $user = User::factory()->create();
+        $collection = Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Sıralama Koleksiyon',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+
+        $movieZ = Movie::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Zebra Film',
+        ]);
+        $movieA = Movie::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Avatar Film',
+        ]);
+
+        $collection->movies()->attach($movieZ->id, ['sort_order' => 1]);
+        $collection->movies()->attach($movieA->id, ['sort_order' => 2]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('collections.show', $collection).'?sort=title_asc');
+
+        $response->assertOk();
+        $response->assertSeeInOrder(['Avatar Film', 'Zebra Film']);
+    }
 }

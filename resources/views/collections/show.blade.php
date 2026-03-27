@@ -92,16 +92,71 @@
             </div>
         </div>
 
+        {{-- KOLEKSİYON KONTROLLERİ --}}
+        <form method="GET" action="{{ route('collections.show', $collection) }}"
+            class="mb-6 p-4 bg-slate-900/70 border border-slate-800 rounded-2xl">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div class="md:col-span-2">
+                    <label for="search" class="block text-xs text-slate-500 mb-1">Ara</label>
+                    <input id="search" name="search" type="text" value="{{ $search }}"
+                        placeholder="Koleksiyon içinde film ara..."
+                        class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 placeholder-slate-600">
+                </div>
+                <div>
+                    <label for="watch" class="block text-xs text-slate-500 mb-1">Durum</label>
+                    <select id="watch" name="watch"
+                        class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                        <option value="all" {{ $watch === 'all' ? 'selected' : '' }}>Tümü</option>
+                        <option value="watched" {{ $watch === 'watched' ? 'selected' : '' }}>İzlenen</option>
+                        <option value="watchlist" {{ $watch === 'watchlist' ? 'selected' : '' }}>Watchlist</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="sort" class="block text-xs text-slate-500 mb-1">Sıralama</label>
+                    <select id="sort" name="sort"
+                        class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                        <option value="manual" {{ $sort === 'manual' ? 'selected' : '' }}>Manuel (Sürükle)</option>
+                        <option value="title_asc" {{ $sort === 'title_asc' ? 'selected' : '' }}>İsim (A-Z)</option>
+                        <option value="title_desc" {{ $sort === 'title_desc' ? 'selected' : '' }}>İsim (Z-A)</option>
+                        <option value="newest" {{ $sort === 'newest' ? 'selected' : '' }}>En Yeni Eklenen</option>
+                        <option value="oldest" {{ $sort === 'oldest' ? 'selected' : '' }}>En Eski Eklenen</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex items-center justify-between mt-3">
+                <p class="text-xs text-slate-500">
+                    {{ $collectionMovies->count() }} sonuç gösteriliyor
+                    @if(!$canReorder)
+                        <span class="text-amber-400 ml-1">• Sürükle-bırak kapalı (filtre/sıralama aktif)</span>
+                    @endif
+                </p>
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('collections.show', $collection) }}"
+                        class="px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors">
+                        Sıfırla
+                    </a>
+                    <button type="submit"
+                        class="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-teal-600 hover:bg-teal-500 transition-colors">
+                        Uygula
+                    </button>
+                </div>
+            </div>
+        </form>
+
         {{-- FİLMLER --}}
-        @if($collection->movies->isEmpty())
+        @if($collectionMovies->isEmpty())
             <div class="bg-slate-900 border-2 border-dashed border-slate-800 rounded-[2.5rem] p-20 text-center"
                  id="dropZone"
                  ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
                 <div class="bg-slate-800 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
                     <i class="fas fa-film text-4xl text-slate-600"></i>
                 </div>
-                <h3 class="text-white text-xl font-bold mb-2">Bu koleksiyon henüz boş</h3>
-                <p class="text-slate-500 mb-6">"Film Ekle" butonuna tıklayarak veya <strong class="text-teal-400">Film Arşivim</strong> sayfasından filmleri sürükleyip bırakarak ekleyebilirsin.</p>
+                <h3 class="text-white text-xl font-bold mb-2">{{ $collection->movies->isEmpty() ? 'Bu koleksiyon henüz boş' : 'Bu filtreye uygun film bulunamadı' }}</h3>
+                <p class="text-slate-500 mb-6">
+                    {{ $collection->movies->isEmpty()
+                        ? '"Film Ekle" butonuna tıklayarak veya Film Arşivim sayfasından filmleri sürükleyip bırakarak ekleyebilirsin.'
+                        : 'Filtreleri temizleyerek tüm koleksiyon filmlerini görebilirsin.' }}
+                </p>
                 <button onclick="openAddMovieModal()"
                     class="bg-teal-600 hover:bg-teal-500 text-white px-6 py-3 rounded-xl font-bold transition-all">
                     <i class="fas fa-plus mr-2"></i> Film Ekle
@@ -111,14 +166,16 @@
             <div id="dropZone" class="w-full"
                  ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
                 <div id="collectionGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                    @foreach($collection->movies as $movie)
+                    @foreach($collectionMovies as $movie)
                         <div class="group relative collection-movie-item"
                             data-collection-movie-id="{{ $movie->id }}"
-                            draggable="true"
-                            ondragstart="handleCollectionDragStart(event)"
-                            ondragend="handleCollectionDragEnd(event)"
-                            ondragover="handleCollectionDragOver(event)"
-                            ondrop="handleCollectionDrop(event)">
+                            draggable="{{ $canReorder ? 'true' : 'false' }}"
+                            @if($canReorder)
+                                ondragstart="handleCollectionDragStart(event)"
+                                ondragend="handleCollectionDragEnd(event)"
+                                ondragover="handleCollectionDragOver(event)"
+                                ondrop="handleCollectionDrop(event)"
+                            @endif>
                             <a href="{{ route('movies.show', $movie) }}"
                                 class="block bg-slate-900 rounded-2xl overflow-hidden border border-slate-800/50 hover:border-teal-500/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
                             <div class="aspect-[2/3] relative overflow-hidden bg-slate-800">

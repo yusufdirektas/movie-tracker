@@ -36,7 +36,7 @@ class CollectionController extends Controller
      * Route Model Binding ($collection parametresi) kullandığımız için
      * model zaten yüklenmiş durumda. Bu yüzden load() kullanıyoruz.
      */
-    public function show(Collection $collection)
+    public function show(Request $request, Collection $collection)
     {
         $this->authorize('view', $collection);
 
@@ -57,7 +57,46 @@ class CollectionController extends Controller
             $collection->load('movies');
         }
 
-        return view('collections.show', compact('collection'));
+        $sort = $request->string('sort')->toString();
+        $watch = $request->string('watch')->toString();
+        $search = trim($request->string('search')->toString());
+
+        $allowedSorts = ['manual', 'title_asc', 'title_desc', 'newest', 'oldest'];
+        $allowedWatchFilters = ['all', 'watched', 'watchlist'];
+
+        if (! in_array($sort, $allowedSorts, true)) {
+            $sort = 'manual';
+        }
+        if (! in_array($watch, $allowedWatchFilters, true)) {
+            $watch = 'all';
+        }
+
+        $collectionMovies = $collection->movies;
+
+        if ($watch === 'watched') {
+            $collectionMovies = $collectionMovies->where('is_watched', true);
+        } elseif ($watch === 'watchlist') {
+            $collectionMovies = $collectionMovies->where('is_watched', false);
+        }
+
+        if ($search !== '') {
+            $collectionMovies = $collectionMovies->filter(fn ($movie) => str_contains(mb_strtolower($movie->title), mb_strtolower($search)));
+        }
+
+        if ($sort === 'title_asc') {
+            $collectionMovies = $collectionMovies->sortBy('title', SORT_NATURAL | SORT_FLAG_CASE);
+        } elseif ($sort === 'title_desc') {
+            $collectionMovies = $collectionMovies->sortByDesc('title', SORT_NATURAL | SORT_FLAG_CASE);
+        } elseif ($sort === 'newest') {
+            $collectionMovies = $collectionMovies->sortByDesc('created_at');
+        } elseif ($sort === 'oldest') {
+            $collectionMovies = $collectionMovies->sortBy('created_at');
+        }
+
+        $collectionMovies = $collectionMovies->values();
+        $canReorder = $sort === 'manual' && $watch === 'all' && $search === '';
+
+        return view('collections.show', compact('collection', 'collectionMovies', 'sort', 'watch', 'search', 'canReorder'));
     }
 
     /**
