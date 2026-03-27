@@ -73,14 +73,24 @@ class UserController extends Controller
             }
         }
 
+        $user->loadCount([
+            'movies as watched_movies_count' => fn($query) => $query->where('is_watched', true),
+            'movies as watchlist_movies_count' => fn($query) => $query->where('is_watched', false),
+            'collections',
+            'followers',
+            'following',
+        ])->loadSum([
+            'movies as watched_movies_runtime_sum' => fn($query) => $query->where('is_watched', true),
+        ], 'runtime');
+
         // İstatistikler
         $stats = [
-            'watched_count' => $user->movies()->where('is_watched', true)->count(),
-            'watchlist_count' => $user->movies()->where('is_watched', false)->count(),
-            'total_runtime' => $user->movies()->where('is_watched', true)->sum('runtime'),
-            'collections_count' => $user->collections()->count(),
-            'followers_count' => $user->followersCount(),
-            'following_count' => $user->followingCount(),
+            'watched_count' => $user->watched_movies_count,
+            'watchlist_count' => $user->watchlist_movies_count,
+            'total_runtime' => $user->watched_movies_runtime_sum ?? 0,
+            'collections_count' => $user->collections_count,
+            'followers_count' => $user->followers_count,
+            'following_count' => $user->following_count,
         ];
 
         // Son izlenen filmler (en son 12 tanesi)

@@ -188,4 +188,27 @@ class UserControllerTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('data-testid="recent-activities-card"', false);
     }
+
+    public function test_user_show_uses_preloaded_stats_without_extra_relation_count_queries(): void
+    {
+        $viewer = User::factory()->create();
+        $profileOwner = User::factory()->create([
+            'is_public' => true,
+            'show_recent_activities' => true,
+        ]);
+
+        Movie::factory()->count(3)->create([
+            'user_id' => $profileOwner->id,
+            'is_watched' => true,
+            'watched_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($viewer)
+            ->get(route('users.show', $profileOwner));
+
+        $response->assertOk();
+        $stats = $response->viewData('stats');
+        $this->assertSame(3, $stats['watched_count']);
+    }
 }
