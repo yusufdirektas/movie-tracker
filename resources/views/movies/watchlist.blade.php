@@ -147,6 +147,36 @@
                         </button>
                     </form>
 
+                    {{-- Öncelik Güncelle --}}
+                    <div x-data="{ openPriority: false }" class="relative">
+                        <button @click="openPriority = !openPriority" @click.away="openPriority = false"
+                            class="bg-amber-500/20 hover:bg-amber-500 hover:text-white text-amber-300 text-sm font-bold px-4 py-2 rounded-xl transition-colors border border-amber-500/30 flex items-center gap-2">
+                            <i class="fas fa-bolt"></i> Öncelik
+                        </button>
+
+                        <div x-show="openPriority" style="display:none;"
+                            class="absolute bottom-full mb-2 right-0 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
+                            <form action="{{ route('movies.bulk.priority') }}" method="POST" class="flex flex-col">
+                                @csrf
+                                <template x-for="id in selectedMovies">
+                                    <input type="hidden" name="movie_ids[]" :value="id">
+                                </template>
+                                <button type="submit" name="watch_priority" value="1"
+                                    class="text-left px-4 py-3 text-sm text-red-300 hover:bg-slate-700 transition-colors">
+                                    <i class="fas fa-angles-up mr-2"></i> Yüksek
+                                </button>
+                                <button type="submit" name="watch_priority" value="2"
+                                    class="text-left px-4 py-3 text-sm text-amber-300 hover:bg-slate-700 transition-colors border-t border-slate-700/50">
+                                    <i class="fas fa-equals mr-2"></i> Normal
+                                </button>
+                                <button type="submit" name="watch_priority" value="3"
+                                    class="text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 transition-colors border-t border-slate-700/50">
+                                    <i class="fas fa-angles-down mr-2"></i> Düşük
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
                     {{-- Sil --}}
                     <form action="{{ route('movies.bulk.delete') }}" method="POST" onsubmit="return confirm('Seçili filmleri arşivden silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')">
                         @csrf

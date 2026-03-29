@@ -244,4 +244,56 @@ class BulkActionControllerTest extends TestCase
         $response->assertSessionHas('info', 'Güncellenecek uygun film bulunamadı.');
         $response->assertSessionHas('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
     }
+
+    public function test_bulk_priority_updates_only_owned_movies(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $ownMovie = Movie::factory()->create([
+            'user_id' => $user->id,
+            'watch_priority' => 3,
+        ]);
+        $othersMovie = Movie::factory()->create([
+            'user_id' => $otherUser->id,
+            'watch_priority' => 3,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('movies.bulk.priority'), [
+                'movie_ids' => [$ownMovie->id, $othersMovie->id],
+                'watch_priority' => 1,
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $ownMovie->refresh();
+        $othersMovie->refresh();
+
+        $this->assertSame(1, (int) $ownMovie->watch_priority);
+        $this->assertSame(3, (int) $othersMovie->watch_priority);
+    }
+
+    public function test_bulk_priority_returns_info_when_no_owned_movie_selected(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $othersMovie = Movie::factory()->create([
+            'user_id' => $otherUser->id,
+            'watch_priority' => 2,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('movies.bulk.priority'), [
+                'movie_ids' => [$othersMovie->id],
+                'watch_priority' => 1,
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('info', 'Önceliği güncellenecek uygun film bulunamadı.');
+        $response->assertSessionHas('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
+    }
 }

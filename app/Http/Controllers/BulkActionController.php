@@ -123,4 +123,36 @@ class BulkActionController extends Controller
 
         return back()->with('success', count($validMovieIds) . ' film koleksiyona başarıyla eklendi.');
     }
+
+    /**
+     * Seçili filmlerin watchlist önceliğini günceller
+     */
+    public function updatePriority(Request $request)
+    {
+        $request->validate([
+            'movie_ids' => 'required|array',
+            'movie_ids.*' => 'exists:movies,id',
+            'watch_priority' => 'required|integer|in:1,2,3',
+        ]);
+
+        $updatedCount = Movie::whereIn('id', $request->movie_ids)
+            ->where('user_id', Auth::id())
+            ->update([
+                'watch_priority' => (int) $request->watch_priority,
+            ]);
+
+        if ($updatedCount === 0) {
+            return back()
+                ->with('info', 'Önceliği güncellenecek uygun film bulunamadı.')
+                ->with('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
+        }
+
+        $label = match ((int) $request->watch_priority) {
+            1 => 'Yüksek',
+            3 => 'Düşük',
+            default => 'Normal',
+        };
+
+        return back()->with('success', $updatedCount . " film için öncelik \"$label\" olarak güncellendi.");
+    }
 }

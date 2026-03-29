@@ -12,6 +12,21 @@
             Aktivite <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Akışı</span>
         </h1>
         <p class="text-slate-500 mt-2">Takip ettiğin kişilerin son izledikleri</p>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+            <a href="{{ route('feed', ['period' => 'all']) }}"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors {{ $period === 'all' ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-slate-500' }}">
+                Tümü
+            </a>
+            <a href="{{ route('feed', ['period' => 'today']) }}"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors {{ $period === 'today' ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-slate-500' }}">
+                Bugün
+            </a>
+            <a href="{{ route('feed', ['period' => 'week']) }}"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors {{ $period === 'week' ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-slate-500' }}">
+                Son 7 Gün
+            </a>
+        </div>
     </div>
 
     @if($activities->isEmpty())

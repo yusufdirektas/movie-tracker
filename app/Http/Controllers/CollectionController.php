@@ -261,6 +261,33 @@ class CollectionController extends Controller
     }
 
     /**
+     * Bir koleksiyondan birden fazla filmi çıkar
+     */
+    public function removeMovies(Request $request, Collection $collection)
+    {
+        $this->authorize('update', $collection);
+
+        $validated = $request->validate([
+            'movie_ids' => ['required', 'array'],
+            'movie_ids.*' => ['integer', 'distinct', 'exists:movies,id'],
+        ]);
+
+        $ownedIds = $collection->movies()->pluck('movies.id')->toArray();
+        $candidateIds = array_values(array_map('intval', $validated['movie_ids']));
+        $removableIds = array_values(array_intersect($candidateIds, $ownedIds));
+
+        if (empty($removableIds)) {
+            return back()
+                ->with('info', 'Koleksiyondan çıkarılacak uygun film bulunamadı.')
+                ->with('info_action', 'Lütfen bu koleksiyonda bulunan filmleri seçtiğinden emin ol.');
+        }
+
+        $collection->movies()->detach($removableIds);
+
+        return back()->with('success', count($removableIds) . ' film koleksiyondan çıkarıldı.');
+    }
+
+    /**
      * Koleksiyondaki film sıralamasını güncelle
      */
     public function reorderMovies(Request $request, Collection $collection)

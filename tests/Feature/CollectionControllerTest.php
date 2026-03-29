@@ -371,4 +371,64 @@ class CollectionControllerTest extends TestCase
         $response->assertOk();
         $response->assertSeeInOrder(['Avatar Film', 'Zebra Film']);
     }
+
+    public function test_collection_bulk_remove_detaches_only_selected_movies(): void
+    {
+        $user = User::factory()->create();
+        $collection = Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Toplu Cikar',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+
+        $movieA = Movie::factory()->create(['user_id' => $user->id]);
+        $movieB = Movie::factory()->create(['user_id' => $user->id]);
+        $collection->movies()->attach($movieA->id, ['sort_order' => 1]);
+        $collection->movies()->attach($movieB->id, ['sort_order' => 2]);
+
+        $response = $this
+            ->actingAs($user)
+            ->delete(route('collections.removeMovies', $collection), [
+                'movie_ids' => [$movieA->id],
+            ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseMissing('collection_movie', [
+            'collection_id' => $collection->id,
+            'movie_id' => $movieA->id,
+        ]);
+        $this->assertDatabaseHas('collection_movie', [
+            'collection_id' => $collection->id,
+            'movie_id' => $movieB->id,
+        ]);
+    }
+
+    public function test_collection_bulk_remove_returns_info_when_no_matching_movies_selected(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $collection = Collection::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Toplu Cikar Bos',
+            'description' => null,
+            'icon' => 'folder',
+            'color' => '#6366f1',
+            'is_public' => false,
+        ]);
+
+        $othersMovie = Movie::factory()->create(['user_id' => $otherUser->id]);
+
+        $response = $this
+            ->actingAs($user)
+            ->delete(route('collections.removeMovies', $collection), [
+                'movie_ids' => [$othersMovie->id],
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('info', 'Koleksiyondan çıkarılacak uygun film bulunamadı.');
+        $response->assertSessionHas('info_action', 'Lütfen bu koleksiyonda bulunan filmleri seçtiğinden emin ol.');
+    }
 }

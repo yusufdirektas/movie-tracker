@@ -247,4 +247,60 @@ class UserControllerTest extends TestCase
         $response->assertDontSee('İlk filmini ekle');
         $response->assertDontSee('Watchlist\'e film ekle', false);
     }
+
+    public function test_feed_period_filter_today_limits_old_activities(): void
+    {
+        $currentUser = User::factory()->create();
+        $followedUser = User::factory()->create();
+        $currentUser->follow($followedUser);
+
+        Movie::factory()->create([
+            'user_id' => $followedUser->id,
+            'title' => 'Bugunku Aktivite',
+            'is_watched' => true,
+            'watched_at' => now()->subHours(2),
+        ]);
+        Movie::factory()->create([
+            'user_id' => $followedUser->id,
+            'title' => 'Eski Aktivite',
+            'is_watched' => true,
+            'watched_at' => now()->subDays(2),
+        ]);
+
+        $response = $this
+            ->actingAs($currentUser)
+            ->get(route('feed', ['period' => 'today']));
+
+        $response->assertOk();
+        $response->assertSee('Bugunku Aktivite');
+        $response->assertDontSee('Eski Aktivite');
+    }
+
+    public function test_feed_period_filter_week_hides_older_than_seven_days(): void
+    {
+        $currentUser = User::factory()->create();
+        $followedUser = User::factory()->create();
+        $currentUser->follow($followedUser);
+
+        Movie::factory()->create([
+            'user_id' => $followedUser->id,
+            'title' => 'Haftalik Aktivite',
+            'is_watched' => true,
+            'watched_at' => now()->subDays(3),
+        ]);
+        Movie::factory()->create([
+            'user_id' => $followedUser->id,
+            'title' => 'Cok Eski Aktivite',
+            'is_watched' => true,
+            'watched_at' => now()->subDays(10),
+        ]);
+
+        $response = $this
+            ->actingAs($currentUser)
+            ->get(route('feed', ['period' => 'week']));
+
+        $response->assertOk();
+        $response->assertSee('Haftalik Aktivite');
+        $response->assertDontSee('Cok Eski Aktivite');
+    }
 }

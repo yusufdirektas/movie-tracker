@@ -163,6 +163,24 @@
                 </button>
             </div>
         @else
+            <form action="{{ route('collections.removeMovies', $collection) }}" method="POST" class="mb-4 flex justify-end">
+                @csrf
+                @method('DELETE')
+                <div class="inline-flex items-center gap-2 bg-slate-900/70 border border-slate-700 rounded-xl px-3 py-2">
+                    <input id="bulk-remove-input" type="text" name="movie_ids_json" class="hidden">
+                    <button type="button"
+                        onclick="toggleSelectAllCollectionMovies()"
+                        class="text-xs font-semibold text-slate-400 hover:text-white transition-colors">
+                        Tümünü Seç
+                    </button>
+                    <button type="submit"
+                        onclick="return prepareBulkRemoveSubmission()"
+                        class="text-xs font-semibold text-red-300 hover:text-red-200 transition-colors">
+                        Seçilenleri Çıkar
+                    </button>
+                </div>
+            </form>
+
             <div id="dropZone" class="w-full"
                  ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
                 <div id="collectionGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
@@ -176,6 +194,9 @@
                                 ondragover="handleCollectionDragOver(event)"
                                 ondrop="handleCollectionDrop(event)"
                             @endif>
+                            <label class="absolute top-3 left-3 z-30">
+                                <input type="checkbox" class="collection-bulk-checkbox w-4 h-4 rounded border-slate-500 bg-slate-900 text-red-500 focus:ring-red-500/40" value="{{ $movie->id }}">
+                            </label>
                             <a href="{{ route('movies.show', $movie) }}"
                                 class="block bg-slate-900 rounded-2xl overflow-hidden border border-slate-800/50 hover:border-teal-500/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
                             <div class="aspect-[2/3] relative overflow-hidden bg-slate-800">
@@ -499,6 +520,36 @@ function copyToClipboard(elementId) {
         } catch (error) {
             window.location.reload();
         }
+    }
+
+    function toggleSelectAllCollectionMovies() {
+        const checkboxes = document.querySelectorAll('.collection-bulk-checkbox');
+        const allChecked = [...checkboxes].length > 0 && [...checkboxes].every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !allChecked);
+    }
+
+    function prepareBulkRemoveSubmission() {
+        const selected = [...document.querySelectorAll('.collection-bulk-checkbox:checked')]
+            .map(cb => parseInt(cb.value, 10));
+
+        if (selected.length === 0) {
+            alert('Önce koleksiyondan çıkarılacak filmleri seçmelisin.');
+            return false;
+        }
+
+        const hiddenInput = document.getElementById('bulk-remove-input');
+        hiddenInput.value = JSON.stringify(selected);
+
+        const form = hiddenInput.closest('form');
+        selected.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'movie_ids[]';
+            input.value = String(id);
+            form.appendChild(input);
+        });
+
+        return confirm('Seçili filmleri koleksiyondan çıkarmak istediğine emin misin?');
     }
 </script>
 @endpush

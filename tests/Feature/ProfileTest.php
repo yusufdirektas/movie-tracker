@@ -247,4 +247,25 @@ class ProfileTest extends TestCase
         $this->assertTrue($user->show_recent_activities);
         $this->assertSame('Açık aktivite akışı', $user->bio);
     }
+
+    public function test_profile_showcase_selected_items_are_draggable_for_manual_sorting(): void
+    {
+        $user = User::factory()->create([
+            'showcase_movies' => [],
+        ]);
+
+        Movie::factory()->create([
+            'user_id' => $user->id,
+            'is_watched' => true,
+            'title' => 'Draggable Vitrin Film',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/profile');
+
+        $response->assertOk();
+        $response->assertSee('handleDragStart($event, movieId)', false);
+        $response->assertSee('class="relative group showcase-item"', false);
+    }
 }

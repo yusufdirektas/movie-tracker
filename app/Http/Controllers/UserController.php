@@ -73,24 +73,14 @@ class UserController extends Controller
             }
         }
 
-        $user->loadCount([
-            'movies as watched_movies_count' => fn($query) => $query->where('is_watched', true),
-            'movies as watchlist_movies_count' => fn($query) => $query->where('is_watched', false),
-            'collections',
-            'followers',
-            'following',
-        ])->loadSum([
-            'movies as watched_movies_runtime_sum' => fn($query) => $query->where('is_watched', true),
-        ], 'runtime');
-
         // İstatistikler
         $stats = [
-            'watched_count' => $user->watched_movies_count,
-            'watchlist_count' => $user->watchlist_movies_count,
-            'total_runtime' => $user->watched_movies_runtime_sum ?? 0,
-            'collections_count' => $user->collections_count,
-            'followers_count' => $user->followers_count,
-            'following_count' => $user->following_count,
+            'watched_count' => $user->movies()->where('is_watched', true)->count(),
+            'watchlist_count' => $user->movies()->where('is_watched', false)->count(),
+            'total_runtime' => $user->movies()->where('is_watched', true)->sum('runtime'),
+            'collections_count' => $user->collections()->count(),
+            'followers_count' => $user->followersCount(),
+            'following_count' => $user->followingCount(),
         ];
 
         // Son izlenen filmler (en son 12 tanesi)
@@ -185,18 +175,30 @@ class UserController extends Controller
     {
         /** @var User $currentUser */
         $currentUser = Auth::user();
+        $period = request()->input('period', 'all');
+
+        if (! in_array($period, ['all', 'today', 'week'], true)) {
+            $period = 'all';
+        }
 
         // Takip edilen kullanıcıların ID'leri
         $followingIds = $currentUser->following()->pluck('following_id');
 
         // Son eklenen/izlenen filmler
-        $activities = \App\Models\Movie::query()
+        $activitiesQuery = \App\Models\Movie::query()
             ->whereIn('user_id', $followingIds)
             ->where('is_watched', true)
             ->with('user')
-            ->orderByDesc('watched_at')
-            ->paginate(20);
+            ->orderByDesc('watched_at');
 
-        return view('users.feed', compact('activities'));
+        if ($period === 'today') {
+            $activitiesQuery->where('watched_at', '>=', now()->startOfDay());
+        } elseif ($period === 'week') {
+            $activitiesQuery->where('watched_at', '>=', now()->subDays(7));
+        }
+
+        $activities = $activitiesQuery->paginate(20)->withQueryString();
+
+        return view('users.feed', compact('activities', 'period'));
     }
 }

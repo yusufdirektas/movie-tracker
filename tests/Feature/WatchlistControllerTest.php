@@ -165,5 +165,24 @@ class WatchlistControllerTest extends TestCase
         $response->assertSee('Yüksek Öncelik');
         $response->assertSee('name="watch_priority"', false);
     }
+
+    public function test_watchlist_contains_bulk_priority_action_button(): void
+    {
+        $user = User::factory()->create();
+
+        Movie::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Toplu Öncelik Film',
+            'is_watched' => false,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.watchlist'));
+
+        $response->assertOk();
+        $response->assertSee('Öncelik');
+        $response->assertSee(route('movies.bulk.priority'));
+    }
 }
 

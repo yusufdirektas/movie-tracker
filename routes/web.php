@@ -111,6 +111,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/collections/{collection}', [CollectionController::class, 'destroy'])->name('collections.destroy');
     Route::post('/collections/{collection}/movies', [CollectionController::class, 'addMovie'])->name('collections.addMovie');
     Route::post('/collections/{collection}/movies/bulk', [CollectionController::class, 'addMovies'])->name('collections.addMovies');
+    Route::delete('/collections/{collection}/movies/bulk', [CollectionController::class, 'removeMovies'])->name('collections.removeMovies');
     Route::delete('/collections/{collection}/movies/{movie}', [CollectionController::class, 'removeMovie'])->name('collections.removeMovie');
     Route::patch('/collections/{collection}/movies/reorder', [CollectionController::class, 'reorderMovies'])->name('collections.reorderMovies');
 });
@@ -120,6 +121,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/movies/bulk/delete', [BulkActionController::class, 'delete'])->name('movies.bulk.delete');
     Route::post('/movies/bulk/watched', [BulkActionController::class, 'markAsWatched'])->name('movies.bulk.watched');
     Route::post('/movies/bulk/unwatched', [BulkActionController::class, 'markAsUnwatched'])->name('movies.bulk.unwatched');
+    Route::post('/movies/bulk/priority', [BulkActionController::class, 'updatePriority'])->name('movies.bulk.priority');
     Route::post('/movies/bulk/collection', [BulkActionController::class, 'addToCollection'])->name('movies.bulk.collection');
 });
 

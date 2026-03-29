@@ -210,7 +210,13 @@
 
                     <div class="flex flex-wrap gap-3 min-h-[100px] p-4 bg-slate-950 rounded-xl border-2 border-dashed border-slate-700">
                         <template x-for="movieId in selected" :key="movieId">
-                            <div class="relative group">
+                            <div class="relative group showcase-item"
+                                 :data-showcase-movie-id="movieId"
+                                 draggable="true"
+                                 @dragstart="handleDragStart($event, movieId)"
+                                 @dragover.prevent
+                                 @drop.prevent="handleDrop($event, movieId)"
+                                 @dragend="draggedId = null">
                                 <img :src="getMoviePoster(movieId)"
                                      :alt="getMovieTitle(movieId)"
                                      class="w-16 h-24 object-cover rounded-lg shadow-lg">
@@ -432,6 +438,7 @@ function showcaseSelector() {
     return {
         // Mevcut vitrin filmlerini yükle
         selected: @json($user->showcase_movies ? json_decode($user->getRawOriginal('showcase_movies')) : []),
+        draggedId: null,
 
         toggleMovie(movieId) {
             if (this.selected.includes(movieId)) {
@@ -443,6 +450,28 @@ function showcaseSelector() {
 
         removeMovie(movieId) {
             this.selected = this.selected.filter(id => id !== movieId);
+        },
+
+        handleDragStart(event, movieId) {
+            this.draggedId = movieId;
+            event.dataTransfer.effectAllowed = 'move';
+        },
+
+        handleDrop(event, targetMovieId) {
+            if (!this.draggedId || this.draggedId === targetMovieId) {
+                return;
+            }
+
+            const fromIndex = this.selected.indexOf(this.draggedId);
+            const toIndex = this.selected.indexOf(targetMovieId);
+            if (fromIndex === -1 || toIndex === -1) {
+                return;
+            }
+
+            const reordered = [...this.selected];
+            const [moved] = reordered.splice(fromIndex, 1);
+            reordered.splice(toIndex, 0, moved);
+            this.selected = reordered;
         },
 
         getMoviePoster(movieId) {

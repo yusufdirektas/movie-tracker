@@ -205,7 +205,7 @@
                     <p class="text-slate-500">Henüz izlenen film yok</p>
                     @if($isOwnProfile)
                         <a href="{{ route('movies.create') }}"
-                           class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">
+                            class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">
                             <i class="fas fa-plus-circle"></i>
                             İlk filmini ekle
                         </a>
@@ -283,7 +283,7 @@
                     <p class="text-slate-500">İzlenecek listesi boş</p>
                     @if($isOwnProfile)
                         <a href="{{ route('movies.create') }}"
-                           class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">
+                            class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">
                             <i class="fas fa-magic"></i>
                             Watchlist'e film ekle
                         </a>
