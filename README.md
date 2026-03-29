@@ -27,7 +27,7 @@ Film Arşivim, izlediğin ve izlemek istediğin filmleri tek bir platformda yön
 | 🔍 **Akıllı Film Arama** | TMDB API üzerinden gerçek zamanlı film arama |
 | 📚 **Film Arşivi** | İzlediğin filmleri kişisel puanlarınla kaydet |
 | 📋 **İzleme Listesi** | İzlemek istediğin filmleri takip et |
-| 📥 **Toplu İçe Aktarma** | Letterboxd listeleri dahil toplu film ekleme |
+| 📥 **Toplu İçe Aktarma (Asenkron)** | Queue tabanlı batch import, canlı ilerleme ve hata raporu |
 | 🎯 **Kişisel Öneriler** | Son eklediğin filme göre öneri sistemi (TMDB) |
 | 🎟️ **Vizyondakiler** | Türkiye'deki güncel vizyondaki filmleri görüntüle |
 | 📊 **İstatistikler** | Toplam izleme süresi, film sayısı ve zirvedeki film |
@@ -139,6 +139,12 @@ Bu komut aynı anda şunları başlatır:
 
 Uygulama varsayılan olarak `http://localhost:8000` adresinde çalışır.
 
+Toplu içe aktarım için önerilen worker komutu:
+
+```bash
+php artisan queue:work --queue=imports,default
+```
+
 ---
 
 ## 🗄️ Veritabanı Yapısı
@@ -188,6 +194,8 @@ Movie ──belongsTo──▶ User
 | `PATCH` | `/movies/{id}` | Güncelle (puan/izlendi) | ✅ |
 | `DELETE` | `/movies/{id}` | Film sil | ✅ |
 | `GET` | `/movies/import-list` | Toplu içe aktarma | ✅ |
+| `POST` | `/movies/import-list/start` | Import batch başlatma (JSON) | ✅ |
+| `GET` | `/movies/import-list/{batch}/status` | Import batch durum/progress (JSON) | ✅ |
 | `GET` | `/movies/api-search` | Canlı arama (JSON) | ✅ |
 | `GET` | `/movies/recommendations` | Kişisel öneriler | ✅ |
 | `GET` | `/movies/now-playing` | Vizyondaki filmler | ✅ |

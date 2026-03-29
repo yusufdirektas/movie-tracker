@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreMovieRequest;
+use App\Http\Requests\StartImportRequest;
 use App\Http\Requests\UpdateMovieRequest;
+use App\Jobs\ProcessImportItemJob;
+use App\Models\ImportBatch;
+use App\Models\ImportItem;
 use App\Models\Movie;
 use App\Models\User;
 use App\Services\TmdbService;
@@ -503,6 +507,106 @@ class MovieController extends Controller
 
     public function import()
     {
-        return view('movies.import');
+        return view('movies.import', [
+            'latestBatch' => Auth::user()->importBatches()->latest()->first(),
+        ]);
+    }
+
+    public function startImport(StartImportRequest $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $lines = collect(preg_split('/\r\n|\r|\n/', (string) $request->input('raw_text')))
+            ->map(fn ($line) => trim((string) $line))
+            ->filter()
+            ->values();
+
+        if ($lines->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aktarim listesi bos olamaz.',
+            ], 422);
+        }
+
+        if ($lines->count() > 1000) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tek importta en fazla 1000 satir destekleniyor.',
+            ], 422);
+        }
+
+        $batch = ImportBatch::query()->create([
+            'user_id' => $user->id,
+            'status' => 'queued',
+            'is_watched' => $request->boolean('is_watched', true),
+            'total_items' => $lines->count(),
+        ]);
+
+        $now = now();
+        $itemsPayload = $lines->map(fn ($line, $index) => [
+            'import_batch_id' => $batch->id,
+            'line_number' => $index + 1,
+            'original_query' => $line,
+            'normalized_query' => mb_strtolower($line, 'UTF-8'),
+            'status' => 'pending',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+
+        ImportItem::query()->insert($itemsPayload);
+
+        $itemIds = ImportItem::query()
+            ->where('import_batch_id', $batch->id)
+            ->orderBy('line_number')
+            ->pluck('id');
+
+        foreach ($itemIds as $itemId) {
+            ProcessImportItemJob::dispatch((int) $itemId)->onQueue('imports');
+        }
+
+        return response()->json([
+            'success' => true,
+            'batch_id' => $batch->id,
+        ], 202);
+    }
+
+    public function importStatus(ImportBatch $batch)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        abort_unless($batch->user_id === $user->id, 403);
+
+        $items = $batch->items()
+            ->orderBy('line_number')
+            ->get([
+                'id',
+                'line_number',
+                'original_query',
+                'resolved_title',
+                'status',
+                'error_message',
+                'was_corrected',
+                'corrected_query',
+                'tmdb_id',
+                'media_type',
+            ]);
+
+        return response()->json([
+            'batch' => [
+                'id' => $batch->id,
+                'status' => $batch->status,
+                'total_items' => $batch->total_items,
+                'processed_items' => $batch->processed_items,
+                'success_items' => $batch->success_items,
+                'duplicate_items' => $batch->duplicate_items,
+                'not_found_items' => $batch->not_found_items,
+                'error_items' => $batch->error_items,
+                'skipped_items' => $batch->skipped_items,
+                'started_at' => $batch->started_at,
+                'finished_at' => $batch->finished_at,
+            ],
+            'items' => $items,
+        ]);
     }
 }

@@ -42,6 +42,12 @@ Route::middleware('auth')->group(function () {
 Route::get('/movies/import-list', [MovieController::class, 'import'])
     ->middleware(['auth'])
     ->name('movies.import');
+Route::post('/movies/import-list/start', [MovieController::class, 'startImport'])
+    ->middleware(['auth'])
+    ->name('movies.import.start');
+Route::get('/movies/import-list/{batch}/status', [MovieController::class, 'importStatus'])
+    ->middleware(['auth'])
+    ->name('movies.import.status');
 
 // Canlı Arama API'si (Import sayfasındaki "Analiz Et" butonu için şart)
 Route::get('/movies/api-search', [MovieController::class, 'apiSearch'])

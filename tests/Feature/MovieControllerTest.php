@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessImportItemJob;
+use App\Models\ImportBatch;
+use App\Models\ImportItem;
 use App\Models\Movie;
 use App\Models\Collection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class MovieControllerTest extends TestCase
@@ -245,6 +249,95 @@ class MovieControllerTest extends TestCase
         foreach ($movies as $movie) {
             $this->assertFalse($movie->relationLoaded('collections'));
         }
+    }
+
+    public function test_start_import_creates_batch_and_dispatches_item_jobs(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('movies.import.start'), [
+                'raw_text' => "The Matrix\nInception\nInterstellar",
+                'is_watched' => false,
+            ]);
+
+        $response
+            ->assertStatus(202)
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('import_batches', [
+            'user_id' => $user->id,
+            'total_items' => 3,
+            'is_watched' => false,
+            'status' => 'queued',
+        ]);
+
+        $batchId = $response->json('batch_id');
+        $this->assertNotNull($batchId);
+        $this->assertDatabaseCount('import_items', 3);
+        $this->assertDatabaseHas('import_items', [
+            'import_batch_id' => $batchId,
+            'line_number' => 1,
+            'original_query' => 'The Matrix',
+        ]);
+
+        Queue::assertPushed(ProcessImportItemJob::class, 3);
+    }
+
+    public function test_import_status_returns_only_owner_batch_data(): void
+    {
+        $owner = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $batch = ImportBatch::query()->create([
+            'user_id' => $otherUser->id,
+            'status' => 'queued',
+            'is_watched' => true,
+            'total_items' => 1,
+        ]);
+
+        $response = $this
+            ->actingAs($owner)
+            ->get(route('movies.import.status', $batch));
+
+        $response->assertForbidden();
+    }
+
+    public function test_import_status_returns_batch_progress_and_items(): void
+    {
+        $user = User::factory()->create();
+        $batch = ImportBatch::query()->create([
+            'user_id' => $user->id,
+            'status' => 'processing',
+            'is_watched' => true,
+            'total_items' => 2,
+            'processed_items' => 1,
+            'success_items' => 1,
+            'duplicate_items' => 0,
+            'not_found_items' => 0,
+            'error_items' => 0,
+        ]);
+
+        ImportItem::query()->create([
+            'import_batch_id' => $batch->id,
+            'line_number' => 1,
+            'original_query' => 'Matrix',
+            'resolved_title' => 'The Matrix',
+            'status' => 'saved',
+            'processed_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.import.status', $batch));
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('batch.id', $batch->id)
+            ->assertJsonPath('batch.processed_items', 1)
+            ->assertJsonPath('items.0.original_query', 'Matrix')
+            ->assertJsonPath('items.0.status', 'saved');
     }
 
     public function test_user_can_complete_create_rate_collection_and_delete_flow(): void

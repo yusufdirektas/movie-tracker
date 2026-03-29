@@ -4,323 +4,192 @@
 
 @section('content')
 <div class="container mx-auto max-w-4xl"
-     x-data="{
-        rawText: '',
-        status: 'idle', // idle, analyzing, ready, saving, done
-        candidates: [],
-        progress: 0,
-
-        async analyzeList() {
-            if(!this.rawText.trim()) return;
-            this.status = 'analyzing';
-            this.candidates = [];
-
-            let lines = this.rawText.split('\n').filter(line => line.trim() !== '');
-            let total = lines.length;
-
-            for (let i = 0; i < total; i++) {
-                let query = lines[i].trim();
-
-                try {
-                    let res = await fetch('{{ route('movies.api_search') }}?smart=1&query=' + encodeURIComponent(query));
-                    let data = await res.json();
-
-                    if(data.results && data.results.length > 0) {
-                        let bestMatch = data.results[0];
-                        this.candidates.push({
-                            original: query,
-                            found: true,
-                            corrected: data.corrected || false,
-                            corrected_query: data.corrected_query || null,
-                            tmdb_id: bestMatch.id,
-                            media_type: bestMatch.media_type || 'movie',
-                            title: bestMatch.title,
-                            year: bestMatch.release_date ? bestMatch.release_date.substring(0,4) : '-',
-                            poster: bestMatch.poster_path,
-                            suggestions: [],
-                            status: 'pending'
-                        });
-                    } else if(data.suggestions && data.suggestions.length > 0) {
-                        // Kesin eşleşme yok ama öneriler var → kullanıcıya sor
-                        this.candidates.push({
-                            original: query,
-                            found: false,
-                            suggestions: data.suggestions.map(s => ({
-                                tmdb_id: s.id,
-                                media_type: s.media_type || 'movie',
-                                title: s.title,
-                                year: s.release_date ? s.release_date.substring(0,4) : '-',
-                                poster: s.poster_path,
-                            })),
-                            status: 'needs_selection'
-                        });
-                    } else {
-                        this.candidates.push({ original: query, found: false, suggestions: [], status: 'not_found' });
-                    }
-                } catch(e) {
-                    console.error(e);
-                }
-
-                this.progress = Math.round(((i + 1) / total) * 100);
-            }
-            this.status = 'ready';
-        },
-
-        pickSuggestion(candidateIndex, suggestion) {
-            let item = this.candidates[candidateIndex];
-            item.found = true;
-            item.tmdb_id = suggestion.tmdb_id;
-            item.media_type = suggestion.media_type || 'movie';
-            item.title = suggestion.title;
-            item.year = suggestion.year;
-            item.poster = suggestion.poster;
-            item.corrected = true;
-            item.corrected_query = suggestion.title;
-            item.suggestions = [];
-            item.status = 'pending';
-        },
-
-        skipCandidate(candidateIndex) {
-            this.candidates[candidateIndex].status = 'skipped';
-        },
-
-        async saveAll() {
-            this.status = 'saving';
-            let itemsToSave = this.candidates.filter(c => c.found && c.status === 'pending');
-            let total = itemsToSave.length;
-
-            for (let i = 0; i < total; i++) {
-                let item = itemsToSave[i];
-                let retries = 3;
-
-                while (retries > 0) {
-                    try {
-                        let formData = new FormData();
-                        formData.append('tmdb_id', item.tmdb_id);
-                        formData.append('media_type', item.media_type || 'movie');
-                        formData.append('is_watched', '1');
-                        formData.append('_token', '{{ csrf_token() }}');
-
-                        let res = await fetch('{{ route('movies.store') }}', {
-                            method: 'POST',
-                            headers: { 'Accept': 'application/json' },
-                            body: formData
-                        });
-
-                        if (res.status === 429) {
-                            // Rate limit → bekle ve tekrar dene
-                            retries--;
-                            await new Promise(r => setTimeout(r, 3000));
-                            continue;
-                        }
-
-                        let data = await res.json();
-
-                        if (data.success) {
-                            item.status = 'saved';
-                        } else if (res.status === 400) {
-                            item.status = 'duplicate';
-                        } else {
-                            item.status = 'error';
-                            item.errorMsg = data.message || 'Bilinmeyen hata';
-                        }
-                        break;
-                    } catch(e) {
-                        retries--;
-                        if (retries <= 0) {
-                            item.status = 'error';
-                            item.errorMsg = 'Bağlantı hatası';
-                        } else {
-                            await new Promise(r => setTimeout(r, 2000));
-                        }
-                    }
-                }
-
-                await new Promise(r => setTimeout(r, 300));
-            }
-            this.status = 'done';
-        },
-
-        get needsAttention() {
-            return this.candidates.filter(c => c.status === 'needs_selection').length;
-        }
-     }">
+     x-data="importRunner()">
 
     <div class="mb-8 flex items-center justify-between">
         <div>
-            <h1 class="text-3xl font-extrabold text-white tracking-tight">Toplu <span class="text-indigo-500">İçe Aktar</span></h1>
-            <p class="text-slate-400 mt-2">Listenizi yapıştırın, gerisini bize bırakın.</p>
+            <h1 class="text-3xl font-extrabold text-white tracking-tight">Asenkron <span class="text-indigo-500">Toplu İçe Aktar</span></h1>
+            <p class="text-slate-400 mt-2">Listeyi gönder, kuyruğa alalım; sonuçları canlı takip et.</p>
         </div>
         <a href="{{ route('movies.index') }}" class="text-slate-500 hover:text-white transition-colors">
             <i class="fas fa-arrow-left mr-2"></i> Geri Dön
         </a>
     </div>
 
-    <div x-show="status === 'idle'" class="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
-        <label class="block text-white font-bold mb-4">Film Listesi (Her satıra bir film)</label>
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl mb-6">
+        <label class="block text-white font-bold mb-4">İçerik Listesi (her satıra bir film/dizi)</label>
         <textarea x-model="rawText"
-                  placeholder="Örnek:&#10;The Matrix&#10;Inception&#10;Interstellar&#10;..."
+                  placeholder="Örnek:&#10;The Matrix&#10;Inception&#10;Interstellar&#10;Breaking Bad&#10;..."
                   class="w-full h-64 bg-slate-950 text-slate-300 border border-slate-800 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm leading-relaxed"
         ></textarea>
 
-        <div class="mt-6 flex justify-between items-center">
-            <p class="text-xs text-slate-500 italic">Not: Letterboxd CSV dosyasındaki 'Name' sütununu kopyalayıp buraya yapıştırabilirsin.</p>
-            <button @click="analyzeList()"
-                    :disabled="!rawText.trim()"
+        <div class="mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                    <input type="checkbox" x-model="isWatched" class="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/40">
+                    İzlendi olarak ekle
+                </label>
+                <p class="text-xs text-slate-500 italic mt-2">Kuyruk worker çalıştır: <code class="text-slate-300">php artisan queue:work --queue=imports,default</code></p>
+            </div>
+            <button @click="startImport()"
+                    :disabled="running || !rawText.trim()"
                     class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-600/20">
-                Listeyi Analiz Et <i class="fas fa-magic ml-2"></i>
+                İçe Aktarmayı Başlat <i class="fas fa-rocket ml-2"></i>
             </button>
         </div>
     </div>
 
-    <div x-show="status !== 'idle'" style="display: none;">
+    <div x-show="batch" style="display:none;" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-white">Batch #<span x-text="batch?.id"></span></h2>
+            <span class="text-xs px-2 py-1 rounded-lg font-bold"
+                  :class="batchBadgeClass(batch?.status)"
+                  x-text="batch?.status"></span>
+        </div>
 
         <div class="mb-6 bg-slate-800 rounded-2xl p-4 flex items-center gap-4">
             <div class="flex-1 bg-slate-700 h-3 rounded-full overflow-hidden">
-                <div class="bg-indigo-500 h-full transition-all duration-300" :style="'width: ' + progress + '%'"></div>
+                <div class="bg-indigo-500 h-full transition-all duration-300" :style="'width: ' + progressPercent() + '%'"></div>
             </div>
-            <span class="text-white font-mono font-bold" x-text="progress + '%'"></span>
+            <span class="text-white font-mono font-bold" x-text="progressPercent() + '%'"></span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-            <template x-for="(item, index) in candidates" :key="index">
-                <div>
-                    {{-- Normal kart (bulunan, kaydedilen, hatalı) --}}
-                    <template x-if="item.status !== 'needs_selection'">
-                        <div class="bg-slate-900 border rounded-2xl p-3 flex gap-3 items-center transition-all"
-                             :class="{
-                                'border-indigo-500/30': item.status === 'pending',
-                                'border-emerald-500/50 bg-emerald-500/10': item.status === 'saved',
-                                'border-amber-500/50 bg-amber-500/10': item.status === 'duplicate',
-                                'border-red-500/50 opacity-70': item.status === 'not_found' || item.status === 'error',
-                                'border-slate-700 opacity-50': item.status === 'skipped'
-                             }">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-xs">
+            <div class="bg-slate-800 rounded-xl p-3 text-slate-300">Toplam: <span class="font-bold text-white" x-text="batch?.total_items || 0"></span></div>
+            <div class="bg-slate-800 rounded-xl p-3 text-slate-300">Başarılı: <span class="font-bold text-emerald-300" x-text="batch?.success_items || 0"></span></div>
+            <div class="bg-slate-800 rounded-xl p-3 text-slate-300">Duplicate: <span class="font-bold text-amber-300" x-text="batch?.duplicate_items || 0"></span></div>
+            <div class="bg-slate-800 rounded-xl p-3 text-slate-300">Hata: <span class="font-bold text-red-300" x-text="(batch?.error_items || 0) + (batch?.not_found_items || 0)"></span></div>
+        </div>
 
-                            <div class="w-12 h-16 bg-slate-800 rounded-lg flex-shrink-0 overflow-hidden relative">
-                                <template x-if="item.found && item.poster">
-                                    <img :src="'https://image.tmdb.org/t/p/w92' + item.poster" class="w-full h-full object-cover">
-                                </template>
-                                <template x-if="!item.found">
-                                    <div class="flex items-center justify-center h-full text-slate-600"><i class="fas fa-question"></i></div>
-                                </template>
-
-                                <div x-show="item.status === 'saved'" class="absolute inset-0 bg-emerald-900/80 flex items-center justify-center">
-                                    <i class="fas fa-check text-white"></i>
-                                </div>
-                                <div x-show="item.status === 'duplicate'" class="absolute inset-0 bg-amber-900/80 flex items-center justify-center">
-                                    <i class="fas fa-bookmark text-white"></i>
-                                </div>
-                            </div>
-
-                            <div class="flex-1 min-w-0">
-                                <template x-if="item.found">
-                                    <div>
-                                        <h4 class="text-white text-sm font-bold truncate">
-                                            <i x-show="item.media_type === 'tv'" class="fas fa-tv text-purple-400 mr-1 text-[10px]"></i>
-                                            <span x-text="item.title"></span>
-                                        </h4>
-                                        <p class="text-slate-500 text-xs" x-text="item.year"></p>
-                                        <p x-show="item.status === 'duplicate'" class="text-amber-400 text-[10px] font-bold uppercase tracking-wider">Zaten arşivinde var</p>
-                                        <p x-show="item.status === 'error'" class="text-red-400 text-[10px] font-bold" x-text="item.errorMsg || 'Kayıt başarısız'"></p>
-                                        <p x-show="item.corrected && !['duplicate','error'].includes(item.status)" class="text-teal-400 text-[10px] truncate">
-                                            <i class="fas fa-spell-check mr-1"></i> <span x-text="item.original"></span> → düzeltildi
-                                        </p>
-                                        <p x-show="!item.corrected && !['duplicate','error'].includes(item.status)" class="text-indigo-400 text-[10px] truncate" x-text="'Aranan: ' + item.original"></p>
-                                    </div>
-                                </template>
-                                <template x-if="item.status === 'not_found'">
-                                    <div>
-                                        <h4 class="text-red-400 text-sm font-bold">Bulunamadı</h4>
-                                        <p class="text-slate-500 text-xs truncate" x-text="item.original"></p>
-                                    </div>
-                                </template>
-                                <template x-if="item.status === 'skipped'">
-                                    <div>
-                                        <h4 class="text-slate-500 text-sm font-bold line-through">Atlandı</h4>
-                                        <p class="text-slate-600 text-xs truncate" x-text="item.original"></p>
-                                    </div>
-                                </template>
-                            </div>
-
-                            <button x-show="item.status === 'pending'" @click="candidates.splice(index, 1)" class="text-slate-600 hover:text-red-400 p-2">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </template>
-
-                    {{-- Öneri kartı: "Bunu mu demek istediniz?" --}}
-                    <template x-if="item.status === 'needs_selection'">
-                        <div class="bg-slate-900 border-2 border-violet-500/50 rounded-2xl p-4 transition-all">
-                            <div class="flex items-center gap-2 mb-3">
-                                <i class="fas fa-lightbulb text-violet-400"></i>
-                                <span class="text-violet-300 text-xs font-bold uppercase tracking-wider">Bunu mu demek istediniz?</span>
-                            </div>
-                            <p class="text-slate-400 text-xs mb-3 truncate">
-                                Aranan: <span class="text-white font-medium" x-text="item.original"></span>
-                            </p>
-
-                            <div class="space-y-2">
-                                <template x-for="(sug, sIndex) in item.suggestions" :key="sIndex">
-                                    <button @click="pickSuggestion(index, sug)"
-                                            class="w-full flex items-center gap-3 bg-slate-800 hover:bg-violet-900/40 border border-slate-700 hover:border-violet-500 rounded-xl p-2 transition-all text-left group">
-                                        <div class="w-10 h-14 bg-slate-700 rounded-lg flex-shrink-0 overflow-hidden">
-                                            <template x-if="sug.poster">
-                                                <img :src="'https://image.tmdb.org/t/p/w92' + sug.poster" class="w-full h-full object-cover">
-                                            </template>
-                                            <template x-if="!sug.poster">
-                                                <div class="flex items-center justify-center h-full text-slate-600"><i class="fas fa-film"></i></div>
-                                            </template>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <h5 class="text-white text-sm font-bold truncate group-hover:text-violet-300">
-                                                <i x-show="sug.media_type === 'tv'" class="fas fa-tv text-purple-400 mr-1 text-[10px]"></i>
-                                                <span x-text="sug.title"></span>
-                                            </h5>
-                                            <p class="text-slate-500 text-xs" x-text="sug.year"></p>
-                                        </div>
-                                        <i class="fas fa-plus-circle text-slate-600 group-hover:text-violet-400 text-lg"></i>
-                                    </button>
-                                </template>
-                            </div>
-
-                            <button @click="skipCandidate(index)"
-                                    class="mt-3 w-full text-center text-slate-600 hover:text-red-400 text-xs py-1 transition-colors">
-                                <i class="fas fa-forward mr-1"></i> Hiçbiri değil, atla
-                            </button>
-                        </div>
-                    </template>
+        <div class="max-h-[50vh] overflow-y-auto space-y-2 pr-2">
+            <template x-for="item in items" :key="item.id">
+                <div class="bg-slate-950 border rounded-xl p-3 text-xs flex items-center gap-3"
+                     :class="itemRowClass(item.status)">
+                    <div class="text-slate-500 font-mono w-10" x-text="'#' + item.line_number"></div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-slate-200 truncate" x-text="item.original_query"></p>
+                        <p class="text-slate-500 truncate" x-show="item.resolved_title" x-text="item.resolved_title"></p>
+                        <p class="text-red-300 truncate" x-show="item.error_message" x-text="item.error_message"></p>
+                    </div>
+                    <span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider"
+                          :class="itemBadgeClass(item.status)"
+                          x-text="item.status"></span>
                 </div>
             </template>
         </div>
 
-        <div x-show="needsAttention > 0 && status === 'ready'" class="mb-4 bg-violet-900/30 border border-violet-500/40 rounded-2xl p-4 flex items-center gap-3">
-            <i class="fas fa-hand-point-up text-violet-400 text-lg"></i>
-            <p class="text-violet-200 text-sm">
-                <span class="font-bold" x-text="needsAttention"></span> içerik için öneri var.
-                Mor kartlardan birini seçin veya atlayın. Seçmeden de kaydet butonunu kullanabilirsiniz.
-            </p>
-        </div>
-
-        <div class="flex justify-end gap-4">
-            <button @click="status = 'idle'; rawText = ''; candidates = []"
-                    x-show="status === 'ready' || status === 'done'"
-                    class="text-slate-400 hover:text-white px-6 py-3">
-                İptal / Yeni Liste
-            </button>
-
-            <button @click="saveAll()"
-                    x-show="status === 'ready' && candidates.filter(c => c.found && c.status === 'pending').length > 0"
-                    class="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-emerald-600/20 flex items-center gap-2">
-                <span>Hepsini Kaydet</span>
-                <span class="bg-black/20 px-2 py-0.5 rounded text-sm" x-text="candidates.filter(c => c.found && c.status === 'pending').length"></span>
-            </button>
-
+        <div class="mt-4 flex items-center justify-between">
+            <p class="text-xs text-slate-500" x-text="statusMessage"></p>
             <a href="{{ route('movies.index') }}"
-               x-show="status === 'done'"
-               class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-600/20">
+               class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/20">
                 Arşive Git
             </a>
         </div>
     </div>
 </div>
+
+<script>
+function importRunner() {
+    return {
+        rawText: '',
+        isWatched: true,
+        running: false,
+        batch: null,
+        items: [],
+        pollTimer: null,
+        statusMessage: '',
+
+        async startImport() {
+            if (!this.rawText.trim() || this.running) return;
+            this.running = true;
+            this.statusMessage = 'Batch oluşturuluyor...';
+
+            try {
+                const res = await fetch('{{ route('movies.import.start') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify({
+                        raw_text: this.rawText,
+                        is_watched: this.isWatched ? 1 : 0,
+                    }),
+                });
+
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    this.statusMessage = data.message || 'Import başlatılamadı.';
+                    this.running = false;
+                    return;
+                }
+
+                this.batch = { id: data.batch_id, status: 'queued', total_items: 0, processed_items: 0 };
+                this.items = [];
+                this.pollStatus();
+                this.pollTimer = setInterval(() => this.pollStatus(), 1500);
+            } catch (e) {
+                this.statusMessage = 'Ağ hatası oluştu.';
+            }
+        },
+
+        async pollStatus() {
+            if (!this.batch?.id) return;
+
+            try {
+                const res = await fetch(`{{ url('/movies/import-list') }}/${this.batch.id}/status`, {
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                this.batch = data.batch;
+                this.items = data.items;
+                this.statusMessage = `İşlenen: ${this.batch.processed_items}/${this.batch.total_items}`;
+
+                if (this.batch.status === 'finished') {
+                    this.running = false;
+                    this.stopPolling();
+                    this.statusMessage = `Tamamlandı. Başarılı: ${this.batch.success_items}, Duplicate: ${this.batch.duplicate_items}, Hata: ${this.batch.error_items + this.batch.not_found_items}`;
+                }
+            } catch (_) {
+            }
+        },
+
+        stopPolling() {
+            if (this.pollTimer) {
+                clearInterval(this.pollTimer);
+                this.pollTimer = null;
+            }
+        },
+
+        progressPercent() {
+            if (!this.batch || !this.batch.total_items) return 0;
+            return Math.round((this.batch.processed_items / this.batch.total_items) * 100);
+        },
+
+        batchBadgeClass(status) {
+            if (status === 'finished') return 'bg-emerald-500/20 text-emerald-300';
+            if (status === 'processing') return 'bg-indigo-500/20 text-indigo-300';
+            return 'bg-slate-700 text-slate-300';
+        },
+
+        itemBadgeClass(status) {
+            if (status === 'saved') return 'bg-emerald-500/20 text-emerald-300';
+            if (status === 'duplicate') return 'bg-amber-500/20 text-amber-300';
+            if (status === 'error' || status === 'not_found') return 'bg-red-500/20 text-red-300';
+            if (status === 'processing') return 'bg-indigo-500/20 text-indigo-300';
+            return 'bg-slate-700 text-slate-300';
+        },
+
+        itemRowClass(status) {
+            if (status === 'saved') return 'border-emerald-500/40';
+            if (status === 'duplicate') return 'border-amber-500/40';
+            if (status === 'error' || status === 'not_found') return 'border-red-500/40';
+            if (status === 'processing') return 'border-indigo-500/40';
+            return 'border-slate-800';
+        },
+    };
+}
+</script>
 @endsection
