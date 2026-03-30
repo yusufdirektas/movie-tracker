@@ -119,5 +119,118 @@
     </footer>
 
     @stack('scripts')
+
+    {{-- Global Import Progress Watcher --}}
+    @auth
+        @if($activeImport ?? null)
+            <div x-data="importWatcher({{ $activeImport->id }}, {{ $activeImport->total_items }})"
+                 x-init="startWatching()"
+                 class="hidden"></div>
+            <script>
+            function importWatcher(batchId, totalItems) {
+                return {
+                    batchId,
+                    totalItems,
+                    lastProcessed: 0,
+                    pollInterval: null,
+
+                    async startWatching() {
+                        // Request notification permission on first load
+                        if ('Notification' in window && Notification.permission === 'default') {
+                            await Notification.requestPermission();
+                        }
+
+                        this.pollInterval = setInterval(() => this.checkStatus(), 5000);
+                    },
+
+                    async checkStatus() {
+                        try {
+                            const res = await fetch(`/movies/import-list/${this.batchId}/status`, {
+                                headers: { 'Accept': 'application/json' }
+                            });
+                            if (!res.ok) return;
+
+                            const data = await res.json();
+                            this.lastProcessed = data.batch.processed_items;
+
+                            if (data.batch.status === 'finished') {
+                                this.stopWatching();
+                                this.notifyComplete(data.batch);
+                                this.updateNavbarBadge(null);
+                            } else {
+                                this.updateNavbarBadge(data.batch);
+                            }
+                        } catch (_) {}
+                    },
+
+                    stopWatching() {
+                        if (this.pollInterval) {
+                            clearInterval(this.pollInterval);
+                            this.pollInterval = null;
+                        }
+                    },
+
+                    notifyComplete(batch) {
+                        const title = 'İçe Aktarma Tamamlandı!';
+                        const body = `${batch.success_items} başarılı, ${batch.duplicate_items} duplicate, ${batch.error_items + batch.not_found_items} hata`;
+
+                        // Browser notification
+                        if ('Notification' in window && Notification.permission === 'granted') {
+                            new Notification(title, {
+                                body: body,
+                                icon: '/favicon.ico',
+                                tag: 'import-complete'
+                            });
+                        }
+
+                        // In-page toast
+                        this.showToast(title, body, batch);
+                    },
+
+                    showToast(title, body, batch) {
+                        const toast = document.createElement('div');
+                        toast.className = 'fixed bottom-4 right-4 z-50 bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl max-w-sm animate-slide-up';
+                        toast.innerHTML = `
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-check-circle text-2xl"></i>
+                                <div class="flex-1">
+                                    <p class="font-bold">${title}</p>
+                                    <p class="text-sm text-emerald-100 mt-1">${body}</p>
+                                    <a href="/movies/import-list/history" class="inline-block mt-2 text-xs underline hover:no-underline">Detayları Gör</a>
+                                </div>
+                                <button onclick="this.closest('div.fixed').remove()" class="text-emerald-200 hover:text-white">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        `;
+                        document.body.appendChild(toast);
+                        setTimeout(() => toast.remove(), 10000);
+                    },
+
+                    updateNavbarBadge(batch) {
+                        const badge = document.querySelector('[data-import-badge]');
+                        if (!badge) return;
+
+                        if (!batch) {
+                            badge.style.display = 'none';
+                        } else {
+                            const counter = badge.querySelector('[data-import-counter]');
+                            if (counter) {
+                                counter.textContent = `${batch.processed_items}/${batch.total_items}`;
+                            }
+                        }
+                    }
+                };
+            }
+            </script>
+            <style>
+            @keyframes slide-up {
+                from { transform: translateY(100%); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            .animate-slide-up { animation: slide-up 0.3s ease-out; }
+            </style>
+        @endif
+    @endauth
 </body>
 </html>

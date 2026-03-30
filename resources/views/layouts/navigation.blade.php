@@ -124,11 +124,12 @@
                 {{-- Active Import Badge --}}
                 @if($activeImport ?? null)
                     <a href="{{ route('movies.import.history') }}"
+                       data-import-badge
                        class="mr-4 relative flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-xl bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 transition-colors"
                        title="Aktif içe aktarma: {{ $activeImport->processed_items }}/{{ $activeImport->total_items }}">
                         <i class="fas fa-sync fa-spin"></i>
                         <span class="hidden lg:inline">İçe Aktarılıyor</span>
-                        <span class="font-bold">{{ $activeImport->processed_items }}/{{ $activeImport->total_items }}</span>
+                        <span class="font-bold" data-import-counter>{{ $activeImport->processed_items }}/{{ $activeImport->total_items }}</span>
                     </a>
                 @endif
 
