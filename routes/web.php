@@ -51,6 +51,9 @@ Route::post('/movies/import-list/start', [MovieController::class, 'startImport']
 Route::get('/movies/import-list/{batch}/status', [MovieController::class, 'importStatus'])
     ->middleware(['auth'])
     ->name('movies.import.status');
+Route::post('/movies/import-list/{batch}/retry', [MovieController::class, 'retryFailedItems'])
+    ->middleware(['auth'])
+    ->name('movies.import.retry');
 
 // Canlı Arama API'si (Import sayfasındaki "Analiz Et" butonu için şart)
 Route::get('/movies/api-search', [MovieController::class, 'apiSearch'])

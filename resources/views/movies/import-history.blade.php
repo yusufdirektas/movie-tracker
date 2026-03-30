@@ -27,7 +27,7 @@
         <div class="space-y-4">
             @foreach($batches as $batch)
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-colors"
-                     x-data="{ expanded: false, batch: @js($batch->toArray()), items: [], loading: false }"
+                     x-data="{ expanded: false, batch: @js($batch->toArray()), items: [], loading: false, retrying: false, retryMessage: '' }"
                      :class="{ 'ring-2 ring-indigo-500/30': batch.status === 'processing' }">
 
                     {{-- Header --}}
@@ -152,11 +152,15 @@
                             {{-- Actions --}}
                             @if($batch->error_items > 0 || $batch->not_found_items > 0)
                                 <div class="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between">
-                                    <p class="text-xs text-slate-500">{{ $batch->error_items + $batch->not_found_items }} hatalı öğe</p>
-                                    <button @click="retryFailed()"
+                                    <div>
+                                        <p class="text-xs text-slate-500">{{ $batch->error_items + $batch->not_found_items }} hatalı öğe</p>
+                                        <p x-show="retryMessage" x-text="retryMessage" class="text-xs text-emerald-400 mt-1"></p>
+                                    </div>
+                                    <button @click="retryFailed({{ $batch->id }})"
                                             :disabled="retrying"
                                             class="text-sm bg-red-600/20 hover:bg-red-600/30 text-red-300 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50">
-                                        <i class="fas fa-redo mr-2"></i> Hatalıları Yeniden Dene
+                                        <i class="fas" :class="retrying ? 'fa-spinner fa-spin' : 'fa-redo'" class="mr-2"></i>
+                                        <span x-text="retrying ? 'Yeniden Deneniyor...' : 'Hatalıları Yeniden Dene'"></span>
                                     </button>
                                 </div>
                             @endif
@@ -175,16 +179,38 @@
 <script>
 function importHistory() {
     return {
-        retrying: false,
-
         async loadItems() {
             // This will be called from each batch's x-data context
         },
 
-        async retryFailed() {
-            // Future: retry failed items endpoint
+        async retryFailed(batchId) {
             this.retrying = true;
-            setTimeout(() => this.retrying = false, 2000);
+            this.retryMessage = '';
+
+            try {
+                const res = await fetch(`/movies/import-list/${batchId}/retry`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    this.retryMessage = data.message;
+                    this.batch.status = 'processing';
+                    // Reload items after short delay
+                    setTimeout(() => this.loadItems(), 1000);
+                } else {
+                    this.retryMessage = data.message || 'Bir hata oluştu.';
+                }
+            } catch (e) {
+                this.retryMessage = 'Ağ hatası oluştu.';
+            }
+
+            this.retrying = false;
         }
     };
 }

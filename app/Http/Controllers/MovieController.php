@@ -621,4 +621,56 @@ class MovieController extends Controller
             'items' => $items,
         ]);
     }
+
+    public function retryFailedItems(ImportBatch $batch)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        abort_unless($batch->user_id === $user->id, 403);
+
+        // Get failed items (error + not_found)
+        $failedItems = $batch->items()
+            ->whereIn('status', ['error', 'not_found'])
+            ->get();
+
+        if ($failedItems->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Yeniden denenecek hatalı öğe bulunamadı.',
+            ], 422);
+        }
+
+        // Reset failed items to pending
+        $batch->items()
+            ->whereIn('status', ['error', 'not_found'])
+            ->update([
+                'status' => 'pending',
+                'error_message' => null,
+                'resolved_title' => null,
+                'tmdb_id' => null,
+                'media_type' => null,
+                'processed_at' => null,
+            ]);
+
+        // Update batch counters
+        $retryCount = $failedItems->count();
+        $batch->update([
+            'status' => 'processing',
+            'processed_items' => $batch->processed_items - $retryCount,
+            'error_items' => 0,
+            'not_found_items' => 0,
+            'finished_at' => null,
+        ]);
+
+        // Re-dispatch jobs for failed items
+        foreach ($failedItems as $item) {
+            ProcessImportItemJob::dispatch((int) $item->id)->onQueue('imports');
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$retryCount} öğe yeniden kuyruğa alındı.",
+            'retry_count' => $retryCount,
+        ]);
+    }
 }

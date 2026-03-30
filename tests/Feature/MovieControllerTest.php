@@ -417,6 +417,94 @@ class MovieControllerTest extends TestCase
             ->assertDontSee('İçe Aktarılıyor');
     }
 
+    public function test_retry_failed_items_requeues_error_and_not_found(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+
+        $batch = ImportBatch::query()->create([
+            'user_id' => $user->id,
+            'status' => 'finished',
+            'is_watched' => true,
+            'total_items' => 5,
+            'processed_items' => 5,
+            'success_items' => 2,
+            'error_items' => 2,
+            'not_found_items' => 1,
+        ]);
+
+        ImportItem::query()->insert([
+            ['import_batch_id' => $batch->id, 'line_number' => 1, 'original_query' => 'Matrix', 'status' => 'saved', 'error_message' => null, 'created_at' => now(), 'updated_at' => now()],
+            ['import_batch_id' => $batch->id, 'line_number' => 2, 'original_query' => 'Inception', 'status' => 'saved', 'error_message' => null, 'created_at' => now(), 'updated_at' => now()],
+            ['import_batch_id' => $batch->id, 'line_number' => 3, 'original_query' => 'Unknown Film XYZ', 'status' => 'not_found', 'error_message' => null, 'created_at' => now(), 'updated_at' => now()],
+            ['import_batch_id' => $batch->id, 'line_number' => 4, 'original_query' => 'Error Film', 'status' => 'error', 'error_message' => 'API error', 'created_at' => now(), 'updated_at' => now()],
+            ['import_batch_id' => $batch->id, 'line_number' => 5, 'original_query' => 'Another Error', 'status' => 'error', 'error_message' => 'Timeout', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('movies.import.retry', $batch));
+
+        $response
+            ->assertOk()
+            ->assertJson(['success' => true, 'retry_count' => 3]);
+
+        // Check batch status updated
+        $batch->refresh();
+        $this->assertEquals('processing', $batch->status);
+        $this->assertEquals(0, $batch->error_items);
+        $this->assertEquals(0, $batch->not_found_items);
+
+        // Check items reset to pending
+        $this->assertEquals(3, ImportItem::where('import_batch_id', $batch->id)->where('status', 'pending')->count());
+
+        Queue::assertPushed(ProcessImportItemJob::class, 3);
+    }
+
+    public function test_retry_failed_items_returns_error_when_no_failed_items(): void
+    {
+        $user = User::factory()->create();
+
+        $batch = ImportBatch::query()->create([
+            'user_id' => $user->id,
+            'status' => 'finished',
+            'is_watched' => true,
+            'total_items' => 2,
+            'processed_items' => 2,
+            'success_items' => 2,
+            'error_items' => 0,
+            'not_found_items' => 0,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('movies.import.retry', $batch));
+
+        $response
+            ->assertStatus(422)
+            ->assertJson(['success' => false]);
+    }
+
+    public function test_retry_failed_items_forbidden_for_other_user(): void
+    {
+        $owner = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $batch = ImportBatch::query()->create([
+            'user_id' => $owner->id,
+            'status' => 'finished',
+            'is_watched' => true,
+            'total_items' => 2,
+            'error_items' => 1,
+        ]);
+
+        $response = $this
+            ->actingAs($otherUser)
+            ->postJson(route('movies.import.retry', $batch));
+
+        $response->assertForbidden();
+    }
+
     public function test_user_can_complete_create_rate_collection_and_delete_flow(): void
     {
         Http::fake([
