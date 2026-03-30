@@ -11,9 +11,14 @@
             <h1 class="text-3xl font-extrabold text-white tracking-tight">Asenkron <span class="text-indigo-500">Toplu İçe Aktar</span></h1>
             <p class="text-slate-400 mt-2">Listeyi gönder, kuyruğa alalım; sonuçları canlı takip et.</p>
         </div>
-        <a href="{{ route('movies.index') }}" class="text-slate-500 hover:text-white transition-colors">
-            <i class="fas fa-arrow-left mr-2"></i> Geri Dön
-        </a>
+        <div class="flex items-center gap-4">
+            <a href="{{ route('movies.import.history') }}" class="text-indigo-400 hover:text-indigo-300 transition-colors text-sm">
+                <i class="fas fa-history mr-1"></i> Geçmiş
+            </a>
+            <a href="{{ route('movies.index') }}" class="text-slate-500 hover:text-white transition-colors">
+                <i class="fas fa-arrow-left mr-2"></i> Geri Dön
+            </a>
+        </div>
     </div>
 
     <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl mb-6">

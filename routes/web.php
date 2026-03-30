@@ -42,6 +42,9 @@ Route::middleware('auth')->group(function () {
 Route::get('/movies/import-list', [MovieController::class, 'import'])
     ->middleware(['auth'])
     ->name('movies.import');
+Route::get('/movies/import-list/history', [MovieController::class, 'importHistory'])
+    ->middleware(['auth'])
+    ->name('movies.import.history');
 Route::post('/movies/import-list/start', [MovieController::class, 'startImport'])
     ->middleware(['auth'])
     ->name('movies.import.start');

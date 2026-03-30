@@ -512,6 +512,18 @@ class MovieController extends Controller
         ]);
     }
 
+    public function importHistory()
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $batches = $user->importBatches()
+            ->latest()
+            ->paginate(10);
+
+        return view('movies.import-history', compact('batches'));
+    }
+
     public function startImport(StartImportRequest $request)
     {
         /** @var User $user */

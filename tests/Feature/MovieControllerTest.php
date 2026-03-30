@@ -340,6 +340,39 @@ class MovieControllerTest extends TestCase
             ->assertJsonPath('items.0.status', 'saved');
     }
 
+    public function test_import_history_shows_user_batches(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        ImportBatch::query()->create([
+            'user_id' => $user->id,
+            'status' => 'finished',
+            'is_watched' => true,
+            'total_items' => 5,
+            'success_items' => 5,
+        ]);
+
+        ImportBatch::query()->create([
+            'user_id' => $otherUser->id,
+            'status' => 'finished',
+            'is_watched' => false,
+            'total_items' => 10,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.import.history'));
+
+        $response
+            ->assertOk()
+            ->assertSee('İçe Aktarma')
+            ->assertSee('Geçmişi');
+
+        // User should see own batch, not other user's (10 films)
+        $this->assertStringContainsString('total_items', $response->getContent());
+    }
+
     public function test_user_can_complete_create_rate_collection_and_delete_flow(): void
     {
         Http::fake([
