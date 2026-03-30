@@ -121,6 +121,17 @@
             </div>
 
             <div class="hidden sm:flex sm:items-center sm:ml-6">
+                {{-- Active Import Badge --}}
+                @if($activeImport ?? null)
+                    <a href="{{ route('movies.import.history') }}"
+                       class="mr-4 relative flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-xl bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 transition-colors"
+                       title="Aktif içe aktarma: {{ $activeImport->processed_items }}/{{ $activeImport->total_items }}">
+                        <i class="fas fa-sync fa-spin"></i>
+                        <span class="hidden lg:inline">İçe Aktarılıyor</span>
+                        <span class="font-bold">{{ $activeImport->processed_items }}/{{ $activeImport->total_items }}</span>
+                    </a>
+                @endif
+
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button
@@ -250,6 +261,16 @@
                 class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-pink-500 flex items-center gap-2">
                 <i class="fas fa-users w-5 text-center text-pink-400"></i> {{ __('Keşfet') }}
             </x-responsive-nav-link>
+
+            {{-- Mobile Active Import Badge --}}
+            @if($activeImport ?? null)
+                <a href="{{ route('movies.import.history') }}"
+                   @click="closeMenu()"
+                   class="block px-4 py-3 bg-indigo-500/20 border-l-4 border-indigo-500 text-indigo-300 flex items-center gap-3">
+                    <i class="fas fa-sync fa-spin w-5 text-center"></i>
+                    <span>İçe Aktarılıyor: <span class="font-bold">{{ $activeImport->processed_items }}/{{ $activeImport->total_items }}</span></span>
+                </a>
+            @endif
         </div>
 
         <div class="pt-4 pb-1 border-t border-slate-800">

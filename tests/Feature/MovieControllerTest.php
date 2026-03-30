@@ -373,6 +373,50 @@ class MovieControllerTest extends TestCase
         $this->assertStringContainsString('total_items', $response->getContent());
     }
 
+    public function test_navbar_shows_active_import_badge_when_import_running(): void
+    {
+        $user = User::factory()->create();
+
+        ImportBatch::query()->create([
+            'user_id' => $user->id,
+            'status' => 'processing',
+            'is_watched' => true,
+            'total_items' => 100,
+            'processed_items' => 25,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.index'));
+
+        $response
+            ->assertOk()
+            ->assertSee('İçe Aktarılıyor')
+            ->assertSee('25/100');
+    }
+
+    public function test_navbar_hides_import_badge_when_no_active_import(): void
+    {
+        $user = User::factory()->create();
+
+        // Only finished batch
+        ImportBatch::query()->create([
+            'user_id' => $user->id,
+            'status' => 'finished',
+            'is_watched' => true,
+            'total_items' => 50,
+            'processed_items' => 50,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('movies.index'));
+
+        $response
+            ->assertOk()
+            ->assertDontSee('İçe Aktarılıyor');
+    }
+
     public function test_user_can_complete_create_rate_collection_and_delete_flow(): void
     {
         Http::fake([
