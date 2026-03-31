@@ -469,6 +469,10 @@ class TmdbService
                 $type = $item['media_type'] ?? '';
                 if (!in_array($type, ['movie', 'tv'])) continue;
 
+                $trTitle = $type === 'tv'
+                    ? ($item['name'] ?? $item['original_name'] ?? '')
+                    : ($item['title'] ?? $item['original_title'] ?? '');
+
                 if ($type === 'tv') {
                     $item['title'] = $item['name'] ?? $item['original_name'] ?? '';
                     $item['release_date'] = $item['first_air_date'] ?? null;
@@ -482,8 +486,10 @@ class TmdbService
                 } elseif (!isset($enResults[$key])) {
                     // EN'de bulunmayan yeni sonuç → ekle
                     $enResults[$key] = $item;
+                } else {
+                    // Zaten EN'de var → TR başlığını ekle (karşılaştırma için)
+                    $enResults[$key]['tr_title'] = $trTitle;
                 }
-                // Zaten EN'de varsa → EN başlığını koru (Thai/Korean yerine English)
             }
         }
 
@@ -502,8 +508,9 @@ class TmdbService
      * Bu metod:
      * 1. Her sonucun başlığını sorguyla karşılaştırır (titleSimilarity)
      * 2. Dil filtresini uygular (TR/EN öncelikli)
-     * 3. En yüksek benzerlik skorlu sonucu seçer
-     * 4. Skor eşik değerinin altındaysa → null döner (hiçbiri kabul edilmez)
+     * 3. Popülerlik bonusu ekler (tam eşleşmelerde)
+     * 4. En yüksek benzerlik skorlu sonucu seçer
+     * 5. Skor eşik değerinin altındaysa → null döner (hiçbiri kabul edilmez)
      */
     protected function findBestMatch(string $query, array $results, float $threshold = 0.4): ?array
     {
@@ -513,18 +520,23 @@ class TmdbService
         $best = null;
         $bestScore = 0;
 
-        foreach ($results as $result) {
-            // Her sonucun birden fazla başlık alanı olabilir
+        foreach ($results as $index => $result) {
+            // Her sonucun birden fazla başlık alanı olabilir (EN + TR + orijinal)
             $titles = array_filter([
                 $result['title'] ?? '',
                 $result['original_title'] ?? $result['original_name'] ?? '',
                 $result['name'] ?? '',
+                $result['tr_title'] ?? '',  // Türkçe başlık (searchBothLanguages'den)
             ]);
 
             $maxScore = 0;
+            $hasExactMatch = false;
             foreach ($titles as $title) {
                 $titleNorm = $this->normalizeForComparison($title);
                 $score = $this->titleSimilarity($queryNorm, $titleNorm);
+                if ($score >= 0.95) {
+                    $hasExactMatch = true;
+                }
                 $maxScore = max($maxScore, $score);
             }
 
@@ -532,6 +544,25 @@ class TmdbService
             $lang = $result['original_language'] ?? '';
             if (in_array($lang, ['tr', 'en'])) {
                 $maxScore += 0.05;
+            }
+
+            // Tam eşleşme varsa, popülerlik ve oy sayısı bonusu ekle
+            // Fight Club (pop:23, votes:31687) vs Knuckledust (pop:1.3, votes:21)
+            if ($hasExactMatch) {
+                $popularity = $result['popularity'] ?? 0;
+                $voteCount = $result['vote_count'] ?? 0;
+                
+                // Popülerlik bonusu (0-0.15 arası)
+                // pop 10+ → 0.05, pop 20+ → 0.10, pop 30+ → 0.15
+                if ($popularity >= 10) {
+                    $maxScore += min(0.15, $popularity / 200);
+                }
+                
+                // Oy sayısı bonusu (0-0.10 arası)
+                // 1000+ oy → önemli film, bonus ver
+                if ($voteCount >= 1000) {
+                    $maxScore += min(0.10, $voteCount / 100000);
+                }
             }
 
             if ($maxScore > $bestScore) {
