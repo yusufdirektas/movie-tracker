@@ -85,10 +85,19 @@
 
         <div class="mt-4 flex items-center justify-between">
             <p class="text-xs text-slate-500" x-text="statusMessage"></p>
-            <a href="{{ route('movies.index') }}"
-               class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/20">
-                Arşive Git
-            </a>
+            <div class="flex items-center gap-3">
+                <button x-show="running && batch?.status !== 'finished'"
+                        @click="cancelImport()"
+                        :disabled="cancelling"
+                        class="bg-red-600/20 hover:bg-red-600/30 text-red-300 px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+                    <i class="fas" :class="cancelling ? 'fa-spinner fa-spin' : 'fa-stop'"></i>
+                    <span x-text="cancelling ? 'İptal Ediliyor...' : 'İptal Et'"></span>
+                </button>
+                <a href="{{ route('movies.index') }}"
+                   class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/20">
+                    Arşive Git
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -99,6 +108,7 @@ function importRunner() {
         rawText: '',
         isWatched: true,
         running: false,
+        cancelling: false,
         batch: null,
         items: [],
         pollTimer: null,
@@ -107,6 +117,7 @@ function importRunner() {
         async startImport() {
             if (!this.rawText.trim() || this.running) return;
             this.running = true;
+            this.cancelling = false;
             this.statusMessage = 'Batch oluşturuluyor...';
 
             try {
@@ -166,6 +177,36 @@ function importRunner() {
                 clearInterval(this.pollTimer);
                 this.pollTimer = null;
             }
+        },
+
+        async cancelImport() {
+            if (!this.batch?.id || this.cancelling) return;
+            this.cancelling = true;
+
+            try {
+                const res = await fetch(`/movies/import-list/${this.batch.id}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    this.statusMessage = data.message;
+                    this.stopPolling();
+                    this.running = false;
+                    // Refresh status one more time
+                    await this.pollStatus();
+                } else {
+                    this.statusMessage = data.message || 'İptal edilemedi.';
+                }
+            } catch (e) {
+                this.statusMessage = 'Ağ hatası oluştu.';
+            }
+
+            this.cancelling = false;
         },
 
         progressPercent() {

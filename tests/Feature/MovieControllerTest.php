@@ -505,6 +505,84 @@ class MovieControllerTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_cancel_import_skips_pending_items_and_finishes_batch(): void
+    {
+        $user = User::factory()->create();
+
+        $batch = ImportBatch::query()->create([
+            'user_id' => $user->id,
+            'status' => 'processing',
+            'is_watched' => true,
+            'total_items' => 5,
+            'processed_items' => 2,
+            'success_items' => 2,
+        ]);
+
+        ImportItem::query()->insert([
+            ['import_batch_id' => $batch->id, 'line_number' => 1, 'original_query' => 'Matrix', 'status' => 'saved', 'error_message' => null, 'created_at' => now(), 'updated_at' => now()],
+            ['import_batch_id' => $batch->id, 'line_number' => 2, 'original_query' => 'Inception', 'status' => 'saved', 'error_message' => null, 'created_at' => now(), 'updated_at' => now()],
+            ['import_batch_id' => $batch->id, 'line_number' => 3, 'original_query' => 'Interstellar', 'status' => 'pending', 'error_message' => null, 'created_at' => now(), 'updated_at' => now()],
+            ['import_batch_id' => $batch->id, 'line_number' => 4, 'original_query' => 'Tenet', 'status' => 'pending', 'error_message' => null, 'created_at' => now(), 'updated_at' => now()],
+            ['import_batch_id' => $batch->id, 'line_number' => 5, 'original_query' => 'Dunkirk', 'status' => 'pending', 'error_message' => null, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('movies.import.cancel', $batch));
+
+        $response
+            ->assertOk()
+            ->assertJson(['success' => true, 'skipped_count' => 3]);
+
+        $batch->refresh();
+        $this->assertEquals('finished', $batch->status);
+        $this->assertEquals(3, $batch->skipped_items);
+        $this->assertNotNull($batch->finished_at);
+
+        // Check pending items are now skipped
+        $this->assertEquals(3, ImportItem::where('import_batch_id', $batch->id)->where('status', 'skipped')->count());
+    }
+
+    public function test_cancel_import_fails_for_finished_batch(): void
+    {
+        $user = User::factory()->create();
+
+        $batch = ImportBatch::query()->create([
+            'user_id' => $user->id,
+            'status' => 'finished',
+            'is_watched' => true,
+            'total_items' => 5,
+            'processed_items' => 5,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('movies.import.cancel', $batch));
+
+        $response
+            ->assertStatus(422)
+            ->assertJson(['success' => false]);
+    }
+
+    public function test_cancel_import_forbidden_for_other_user(): void
+    {
+        $owner = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $batch = ImportBatch::query()->create([
+            'user_id' => $owner->id,
+            'status' => 'processing',
+            'is_watched' => true,
+            'total_items' => 5,
+        ]);
+
+        $response = $this
+            ->actingAs($otherUser)
+            ->postJson(route('movies.import.cancel', $batch));
+
+        $response->assertForbidden();
+    }
+
     public function test_user_can_complete_create_rate_collection_and_delete_flow(): void
     {
         Http::fake([

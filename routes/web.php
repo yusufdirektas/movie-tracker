@@ -54,6 +54,9 @@ Route::get('/movies/import-list/{batch}/status', [MovieController::class, 'impor
 Route::post('/movies/import-list/{batch}/retry', [MovieController::class, 'retryFailedItems'])
     ->middleware(['auth'])
     ->name('movies.import.retry');
+Route::post('/movies/import-list/{batch}/cancel', [MovieController::class, 'cancelImport'])
+    ->middleware(['auth'])
+    ->name('movies.import.cancel');
 
 // Canlı Arama API'si (Import sayfasındaki "Analiz Et" butonu için şart)
 Route::get('/movies/api-search', [MovieController::class, 'apiSearch'])
@@ -97,7 +100,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    
+
     // Profil ek özellikler
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar.update');
     Route::delete('/profile/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.avatar.delete');

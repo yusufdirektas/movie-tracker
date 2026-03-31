@@ -27,7 +27,7 @@
         <div class="space-y-4">
             @foreach($batches as $batch)
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-colors"
-                     x-data="{ expanded: false, batch: @js($batch->toArray()), items: [], loading: false, retrying: false, retryMessage: '' }"
+                     x-data="{ expanded: false, batch: @js($batch->toArray()), items: [], loading: false, retrying: false, retryMessage: '', cancelling: false }"
                      :class="{ 'ring-2 ring-indigo-500/30': batch.status === 'processing' }">
 
                     {{-- Header --}}
@@ -86,6 +86,12 @@
                                     <div class="bg-indigo-500 h-full transition-all duration-300"
                                          style="width: {{ $batch->total_items > 0 ? round(($batch->processed_items / $batch->total_items) * 100) : 0 }}%"></div>
                                 </div>
+                                <button @click.stop="cancelBatch({{ $batch->id }})"
+                                        :disabled="cancelling"
+                                        class="text-xs bg-red-600/20 hover:bg-red-600/30 text-red-300 px-3 py-1 rounded-lg transition-colors disabled:opacity-50"
+                                        title="İptal Et">
+                                    <i class="fas" :class="cancelling ? 'fa-spinner fa-spin' : 'fa-stop'"></i>
+                                </button>
                             @endif
 
                             <i class="fas fa-chevron-down text-slate-500 transition-transform" :class="{ 'rotate-180': expanded }"></i>
@@ -211,6 +217,36 @@ function importHistory() {
             }
 
             this.retrying = false;
+        },
+
+        async cancelBatch(batchId) {
+            if (this.cancelling) return;
+            this.cancelling = true;
+
+            try {
+                const res = await fetch(`/movies/import-list/${batchId}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    this.batch.status = 'finished';
+                    this.retryMessage = data.message;
+                    // Reload page to refresh all data
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    this.retryMessage = data.message || 'İptal edilemedi.';
+                }
+            } catch (e) {
+                this.retryMessage = 'Ağ hatası oluştu.';
+            }
+
+            this.cancelling = false;
         }
     };
 }

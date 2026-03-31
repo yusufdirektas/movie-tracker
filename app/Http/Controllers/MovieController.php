@@ -673,4 +673,43 @@ class MovieController extends Controller
             'retry_count' => $retryCount,
         ]);
     }
+
+    public function cancelImport(ImportBatch $batch)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        abort_unless($batch->user_id === $user->id, 403);
+
+        // Only allow canceling queued or processing batches
+        if (!in_array($batch->status, ['queued', 'processing'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bu içe aktarma zaten tamamlanmış.',
+            ], 422);
+        }
+
+        // Mark pending items as skipped
+        $skippedCount = $batch->items()
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'skipped',
+                'error_message' => 'İçe aktarma iptal edildi.',
+                'processed_at' => now(),
+            ]);
+
+        // Update batch status
+        $batch->update([
+            'status' => 'finished',
+            'skipped_items' => $batch->skipped_items + $skippedCount,
+            'processed_items' => $batch->total_items,
+            'finished_at' => now(),
+            'last_error' => 'Kullanıcı tarafından iptal edildi.',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "İçe aktarma iptal edildi. {$skippedCount} öğe atlandı.",
+            'skipped_count' => $skippedCount,
+        ]);
+    }
 }
