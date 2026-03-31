@@ -251,8 +251,8 @@
                 x-on:click="closeMenu()"
                 aria-label="İstatistikler"
                 :aria-current="request()->routeIs('movies.statistics') ? 'page' : null"
-                class="text-indigo-400 font-bold hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500">
-                <i class="fas fa-chart-pie w-5 text-center mr-1"></i> {{ __('İstatistikler') }}
+                class="text-slate-300 hover:text-white hover:bg-slate-800 border-l-4 border-transparent hover:border-indigo-500 flex items-center gap-2">
+                <i class="fas fa-chart-pie w-5 text-center"></i> {{ __('İstatistikler') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*') || request()->routeIs('feed')"
@@ -267,7 +267,7 @@
             @if($activeImport ?? null)
                 <a href="{{ route('movies.import.history') }}"
                    @click="closeMenu()"
-                   class="block px-4 py-3 bg-indigo-500/20 border-l-4 border-indigo-500 text-indigo-300 flex items-center gap-3">
+                   class="flex px-4 py-3 bg-indigo-500/20 border-l-4 border-indigo-500 text-indigo-300 items-center gap-3">
                     <i class="fas fa-sync fa-spin w-5 text-center"></i>
                     <span>İçe Aktarılıyor: <span class="font-bold">{{ $activeImport->processed_items }}/{{ $activeImport->total_items }}</span></span>
                 </a>
