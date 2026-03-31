@@ -315,6 +315,15 @@ class MovieController extends Controller
         /** @var User $user */
         $user = Auth::user();
         $mediaType = $request->input('media_type', 'movie');
+
+        // TV içerikleri artık desteklenmiyor
+        if ($mediaType === 'tv') {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Bu site sadece film arşivi için tasarlandı. Dizi eklenemez.'], 400);
+            }
+            return back()->with('error', 'Bu site sadece film arşivi için tasarlandı. Dizi eklenemez.');
+        }
+
         $alreadyExists = $user->movies()
             ->where('tmdb_id', $request->tmdb_id)
             ->where('media_type', $mediaType)

@@ -60,7 +60,8 @@ class ProcessImportItemJob implements ShouldQueue
             return;
         }
 
-        $mediaType = ($best['media_type'] ?? 'movie') === 'tv' ? 'tv' : 'movie';
+        // Sadece film destekleniyor, TV içeriklerini reddet
+        $mediaType = 'movie';
         $tmdbId = (int) ($best['id'] ?? 0);
 
         if ($tmdbId <= 0) {

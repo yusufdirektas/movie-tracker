@@ -435,8 +435,8 @@ class TmdbService
     {
         $enResults = [];
 
-        // 1. EN-US araması → evrensel İngilizce başlıklar
-        $response = $this->request('/search/multi', [
+        // 1. EN-US araması → evrensel İngilizce başlıklar (SADECE FİLM)
+        $response = $this->request('/search/movie', [
             'query'         => $query,
             'include_adult' => false,
             'language'      => 'en-US',
@@ -444,21 +444,14 @@ class TmdbService
 
         if ($response?->successful()) {
             foreach (($response->json()['results'] ?? []) as $item) {
-                $type = $item['media_type'] ?? '';
-                if (!in_array($type, ['movie', 'tv'])) continue;
-
-                if ($type === 'tv') {
-                    $item['title'] = $item['name'] ?? $item['original_name'] ?? '';
-                    $item['release_date'] = $item['first_air_date'] ?? null;
-                }
-                $item['media_type'] = $type;
-                $key = $type . '_' . $item['id'];
+                $item['media_type'] = 'movie';
+                $key = 'movie_' . $item['id'];
                 $enResults[$key] = $item;
             }
         }
 
         // 2. TR-TR araması → Türkçe orijinal filmler için Türkçe başlık
-        $response = $this->request('/search/multi', [
+        $response = $this->request('/search/movie', [
             'query'         => $query,
             'include_adult' => false,
             'language'      => 'tr-TR',
@@ -466,19 +459,9 @@ class TmdbService
 
         if ($response?->successful()) {
             foreach (($response->json()['results'] ?? []) as $item) {
-                $type = $item['media_type'] ?? '';
-                if (!in_array($type, ['movie', 'tv'])) continue;
-
-                $trTitle = $type === 'tv'
-                    ? ($item['name'] ?? $item['original_name'] ?? '')
-                    : ($item['title'] ?? $item['original_title'] ?? '');
-
-                if ($type === 'tv') {
-                    $item['title'] = $item['name'] ?? $item['original_name'] ?? '';
-                    $item['release_date'] = $item['first_air_date'] ?? null;
-                }
-                $item['media_type'] = $type;
-                $key = $type . '_' . $item['id'];
+                $item['media_type'] = 'movie';
+                $trTitle = $item['title'] ?? $item['original_title'] ?? '';
+                $key = 'movie_' . $item['id'];
 
                 if (($item['original_language'] ?? '') === 'tr') {
                     // Türkçe orijinal → TR başlığı tercih et
