@@ -186,7 +186,7 @@ class CommentControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Test yorumu burada');
-        $response->assertSee('Notlarım');
+        $response->assertSee('Yorumlar');
     }
 
     #[Test]

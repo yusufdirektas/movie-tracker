@@ -152,9 +152,9 @@
                         </div>
                     @endif
 
-                    {{-- Hızlı Notlar --}}
+                    {{-- Kişisel Notlarım --}}
                     <div class="mb-8">
-                        <h3 class="text-slate-500 font-black mb-3 uppercase text-[10px] tracking-widest">Hızlı Notlarım</h3>
+                        <h3 class="text-slate-500 font-black mb-3 uppercase text-[10px] tracking-widest">Kişisel Notlarım</h3>
                         <form action="{{ route('movies.update', $movie) }}" method="POST" class="space-y-3">
                             @csrf
                             @method('PATCH')
@@ -162,7 +162,7 @@
                                 name="personal_note"
                                 rows="4"
                                 maxlength="1000"
-                                placeholder="Bu film hakkında kısa notlarını yaz..."
+                                placeholder="Bu film hakkında özel notlarını yaz..."
                                 class="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition">{{ old('personal_note', $movie->personal_note) }}</textarea>
 
                             @error('personal_note')
@@ -378,7 +378,7 @@
         <div class="bg-slate-900 rounded-[2rem] p-8 border border-slate-800 shadow-xl">
             <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
                 <i class="fas fa-comments text-indigo-400"></i>
-                Notlarım
+                Yorumlar
                 <span class="text-slate-500 text-sm font-normal">({{ $movie->comments->count() }})</span>
             </h3>
 
@@ -420,7 +420,7 @@
             @if($movie->comments->isEmpty())
                 <div class="text-center py-8">
                     <i class="fas fa-comment-slash text-4xl text-slate-700 mb-3"></i>
-                    <p class="text-slate-500">Henüz not eklenmemiş. İlk notu sen ekle!</p>
+                    <p class="text-slate-500">Henüz yorum eklenmemiş. İlk yorumu sen ekle!</p>
                 </div>
             @else
                 <div class="space-y-4">
