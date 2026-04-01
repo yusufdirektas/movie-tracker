@@ -73,11 +73,29 @@ class UserController extends Controller
             }
         }
 
-        // İstatistikler
+        /**
+         * 📚 N+1 QUERY OPTİMİZASYONU
+         *
+         * ÖNCE (6 sorgu):
+         * $stats['watched'] = $user->movies()->where('is_watched', true)->count();
+         * $stats['watchlist'] = $user->movies()->where('is_watched', false)->count();
+         * ... her biri ayrı veritabanı sorgusu
+         *
+         * SONRA (1 sorgu):
+         * Tüm istatistikleri tek sorguda al, SQL'de CASE WHEN ile grupla
+         */
+        $movieStats = $user->movies()
+            ->selectRaw("
+                COUNT(CASE WHEN is_watched = 1 THEN 1 END) as watched_count,
+                COUNT(CASE WHEN is_watched = 0 THEN 1 END) as watchlist_count,
+                COALESCE(SUM(CASE WHEN is_watched = 1 THEN runtime ELSE 0 END), 0) as total_runtime
+            ")
+            ->first();
+
         $stats = [
-            'watched_count' => $user->movies()->where('is_watched', true)->count(),
-            'watchlist_count' => $user->movies()->where('is_watched', false)->count(),
-            'total_runtime' => $user->movies()->where('is_watched', true)->sum('runtime'),
+            'watched_count' => $movieStats->watched_count ?? 0,
+            'watchlist_count' => $movieStats->watchlist_count ?? 0,
+            'total_runtime' => $movieStats->total_runtime ?? 0,
             'collections_count' => $user->collections()->count(),
             'followers_count' => $user->followersCount(),
             'following_count' => $user->followingCount(),

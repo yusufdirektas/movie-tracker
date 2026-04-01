@@ -46,7 +46,7 @@ Route::get('/movies/import-list/history', [MovieController::class, 'importHistor
     ->middleware(['auth'])
     ->name('movies.import.history');
 Route::post('/movies/import-list/start', [MovieController::class, 'startImport'])
-    ->middleware(['auth'])
+    ->middleware(['auth', 'throttle:import-start'])
     ->name('movies.import.start');
 Route::get('/movies/import-list/{batch}/status', [MovieController::class, 'importStatus'])
     ->middleware(['auth'])
@@ -118,21 +118,27 @@ Route::post('/movies', [MovieController::class, 'store'])->middleware(['auth', '
 Route::resource('movies', MovieController::class)->middleware(['auth'])->except(['store']);
 
 // --- 5. KOLEKSİYON ROTALARI ---
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth'])->group(function () {
+    // GET rotaları - throttle gerekmiyor
     Route::get('/collections', [CollectionController::class, 'index'])->name('collections.index');
-    Route::post('/collections', [CollectionController::class, 'store'])->name('collections.store');
     Route::get('/collections/{collection}', [CollectionController::class, 'show'])->name('collections.show');
-    Route::put('/collections/{collection}', [CollectionController::class, 'update'])->name('collections.update');
-    Route::delete('/collections/{collection}', [CollectionController::class, 'destroy'])->name('collections.destroy');
-    Route::post('/collections/{collection}/movies', [CollectionController::class, 'addMovie'])->name('collections.addMovie');
-    Route::post('/collections/{collection}/movies/bulk', [CollectionController::class, 'addMovies'])->name('collections.addMovies');
-    Route::delete('/collections/{collection}/movies/bulk', [CollectionController::class, 'removeMovies'])->name('collections.removeMovies');
-    Route::delete('/collections/{collection}/movies/{movie}', [CollectionController::class, 'removeMovie'])->name('collections.removeMovie');
-    Route::patch('/collections/{collection}/movies/reorder', [CollectionController::class, 'reorderMovies'])->name('collections.reorderMovies');
+
+    // Mutation rotaları - throttle ile korunuyor
+    Route::middleware('throttle:collection-mutations')->group(function () {
+        Route::post('/collections', [CollectionController::class, 'store'])->name('collections.store');
+        Route::put('/collections/{collection}', [CollectionController::class, 'update'])->name('collections.update');
+        Route::delete('/collections/{collection}', [CollectionController::class, 'destroy'])->name('collections.destroy');
+        Route::post('/collections/{collection}/movies', [CollectionController::class, 'addMovie'])->name('collections.addMovie');
+        Route::post('/collections/{collection}/movies/bulk', [CollectionController::class, 'addMovies'])->name('collections.addMovies');
+        Route::delete('/collections/{collection}/movies/bulk', [CollectionController::class, 'removeMovies'])->name('collections.removeMovies');
+        Route::delete('/collections/{collection}/movies/{movie}', [CollectionController::class, 'removeMovie'])->name('collections.removeMovie');
+        Route::patch('/collections/{collection}/movies/reorder', [CollectionController::class, 'reorderMovies'])->name('collections.reorderMovies');
+    });
 });
 
 // --- 6. TOPLU İŞLEM ROTALARI (BULK ACTIONS) ---
-Route::middleware('auth')->group(function () {
+// Yüksek etkili operasyonlar - daha sıkı rate limit
+Route::middleware(['auth', 'throttle:bulk-actions'])->group(function () {
     Route::delete('/movies/bulk/delete', [BulkActionController::class, 'delete'])->name('movies.bulk.delete');
     Route::post('/movies/bulk/watched', [BulkActionController::class, 'markAsWatched'])->name('movies.bulk.watched');
     Route::post('/movies/bulk/unwatched', [BulkActionController::class, 'markAsUnwatched'])->name('movies.bulk.unwatched');
@@ -151,9 +157,13 @@ Route::middleware('auth')->group(function () {
     // Kullanıcı Profili
     Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
 
-    // Takip Et / Takipten Çık
-    Route::post('/users/{user}/follow', [FollowController::class, 'store'])->name('users.follow');
-    Route::delete('/users/{user}/follow', [FollowController::class, 'destroy'])->name('users.unfollow');
+    // Takip Et / Takipten Çık (spam önleme için throttle)
+    Route::post('/users/{user}/follow', [FollowController::class, 'store'])
+        ->middleware('throttle:follow-actions')
+        ->name('users.follow');
+    Route::delete('/users/{user}/follow', [FollowController::class, 'destroy'])
+        ->middleware('throttle:follow-actions')
+        ->name('users.unfollow');
 
     // Takipçiler / Takip Edilenler Listesi
     Route::get('/users/{user}/followers', [FollowController::class, 'followers'])->name('users.followers');

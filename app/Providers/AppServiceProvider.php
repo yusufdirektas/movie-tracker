@@ -92,6 +92,21 @@ class AppServiceProvider extends ServiceProvider
          */
         Model::preventSilentlyDiscardingAttributes(!app()->isProduction());
 
+        /**
+         * 📚 RATE LIMITING (İstek Sınırlama)
+         *
+         * Rate limiting nedir?
+         * - Bir kullanıcının belirli sürede yapabileceği istek sayısını sınırlamak
+         *
+         * Neden gerekli?
+         * 1. DDoS Koruması - Sunucu aşırı yüklenmez
+         * 2. Brute Force Koruması - Şifre denemeleri sınırlanır
+         * 3. API Abuse Önleme - Botlar sınırsız istek atamaz
+         * 4. Kaynak Adaleti - Her kullanıcı eşit kaynak alır
+         *
+         * Kullanım: Route'larda ->middleware('throttle:limiter-adi')
+         */
+
         // TMDB arama: Toplu import'ta her satır 1 istek → büyük listeler için yeterli olmalı
         RateLimiter::for('api-search', function (Request $request) {
             return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
@@ -100,6 +115,26 @@ class AppServiceProvider extends ServiceProvider
         // Film ekleme: Toplu import'ta tüm filmler art arda kaydediliyor → yeterli olmalı
         RateLimiter::for('store-movie', function (Request $request) {
             return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Koleksiyon işlemleri: Normal kullanımda dakikada 30 yeterli
+        RateLimiter::for('collection-mutations', function (Request $request) {
+            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Takip işlemleri: Spam takip/takipten çık önleme
+        RateLimiter::for('follow-actions', function (Request $request) {
+            return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Toplu işlemler: Yüksek etkili operasyonlar daha sıkı sınırlanır
+        RateLimiter::for('bulk-actions', function (Request $request) {
+            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Import başlatma: Aynı anda çok fazla import engelenir
+        RateLimiter::for('import-start', function (Request $request) {
+            return Limit::perMinute(5)->by($request->user()?->id ?: $request->ip());
         });
 
         // Share active import batch with navigation
