@@ -741,7 +741,7 @@ class MovieControllerTest extends TestCase
             ->get(route('movies.show', $movie));
 
         $response->assertOk();
-        $response->assertSee('Hızlı Notlarım');
+        $response->assertSee('Kişisel Notlarım');
         $response->assertSee('Notu Kaydet');
         $response->assertSee('Not denemesi');
     }
