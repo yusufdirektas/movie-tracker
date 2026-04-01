@@ -13,56 +13,148 @@
                         Film <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Arşivim</span>
                     </h1>
 
-                    {{-- PAYLAŞ BUTONU VE MENÜSÜ --}}
-                    <div x-data="{ open: false }" class="relative">
+                    {{-- PAYLAŞ BUTONU VE MENÜSÜ (AJAX) --}}
+                    {{--
+                    @KAVRAM: Alpine.js ile AJAX Toggle
+
+                    Pattern:
+                    1. x-data → Component state (isPublic, loading, shareUrl)
+                    2. @click → toggle() fonksiyonunu çağır
+                    3. fetch() → Backend'e POST request
+                    4. JSON response → State'i güncelle
+                    5. x-show, :class → UI otomatik değişir
+
+                    Avantajlar:
+                    - Sayfa yenilenmez
+                    - Anlık geri bildirim
+                    - Smooth animasyonlar
+                    --}}
+                    <div x-data="{
+                        open: false,
+                        isPublic: {{ Auth::user()->is_public ? 'true' : 'false' }},
+                        shareUrl: '{{ Auth::user()->share_token ? route('public.archive', ['token' => Auth::user()->share_token]) : '' }}',
+                        loading: false,
+
+                        async togglePrivacy() {
+                            if (this.loading) return;
+                            this.loading = true;
+
+                            try {
+                                const response = await fetch('{{ route('privacy.archive.toggle') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json'
+                                    }
+                                });
+
+                                const data = await response.json();
+
+                                if (data.success) {
+                                    this.isPublic = data.is_public;
+                                    this.shareUrl = data.share_url || '';
+                                    // Toast göster (varsa)
+                                    if (typeof showToast === 'function') {
+                                        showToast(data.message, 'success');
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('Toggle error:', error);
+                            } finally {
+                                this.loading = false;
+                            }
+                        },
+
+                        async regenerateToken() {
+                            if (!confirm('Link yenilendiğinde eski link artık çalışmayacaktır. Emin misiniz?')) return;
+                            if (this.loading) return;
+                            this.loading = true;
+
+                            try {
+                                const response = await fetch('{{ route('privacy.regenerate-token') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json'
+                                    }
+                                });
+
+                                const data = await response.json();
+
+                                if (data.success) {
+                                    this.shareUrl = data.share_url;
+                                    // Input'u güncelle
+                                    const input = document.getElementById('shareUrl');
+                                    if (input) input.value = data.share_url;
+                                    if (typeof showToast === 'function') {
+                                        showToast(data.message, 'success');
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('Regenerate error:', error);
+                            } finally {
+                                this.loading = false;
+                            }
+                        }
+                    }" class="relative">
                         <button @click="open = !open"
                             class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-black px-4 py-2 rounded-xl transition-all border border-slate-700 flex items-center gap-2">
-                            <i class="fas fa-share-alt {{ Auth::user()->is_public ? 'text-emerald-400' : '' }}"></i>
-                            {{ Auth::user()->is_public ? 'Paylaşılıyor' : 'Paylaş' }}
+                            <i class="fas fa-share-alt" :class="isPublic ? 'text-emerald-400' : ''"></i>
+                            <span x-text="isPublic ? 'Paylaşılıyor' : 'Paylaş'"></span>
                         </button>
 
-                        <div x-show="open" @click.away="open = false" style="display: none;"
+                        <div x-show="open" @click.away="open = false" x-cloak
                             class="absolute top-full left-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 p-4">
 
                             <div class="mb-4 pb-4 border-b border-slate-800">
-                                <form action="{{ route('privacy.archive.toggle') }}" method="POST" class="flex items-center justify-between">
-                                    @csrf
+                                <div class="flex items-center justify-between">
                                     <div>
                                         <h4 class="text-sm font-bold text-white">Arşiv Paylaşımı</h4>
                                         <p class="text-[10px] text-slate-500">Arşiviniz herkese açık olsun mu?</p>
                                     </div>
-                                    <button type="submit"
-                                        class="w-12 h-6 rounded-full relative transition-colors duration-200 focus:outline-none {{ Auth::user()->is_public ? 'bg-emerald-500' : 'bg-slate-700' }}">
-                                        <div class="absolute top-1/2 -translate-y-1/2 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 {{ Auth::user()->is_public ? 'translate-x-6' : '' }}"></div>
+                                    <button @click="togglePrivacy()"
+                                        :disabled="loading"
+                                        class="w-12 h-6 rounded-full relative transition-colors duration-200 focus:outline-none disabled:opacity-50"
+                                        :class="isPublic ? 'bg-emerald-500' : 'bg-slate-700'">
+                                        <div class="absolute top-1/2 -translate-y-1/2 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-200"
+                                             :class="isPublic ? 'translate-x-6' : ''"></div>
                                     </button>
-                                </form>
+                                </div>
                             </div>
 
-                            @if(Auth::user()->is_public)
-                                <div class="mb-4">
-                                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Paylaşım Linki</label>
-                                    <div style="display:flex; gap:8px; width:100%; box-sizing:border-box;">
-                                        <input type="text" readonly value="{{ Auth::user()->share_token ? route('public.archive', ['token' => Auth::user()->share_token]) : '' }}" id="shareUrl"
-                                            style="flex:1 1 0%; min-width:0; background:#1e293b; border:none; border-radius:8px; font-size:12px; color:#cbd5e1; padding:8px 12px; box-sizing:border-box; overflow:hidden; text-overflow:ellipsis;">
-                                        <button onclick="copyToClipboard('shareUrl')"
-                                            style="flex-shrink:0; background:#4f46e5; color:white; padding:8px; border-radius:8px; border:none; cursor:pointer;">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
+                            {{-- Public olduğunda göster --}}
+                            <template x-if="isPublic">
+                                <div>
+                                    <div class="mb-4">
+                                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Paylaşım Linki</label>
+                                        <div style="display:flex; gap:8px; width:100%; box-sizing:border-box;">
+                                            <input type="text" readonly :value="shareUrl" id="shareUrl"
+                                                style="flex:1 1 0%; min-width:0; background:#1e293b; border:none; border-radius:8px; font-size:12px; color:#cbd5e1; padding:8px 12px; box-sizing:border-box; overflow:hidden; text-overflow:ellipsis;">
+                                            <button @click="copyToClipboard('shareUrl')"
+                                                style="flex-shrink:0; background:#4f46e5; color:white; padding:8px; border-radius:8px; border:none; cursor:pointer;">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <form action="{{ route('privacy.regenerate-token') }}" method="POST" onsubmit="return confirm('Link yenilendiğinde eski link artık çalışmayacaktır. Emin misiniz?')">
-                                    @csrf
-                                    <button type="submit" class="text-[10px] text-slate-500 hover:text-red-400 transition-colors underline">
-                                        Link Yenile
+                                    <button @click="regenerateToken()"
+                                        :disabled="loading"
+                                        class="text-[10px] text-slate-500 hover:text-red-400 transition-colors underline disabled:opacity-50">
+                                        <span x-show="!loading">Link Yenile</span>
+                                        <span x-show="loading"><i class="fas fa-spinner fa-spin"></i></span>
                                     </button>
-                                </form>
-                            @else
+                                </div>
+                            </template>
+
+                            {{-- Private olduğunda göster --}}
+                            <template x-if="!isPublic">
                                 <div class="text-center py-2">
                                     <i class="fas fa-lock text-slate-600 mb-2 block"></i>
                                     <p class="text-[10px] text-slate-500 italic">Paylaşımı aktif ederek listeni herkese açık hale getirebilirsin.</p>
                                 </div>
-                            @endif
+                            </template>
                         </div>
                     </div>
                 </div>
