@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\TmdbService;
+use App\Support\CacheKeys;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
@@ -25,19 +26,22 @@ class RecommendationController extends Controller
 
         if ($lastMovie && $lastMovie->tmdb_id) {
 
-            // TMDB'den gelen önerileri o filme özel 24 saat (86400 saniye) hafızada tutuyoruz
-            $cacheKey = 'movie_recommendations_' . $lastMovie->tmdb_id;
+            // TMDB'den gelen önerileri o filme özel 24 saat hafızada tutuyoruz
+            // CacheKeys ile tutarlı isimlendirme: user:{id}:recommendations:{movieId}:v1
+            $results = Cache::remember(
+                CacheKeys::recommendations($user->id, $lastMovie->tmdb_id),
+                CacheKeys::TTL_LONG,
+                function () use ($lastMovie) {
+                    $response = $this->tmdb->getRecommendations($lastMovie->tmdb_id);
+                    $res = $response?->successful() ? ($response->json()['results'] ?? []) : [];
 
-            $results = Cache::remember($cacheKey, now()->addHours(24), function () use ($lastMovie) {
-                $response = $this->tmdb->getRecommendations($lastMovie->tmdb_id);
-                $res = $response?->successful() ? ($response->json()['results'] ?? []) : [];
-
-                if (empty($res)) {
-                    $fallbackResponse = $this->tmdb->getSimilar($lastMovie->tmdb_id);
-                    $res = $fallbackResponse?->successful() ? ($fallbackResponse->json()['results'] ?? []) : [];
+                    if (empty($res)) {
+                        $fallbackResponse = $this->tmdb->getSimilar($lastMovie->tmdb_id);
+                        $res = $fallbackResponse?->successful() ? ($fallbackResponse->json()['results'] ?? []) : [];
+                    }
+                    return $res;
                 }
-                return $res;
-            });
+            );
 
             if (!empty($results)) {
                 $myMovieIds = $user->movies()->pluck('tmdb_id')->toArray();

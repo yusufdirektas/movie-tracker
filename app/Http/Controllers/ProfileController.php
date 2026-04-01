@@ -109,11 +109,31 @@ class ProfileController extends Controller
      *
      * @KAVRAM: Storage::delete()
      * - Eski avatarı siler (disk alanı tasarrufu)
+     *
+     * @KAVRAM: Dosya Güvenliği
+     * - 'image' kuralı: Dosyanın gerçekten görsel olduğunu doğrular (MIME type)
+     * - 'mimes' kuralı: İzin verilen uzantıları sınırlar
+     * - 'max' kuralı: Dosya boyutunu sınırlar (KB cinsinden)
+     * - 'dimensions' kuralı: Görsel boyutlarını sınırlar (opsiyonel)
+     *
+     * NOT: Laravel 'image' kuralı dosya içeriğini kontrol eder (getimagesize),
+     * sadece uzantıya bakmaz. Bu, .php.jpg gibi hileli dosyaları engeller.
      */
     public function updateAvatar(Request $request): RedirectResponse
     {
         $request->validate([
-            'avatar' => ['required', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'], // Max 2MB
+            'avatar' => [
+                'required',
+                'image',                              // Gerçek görsel mi? (içerik kontrolü)
+                'mimes:jpeg,png,jpg,gif,webp',        // İzin verilen formatlar
+                'max:2048',                           // Max 2MB
+                'dimensions:max_width=2000,max_height=2000', // Çok büyük görselleri engelle
+            ],
+        ], [
+            'avatar.image' => 'Yüklenen dosya geçerli bir görsel değil.',
+            'avatar.mimes' => 'Avatar sadece JPEG, PNG, GIF veya WebP formatında olabilir.',
+            'avatar.max' => 'Avatar dosyası en fazla 2MB olabilir.',
+            'avatar.dimensions' => 'Avatar en fazla 2000x2000 piksel olabilir.',
         ]);
 
         $user = $request->user();
