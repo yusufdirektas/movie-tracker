@@ -10,33 +10,43 @@ use Illuminate\Http\Request;
 /**
  * 📚 YORUM CONTROLLER
  *
- * @KAVRAM: Nested Resource Route
+ * @KAVRAM: Global Comments (Public/Shared Comments)
  *
- * URL: /movies/{movie}/comments
- * Bu yapı, yorumun hangi filme ait olduğunu URL'den alır.
+ * Eski sistem:
+ * - Kullanıcı kendi filmlerine yorum yapardı (private)
+ * - commentable_id → user'ın movie record'ı
  *
- * @KAVRAM: Form Request vs Inline Validation
+ * Yeni sistem:
+ * - Herkes aynı TMDB filmine yorum yapabilir (public)
+ * - tmdb_id → TMDB'deki film ID (Fight Club = 550)
+ * - Tüm kullanıcılar aynı yorumları görür
  *
- * Basit validasyonlar için inline (bu dosyada) yeterli.
- * Karmaşık validasyonlar için Form Request sınıfı kullan.
+ * Örnek:
+ *   User A, Fight Club'a yorum yapar (tmdb_id: 550)
+ *   User B, Fight Club sayfasında User A'nın yorumunu görür
+ *
+ * @KAVRAM: Route Model Binding
+ *
+ * {movie} parametresi → Kullanıcının kendi Movie kaydı
+ * tmdb_id → Global film ID'si
  */
 class CommentController extends Controller
 {
     /**
-     * Yeni yorum ekle
+     * Yeni yorum ekle (Global/Public)
      *
-     * @KAVRAM: Route Model Binding
+     * @KAVRAM: Global Comments Pattern
      *
-     * store(Movie $movie) → Laravel URL'deki {movie} ID'yi
-     * otomatik olarak Movie modeline dönüştürür.
+     * Artık kullanıcı kendi filmlerine değil, TMDB filmine yorum yapar.
+     * tmdb_id ile kaydedilir, böylece tüm kullanıcılar aynı yorumları görür.
+     *
+     * Akış:
+     * 1. $movie → Kullanıcının kendi movie kaydı (sadece tmdb_id almak için)
+     * 2. Comment::create() → tmdb_id ile kaydet (polymorphic ilişki YOK)
+     * 3. Tüm kullanıcılar aynı tmdb_id'li yorumları görür
      */
     public function store(Request $request, Movie $movie): RedirectResponse
     {
-        // Film sahibi mi kontrol et (sadece kendi filmlerine yorum yapabilir)
-        if ($movie->user_id !== $request->user()->id) {
-            abort(403, 'Bu filme yorum yapamazsınız.');
-        }
-
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:500'],
             'has_spoiler' => ['boolean'],
@@ -45,16 +55,17 @@ class CommentController extends Controller
             'body.max' => 'Yorum en fazla 500 karakter olabilir.',
         ]);
 
-        // Yorum oluştur
-        $movie->comments()->create([
+        // Global yorum oluştur (tmdb_id ile)
+        Comment::create([
             'user_id' => $request->user()->id,
+            'tmdb_id' => $movie->tmdb_id,
             'body' => $validated['body'],
             'has_spoiler' => $validated['has_spoiler'] ?? false,
         ]);
 
         return redirect()
             ->route('movies.show', $movie)
-            ->with('success', 'Yorumunuz eklendi!');
+            ->with('success', 'Yorumunuz herkese açık olarak yayınlandı!');
     }
 
     /**

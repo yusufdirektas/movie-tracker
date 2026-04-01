@@ -439,8 +439,48 @@ class MovieController extends Controller
     {
         $this->authorize('view', $movie);
 
-        // Yorumları eager load et (N+1 önleme)
-        $movie->load('comments');
+        // Global yorumları yükle (TMDB ID'ye göre, tüm kullanıcıların yorumları)
+        // 
+        // @KAVRAM: Eager Loading (N+1 Sorunu Önleme)
+        // 
+        // Kötü yöntem:
+        //   foreach ($comments as $comment) {
+        //       echo $comment->user->name; // Her comment için 1 query!
+        //   }
+        //   → 100 comment = 101 query (1 comment listesi + 100 user)
+        //
+        // İyi yöntem:
+        //   Comment::with('user')->get();
+        //   → 2 query (1 comment listesi + 1 toplu user sorgusu)
+        //
+        // @KAVRAM: withCount() - Aggregate Eager Loading
+        //
+        // reactions tablosundan COUNT() yapıp comment'e ekler.
+        // $comment->reactions_count yerine özel isim:
+        //   'reactions as like_count' → $comment->like_count
+        //
+        $globalComments = \App\Models\Comment::where('tmdb_id', $movie->tmdb_id)
+            ->with('user') // Yorum yapan kullanıcıyı yükle
+            ->withCount([
+                'reactions as like_count' => fn($q) => $q->where('is_like', true),
+                'reactions as dislike_count' => fn($q) => $q->where('is_like', false),
+            ])
+            ->latest()
+            ->get();
+
+        // Giriş yapan kullanıcının reaction'larını önceden yükle
+        // (Her comment için "Bu kullanıcı like mı dislike mi yaptı?" kontrolü)
+        if (Auth::check()) {
+            $userReactions = \App\Models\CommentReaction::where('user_id', Auth::id())
+                ->whereIn('comment_id', $globalComments->pluck('id'))
+                ->get()
+                ->keyBy('comment_id');
+            
+            // Her comment'e user'ın reaction'ını ekle
+            $globalComments->each(function ($comment) use ($userReactions) {
+                $comment->user_reaction = $userReactions->get($comment->id);
+            });
+        }
 
         // Bu filmin TMDB ID'si varsa benzer film önerilerini çek (24 saat cache)
         $similarMovies = [];
@@ -457,7 +497,7 @@ class MovieController extends Controller
         $collections = Auth::user()->collections()->orderBy('name')->get();
         $movieCollectionIds = $movie->collections()->pluck('collections.id')->toArray();
 
-        return view('movies.show', compact('movie', 'similarMovies', 'collections', 'movieCollectionIds'));
+        return view('movies.show', compact('movie', 'globalComments', 'similarMovies', 'collections', 'movieCollectionIds'));
     }
 
     public function update(UpdateMovieRequest $request, Movie $movie)

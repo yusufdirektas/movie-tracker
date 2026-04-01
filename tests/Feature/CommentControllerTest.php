@@ -25,7 +25,7 @@ class CommentControllerTest extends TestCase
     public function user_can_add_comment_to_own_movie(): void
     {
         $user = User::factory()->create();
-        $movie = Movie::factory()->create(['user_id' => $user->id]);
+        $movie = Movie::factory()->create(['user_id' => $user->id, 'tmdb_id' => 550]);
 
         $response = $this->actingAs($user)->post(route('movies.comments.store', $movie), [
             'body' => 'Harika bir filmdi!',
@@ -33,10 +33,10 @@ class CommentControllerTest extends TestCase
         ]);
 
         $response->assertRedirect(route('movies.show', $movie));
+        // Artık global comment - tmdb_id ile kaydedilir
         $this->assertDatabaseHas('comments', [
             'user_id' => $user->id,
-            'commentable_type' => Movie::class,
-            'commentable_id' => $movie->id,
+            'tmdb_id' => 550,
             'body' => 'Harika bir filmdi!',
             'has_spoiler' => false,
         ]);
@@ -47,13 +47,20 @@ class CommentControllerTest extends TestCase
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $movie = Movie::factory()->create(['user_id' => $owner->id]);
+        $movie = Movie::factory()->create(['user_id' => $owner->id, 'tmdb_id' => 550]);
 
+        // Artık herkes yorum yapabilir (global comments)
         $response = $this->actingAs($other)->post(route('movies.comments.store', $movie), [
             'body' => 'Test yorum',
         ]);
 
-        $response->assertForbidden();
+        // Başarılı olmalı
+        $response->assertRedirect(route('movies.show', $movie));
+        $this->assertDatabaseHas('comments', [
+            'user_id' => $other->id,
+            'tmdb_id' => 550,
+            'body' => 'Test yorum',
+        ]);
     }
 
     #[Test]
@@ -154,11 +161,10 @@ class CommentControllerTest extends TestCase
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $movie = Movie::factory()->create(['user_id' => $owner->id]);
+        $movie = Movie::factory()->create(['user_id' => $owner->id, 'tmdb_id' => 550]);
         $comment = Comment::create([
             'user_id' => $owner->id,
-            'commentable_type' => Movie::class,
-            'commentable_id' => $movie->id,
+            'tmdb_id' => 550,
             'body' => 'Owner yorumu',
         ]);
 
@@ -174,11 +180,10 @@ class CommentControllerTest extends TestCase
     public function movie_show_displays_comments(): void
     {
         $user = User::factory()->create();
-        $movie = Movie::factory()->create(['user_id' => $user->id]);
+        $movie = Movie::factory()->create(['user_id' => $user->id, 'tmdb_id' => 550]);
         Comment::create([
             'user_id' => $user->id,
-            'commentable_type' => Movie::class,
-            'commentable_id' => $movie->id,
+            'tmdb_id' => 550,
             'body' => 'Test yorumu burada',
         ]);
 
@@ -193,11 +198,10 @@ class CommentControllerTest extends TestCase
     public function spoiler_comment_is_hidden_by_default(): void
     {
         $user = User::factory()->create();
-        $movie = Movie::factory()->create(['user_id' => $user->id]);
+        $movie = Movie::factory()->create(['user_id' => $user->id, 'tmdb_id' => 550]);
         Comment::create([
             'user_id' => $user->id,
-            'commentable_type' => Movie::class,
-            'commentable_id' => $movie->id,
+            'tmdb_id' => 550,
             'body' => 'Spoiler içerik',
             'has_spoiler' => true,
         ]);

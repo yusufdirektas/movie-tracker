@@ -369,17 +369,23 @@
         @endif
 
         {{-- ═══════════════════════════════════════════════════════════════════════
-             📚 YORUM BÖLÜMÜ
+             💬 YORUMLAR BÖLÜMÜ (PUBLIC/GLOBAL)
 
-             @KAVRAM: morphMany İlişkisi
-             $movie->comments ile filmin yorumlarına erişiriz.
-             comments() metodunda morphMany tanımlı.
+             @KAVRAM: Global Comments Pattern
+             Artık $movie->comments DEĞİL, $globalComments kullanıyoruz.
+             Tüm kullanıcılar aynı TMDB filminin yorumlarını görür.
+
+             @KAVRAM: Alpine.js x-data
+             Reaktif state yönetimi:
+             - liked/disliked → Kullanıcının reaction durumu
+             - likeCount/dislikeCount → Sayaçlar
+             - AJAX ile backend'e istek → JSON response → State güncelle
         ═══════════════════════════════════════════════════════════════════════ --}}
         <div class="bg-slate-900 rounded-[2rem] p-8 border border-slate-800 shadow-xl">
             <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
                 <i class="fas fa-comments text-indigo-400"></i>
                 Yorumlar
-                <span class="text-slate-500 text-sm font-normal">({{ $movie->comments->count() }})</span>
+                <span class="text-slate-500 text-sm font-normal">({{ $globalComments->count() }})</span>
             </h3>
 
             {{-- YORUM FORMU --}}
@@ -393,7 +399,7 @@
                             name="body"
                             rows="3"
                             maxlength="500"
-                            placeholder="Bu film hakkında düşüncelerinizi yazın... (max 500 karakter)"
+                            placeholder="Bu film hakkında düşüncelerinizi yazın... Yorumunuz herkese açık olacak! (max 500 karakter)"
                             class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
                         >{{ old('body') }}</textarea>
                         @error('body')
@@ -417,16 +423,96 @@
             </form>
 
             {{-- YORUM LİSTESİ --}}
-            @if($movie->comments->isEmpty())
+            @if($globalComments->isEmpty())
                 <div class="text-center py-8">
                     <i class="fas fa-comment-slash text-4xl text-slate-700 mb-3"></i>
-                    <p class="text-slate-500">Henüz yorum eklenmemiş. İlk yorumu sen ekle!</p>
+                    <p class="text-slate-500">Henüz kimse yorum yapmamış. İlk yorumu sen yap!</p>
                 </div>
             @else
                 <div class="space-y-4">
-                    @foreach($movie->comments->sortByDesc('created_at') as $comment)
+                    @foreach($globalComments as $comment)
+                        {{-- Alpine.js: Her yorum için ayrı state --}}
                         <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50"
-                             x-data="{ editing: false }">
+                             x-data="{
+                                editing: false,
+                                liked: {{ $comment->user_reaction && $comment->user_reaction->is_like ? 'true' : 'false' }},
+                                disliked: {{ $comment->user_reaction && !$comment->user_reaction->is_like ? 'true' : 'false' }},
+                                likeCount: {{ $comment->like_count ?? 0 }},
+                                dislikeCount: {{ $comment->dislike_count ?? 0 }},
+                                loading: false,
+
+                                async toggleLike() {
+                                    if (this.loading) return;
+                                    this.loading = true;
+                                    try {
+                                        const response = await fetch('{{ route('comments.like', $comment) }}', {
+                                            method: 'POST',
+                                            headers: {
+                                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                                'Accept': 'application/json',
+                                            }
+                                        });
+                                        const data = await response.json();
+                                        this.liked = data.liked;
+                                        this.disliked = data.disliked;
+                                        this.likeCount = data.likeCount;
+                                        this.dislikeCount = data.dislikeCount;
+                                    } catch (error) {
+                                        console.error('Like error:', error);
+                                    } finally {
+                                        this.loading = false;
+                                    }
+                                },
+
+                                async toggleDislike() {
+                                    if (this.loading) return;
+                                    this.loading = true;
+                                    try {
+                                        const response = await fetch('{{ route('comments.dislike', $comment) }}', {
+                                            method: 'POST',
+                                            headers: {
+                                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                                'Accept': 'application/json',
+                                            }
+                                        });
+                                        const data = await response.json();
+                                        this.liked = data.liked;
+                                        this.disliked = data.disliked;
+                                        this.likeCount = data.likeCount;
+                                        this.dislikeCount = data.dislikeCount;
+                                    } catch (error) {
+                                        console.error('Dislike error:', error);
+                                    } finally {
+                                        this.loading = false;
+                                    }
+                                }
+                             }">
+
+                            {{-- Kullanıcı başlığı --}}
+                            <div class="flex items-center gap-3 mb-3">
+                                {{-- Avatar --}}
+                                @if($comment->user->avatar)
+                                    <img src="{{ Storage::url($comment->user->avatar) }}"
+                                         alt="{{ $comment->user->name }}"
+                                         class="w-10 h-10 rounded-full border-2 border-slate-700 object-cover">
+                                @else
+                                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center border-2 border-slate-700">
+                                        <span class="text-white font-bold text-sm">
+                                            {{ strtoupper(substr($comment->user->name, 0, 1)) }}
+                                        </span>
+                                    </div>
+                                @endif
+
+                                {{-- Kullanıcı adı --}}
+                                <div>
+                                    <span class="text-white font-semibold">
+                                        {{ $comment->user->name }}
+                                    </span>
+                                    @if($comment->user_id === auth()->id())
+                                        <span class="ml-2 text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full">Sen</span>
+                                    @endif
+                                </div>
+                            </div>
 
                             {{-- Spoiler uyarısı --}}
                             @if($comment->has_spoiler)
@@ -438,38 +524,41 @@
                                         <button @click="revealed = true" type="button"
                                                 class="ml-2 underline hover:no-underline">Göster</button>
                                     </div>
-                                    <p x-show="revealed" x-cloak class="text-slate-300 leading-relaxed">{{ $comment->body }}</p>
+                                    <p x-show="revealed" x-cloak class="text-slate-300 leading-relaxed mb-3">{{ $comment->body }}</p>
                                 </div>
                             @else
-                                <p x-show="!editing" class="text-slate-300 leading-relaxed">{{ $comment->body }}</p>
+                                <p x-show="!editing" class="text-slate-300 leading-relaxed mb-3">{{ $comment->body }}</p>
                             @endif
 
-                            {{-- Düzenleme formu --}}
-                            <form x-show="editing" x-cloak
-                                  action="{{ route('movies.comments.update', [$movie, $comment]) }}"
-                                  method="POST" class="mb-2">
-                                @csrf
-                                @method('PUT')
-                                <textarea name="body" rows="2" maxlength="500"
-                                          class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm resize-none mb-2"
-                                >{{ $comment->body }}</textarea>
-                                <div class="flex items-center gap-2">
-                                    <label class="inline-flex items-center gap-1 text-xs text-slate-400">
-                                        <input type="checkbox" name="has_spoiler" value="1"
-                                               {{ $comment->has_spoiler ? 'checked' : '' }}
-                                               class="rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500/40 w-3 h-3">
-                                        Spoiler
-                                    </label>
-                                    <div class="flex-1"></div>
-                                    <button type="button" @click="editing = false"
-                                            class="text-slate-500 hover:text-slate-300 text-sm">İptal</button>
-                                    <button type="submit"
-                                            class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-3 py-1 rounded-lg">Kaydet</button>
-                                </div>
-                            </form>
+                            {{-- Düzenleme formu (sadece kendi yorumunda) --}}
+                            @if($comment->user_id === auth()->id())
+                                <form x-show="editing" x-cloak
+                                      action="{{ route('movies.comments.update', [$movie, $comment]) }}"
+                                      method="POST" class="mb-3">
+                                    @csrf
+                                    @method('PUT')
+                                    <textarea name="body" rows="2" maxlength="500"
+                                              class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm resize-none mb-2"
+                                    >{{ $comment->body }}</textarea>
+                                    <div class="flex items-center gap-2">
+                                        <label class="inline-flex items-center gap-1 text-xs text-slate-400">
+                                            <input type="checkbox" name="has_spoiler" value="1"
+                                                   {{ $comment->has_spoiler ? 'checked' : '' }}
+                                                   class="rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500/40 w-3 h-3">
+                                            Spoiler
+                                        </label>
+                                        <div class="flex-1"></div>
+                                        <button type="button" @click="editing = false"
+                                                class="text-slate-500 hover:text-slate-300 text-sm">İptal</button>
+                                        <button type="submit"
+                                                class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-3 py-1 rounded-lg">Kaydet</button>
+                                    </div>
+                                </form>
+                            @endif
 
-                            {{-- Meta bilgiler --}}
-                            <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/50">
+                            {{-- Alt bilgi ve butonlar --}}
+                            <div class="flex items-center justify-between pt-3 border-t border-slate-700/50">
+                                {{-- Sol: Tarih --}}
                                 <span class="text-xs text-slate-500">
                                     <i class="fas fa-clock mr-1"></i>
                                     {{ $comment->created_at->diffForHumans() }}
@@ -478,10 +567,31 @@
                                     @endif
                                 </span>
 
-                                @if($comment->user_id === auth()->id())
-                                    <div class="flex items-center gap-2">
+                                {{-- Sağ: Butonlar --}}
+                                <div class="flex items-center gap-3">
+                                    {{-- Like butonu --}}
+                                    <button @click="toggleLike()"
+                                            :disabled="loading"
+                                            :class="liked ? 'text-green-400' : 'text-slate-500 hover:text-green-400'"
+                                            class="flex items-center gap-1.5 text-sm transition-colors disabled:opacity-50">
+                                        <i class="fas fa-thumbs-up"></i>
+                                        <span x-text="likeCount"></span>
+                                    </button>
+
+                                    {{-- Dislike butonu --}}
+                                    <button @click="toggleDislike()"
+                                            :disabled="loading"
+                                            :class="disliked ? 'text-red-400' : 'text-slate-500 hover:text-red-400'"
+                                            class="flex items-center gap-1.5 text-sm transition-colors disabled:opacity-50">
+                                        <i class="fas fa-thumbs-down"></i>
+                                        <span x-text="dislikeCount"></span>
+                                    </button>
+
+                                    {{-- Düzenle/Sil (sadece kendi yorumunda) --}}
+                                    @if($comment->user_id === auth()->id())
                                         <button @click="editing = !editing" type="button"
-                                                class="text-slate-500 hover:text-indigo-400 text-sm transition-colors">
+                                                x-show="!editing"
+                                                class="text-slate-500 hover:text-indigo-400 text-sm transition-colors ml-2">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <form action="{{ route('movies.comments.destroy', [$movie, $comment]) }}"
@@ -489,12 +599,13 @@
                                               onsubmit="return confirm('Bu yorumu silmek istediğinize emin misiniz?')">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="text-slate-500 hover:text-red-400 text-sm transition-colors">
+                                            <button type="submit"
+                                                    class="text-slate-500 hover:text-red-400 text-sm transition-colors">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
-                                    </div>
-                                @endif
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     @endforeach

@@ -143,6 +143,14 @@ class User extends Authenticatable
         return $this->hasMany(ImportBatch::class);
     }
 
+    /**
+     * Kullanıcının yaptığı tüm comment reaction'ları
+     */
+    public function commentReactions(): HasMany
+    {
+        return $this->hasMany(CommentReaction::class);
+    }
+
     // =========================================================================
     // 📚 TAKİP SİSTEMİ İLİŞKİLERİ (Follow System Relationships)
     // =========================================================================

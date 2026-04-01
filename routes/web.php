@@ -125,6 +125,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/movies/{movie}/comments', [CommentController::class, 'store'])->name('movies.comments.store');
     Route::put('/movies/{movie}/comments/{comment}', [CommentController::class, 'update'])->name('movies.comments.update');
     Route::delete('/movies/{movie}/comments/{comment}', [CommentController::class, 'destroy'])->name('movies.comments.destroy');
+    
+    // Reaction rotaları (AJAX - JSON response)
+    Route::post('/comments/{comment}/like', [\App\Http\Controllers\ReactionController::class, 'like'])
+        ->middleware('throttle:60,1') // 60 istek/dakika
+        ->name('comments.like');
+    Route::post('/comments/{comment}/dislike', [\App\Http\Controllers\ReactionController::class, 'dislike'])
+        ->middleware('throttle:60,1')
+        ->name('comments.dislike');
 });
 
 // --- 5. KOLEKSİYON ROTALARI ---
