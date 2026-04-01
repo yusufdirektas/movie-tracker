@@ -338,8 +338,8 @@
 
                             <div class="aspect-[2/3] bg-slate-800">
                                 {{-- 📚 Benzer filmler için küçük resim (w342) - bandwidth tasarrufu --}}
-                                <x-movie-poster 
-                                    :path="$similar['poster_path'] ?? null" 
+                                <x-movie-poster
+                                    :path="$similar['poster_path'] ?? null"
                                     :alt="$similar['title'] ?? 'Film'"
                                     size="w342"
                                 />
@@ -367,6 +367,140 @@
                 </div>
             </div>
         @endif
+
+        {{-- ═══════════════════════════════════════════════════════════════════════
+             📚 YORUM BÖLÜMÜ
+
+             @KAVRAM: morphMany İlişkisi
+             $movie->comments ile filmin yorumlarına erişiriz.
+             comments() metodunda morphMany tanımlı.
+        ═══════════════════════════════════════════════════════════════════════ --}}
+        <div class="bg-slate-900 rounded-[2rem] p-8 border border-slate-800 shadow-xl">
+            <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                <i class="fas fa-comments text-indigo-400"></i>
+                Notlarım
+                <span class="text-slate-500 text-sm font-normal">({{ $movie->comments->count() }})</span>
+            </h3>
+
+            {{-- YORUM FORMU --}}
+            <form action="{{ route('movies.comments.store', $movie) }}" method="POST" class="mb-8">
+                @csrf
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <label for="comment-body" class="sr-only">Yorum yazın</label>
+                        <textarea
+                            id="comment-body"
+                            name="body"
+                            rows="3"
+                            maxlength="500"
+                            placeholder="Bu film hakkında düşüncelerinizi yazın... (max 500 karakter)"
+                            class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
+                        >{{ old('body') }}</textarea>
+                        @error('body')
+                            <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+                            <input type="checkbox" name="has_spoiler" value="1"
+                                   class="rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500/40">
+                            <span><i class="fas fa-exclamation-triangle text-amber-500 mr-1"></i> Spoiler içeriyor</span>
+                        </label>
+
+                        <button type="submit"
+                                class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-2 rounded-xl transition-all">
+                            <i class="fas fa-paper-plane mr-2"></i> Gönder
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            {{-- YORUM LİSTESİ --}}
+            @if($movie->comments->isEmpty())
+                <div class="text-center py-8">
+                    <i class="fas fa-comment-slash text-4xl text-slate-700 mb-3"></i>
+                    <p class="text-slate-500">Henüz not eklenmemiş. İlk notu sen ekle!</p>
+                </div>
+            @else
+                <div class="space-y-4">
+                    @foreach($movie->comments->sortByDesc('created_at') as $comment)
+                        <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50"
+                             x-data="{ editing: false }">
+
+                            {{-- Spoiler uyarısı --}}
+                            @if($comment->has_spoiler)
+                                <div x-data="{ revealed: false }" class="relative">
+                                    <div x-show="!revealed"
+                                         class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-amber-300 text-sm mb-3">
+                                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                                        <span class="font-medium">Spoiler İçerik</span>
+                                        <button @click="revealed = true" type="button"
+                                                class="ml-2 underline hover:no-underline">Göster</button>
+                                    </div>
+                                    <p x-show="revealed" x-cloak class="text-slate-300 leading-relaxed">{{ $comment->body }}</p>
+                                </div>
+                            @else
+                                <p x-show="!editing" class="text-slate-300 leading-relaxed">{{ $comment->body }}</p>
+                            @endif
+
+                            {{-- Düzenleme formu --}}
+                            <form x-show="editing" x-cloak
+                                  action="{{ route('movies.comments.update', [$movie, $comment]) }}"
+                                  method="POST" class="mb-2">
+                                @csrf
+                                @method('PUT')
+                                <textarea name="body" rows="2" maxlength="500"
+                                          class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm resize-none mb-2"
+                                >{{ $comment->body }}</textarea>
+                                <div class="flex items-center gap-2">
+                                    <label class="inline-flex items-center gap-1 text-xs text-slate-400">
+                                        <input type="checkbox" name="has_spoiler" value="1"
+                                               {{ $comment->has_spoiler ? 'checked' : '' }}
+                                               class="rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500/40 w-3 h-3">
+                                        Spoiler
+                                    </label>
+                                    <div class="flex-1"></div>
+                                    <button type="button" @click="editing = false"
+                                            class="text-slate-500 hover:text-slate-300 text-sm">İptal</button>
+                                    <button type="submit"
+                                            class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-3 py-1 rounded-lg">Kaydet</button>
+                                </div>
+                            </form>
+
+                            {{-- Meta bilgiler --}}
+                            <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/50">
+                                <span class="text-xs text-slate-500">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    {{ $comment->created_at->diffForHumans() }}
+                                    @if($comment->updated_at->gt($comment->created_at))
+                                        <span class="text-slate-600">(düzenlendi)</span>
+                                    @endif
+                                </span>
+
+                                @if($comment->user_id === auth()->id())
+                                    <div class="flex items-center gap-2">
+                                        <button @click="editing = !editing" type="button"
+                                                class="text-slate-500 hover:text-indigo-400 text-sm transition-colors">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <form action="{{ route('movies.comments.destroy', [$movie, $comment]) }}"
+                                              method="POST" class="inline"
+                                              onsubmit="return confirm('Bu yorumu silmek istediğinize emin misiniz?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-slate-500 hover:text-red-400 text-sm transition-colors">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
 
     </div>
 @endsection

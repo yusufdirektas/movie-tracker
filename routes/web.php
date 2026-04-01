@@ -13,6 +13,7 @@ use App\Http\Controllers\PrivacyController;
 use App\Http\Controllers\BulkActionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\FollowController;
+use App\Http\Controllers\CommentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -116,6 +117,15 @@ require __DIR__.'/auth.php';
 Route::get('/movies/watchlist', [WatchlistController::class, 'index'])->middleware(['auth'])->name('movies.watchlist');
 Route::post('/movies', [MovieController::class, 'store'])->middleware(['auth', 'throttle:store-movie'])->name('movies.store');
 Route::resource('movies', MovieController::class)->middleware(['auth'])->except(['store']);
+
+// --- 4.1 FİLM YORUMLARI (Nested Resource) ---
+// 📚 Nested Resource: /movies/{movie}/comments
+// URL'de hangi filme yorum yapıldığı belli olur
+Route::middleware(['auth'])->group(function () {
+    Route::post('/movies/{movie}/comments', [CommentController::class, 'store'])->name('movies.comments.store');
+    Route::put('/movies/{movie}/comments/{comment}', [CommentController::class, 'update'])->name('movies.comments.update');
+    Route::delete('/movies/{movie}/comments/{comment}', [CommentController::class, 'destroy'])->name('movies.comments.destroy');
+});
 
 // --- 5. KOLEKSİYON ROTALARI ---
 Route::middleware(['auth'])->group(function () {

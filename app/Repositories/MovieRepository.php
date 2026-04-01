@@ -160,6 +160,25 @@ class MovieRepository implements MovieRepositoryInterface
             ->sortKeysDesc()
             ->take(10);
 
+        // 📚 YENİ: Haftalık dağılım (hangi günlerde daha çok izleniyor?)
+        // Carbon'un dayOfWeek: 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
+        $weekdayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        $weekdayCounts = $watchedMovies->whereNotNull('watched_at')
+            ->groupBy(fn($movie) => $movie->watched_at->dayOfWeek)
+            ->map(fn($group) => $group->count())
+            ->sortKeys();
+
+        // Tüm günleri dahil et (0 olanları bile)
+        $weekdayData = collect(range(0, 6))->mapWithKeys(function ($day) use ($weekdayCounts, $weekdayNames) {
+            return [$weekdayNames[$day] => $weekdayCounts->get($day, 0)];
+        });
+
+        // 📚 YENİ: Puan dağılımı (kaç film hangi puan aralığında?)
+        $ratingDistribution = $watchedMovies->whereNotNull('rating')
+            ->groupBy(fn($movie) => floor($movie->rating))
+            ->map(fn($group) => $group->count())
+            ->sortKeys();
+
         return [
             'hasData' => true,
             'stats' => compact('totalWatched', 'totalHours', 'remainingMinutes', 'averageRating', 'averagePersonalRating'),
@@ -179,7 +198,15 @@ class MovieRepository implements MovieRepositoryInterface
                 'years' => [
                     'labels' => $releaseYearCounts->keys()->toArray(),
                     'data' => $releaseYearCounts->values()->toArray(),
-                ]
+                ],
+                'weekdays' => [
+                    'labels' => $weekdayData->keys()->toArray(),
+                    'data' => $weekdayData->values()->toArray(),
+                ],
+                'ratings' => [
+                    'labels' => $ratingDistribution->keys()->map(fn($r) => $r . '-' . ($r + 1))->toArray(),
+                    'data' => $ratingDistribution->values()->toArray(),
+                ],
             ]
         ];
     }

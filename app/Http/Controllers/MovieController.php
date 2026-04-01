@@ -439,6 +439,9 @@ class MovieController extends Controller
     {
         $this->authorize('view', $movie);
 
+        // Yorumları eager load et (N+1 önleme)
+        $movie->load('comments');
+
         // Bu filmin TMDB ID'si varsa benzer film önerilerini çek (24 saat cache)
         $similarMovies = [];
         if ($movie->tmdb_id) {

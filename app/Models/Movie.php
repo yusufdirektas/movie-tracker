@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * 📚 #[ObservedBy] ATTRIBUTE (PHP 8 Özelliği)
@@ -63,6 +64,22 @@ class Movie extends Model
     {
         return $this->belongsToMany(Collection::class, 'collection_movie')
             ->withTimestamps();
+    }
+
+    /**
+     * 📚 POLYMORPHIC İLİŞKİ: morphMany
+     *
+     * morphMany() ne yapar?
+     * - comments tablosunda commentable_type = 'App\Models\Movie' olanları çeker
+     * - Böylece aynı comments tablosu hem Movie hem Collection için kullanılır
+     *
+     * Kullanım:
+     *   $movie->comments // Filmin tüm yorumları
+     *   $movie->comments()->latest()->take(5)->get() // Son 5 yorum
+     */
+    public function comments(): MorphMany
+    {
+        return $this->morphMany(Comment::class, 'commentable');
     }
 
     // =========================================================================

@@ -95,7 +95,7 @@
 
                 {{-- GRAFİKLER BÖLÜMÜ --}}
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    
+
                     <!-- Tür Dağılımı (Pie Chart) -->
                     <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
                         <h3 class="text-white font-bold mb-6 flex items-center gap-2">
@@ -164,6 +164,40 @@
                         @endif
                     </div>
 
+                    {{-- 📚 YENİ: Haftalık İzleme Dağılımı (Radar Chart) --}}
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                        <h3 class="text-white font-bold mb-6 flex items-center gap-2">
+                            <i class="fas fa-calendar-week text-indigo-400"></i> Haftalık İzleme Alışkanlığın
+                        </h3>
+                        @if(empty($chartData['weekdays']['data']) || array_sum($chartData['weekdays']['data']) === 0)
+                            <div class="flex flex-col items-center justify-center h-48 text-slate-500">
+                                <i class="fas fa-calendar-times text-4xl mb-3 opacity-20"></i>
+                                <p class="text-sm text-center px-4">Haftalık izleme verisi bulunmuyor.</p>
+                            </div>
+                        @else
+                            <div class="relative h-64 w-full">
+                                <canvas id="weekdayChart"></canvas>
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- 📚 YENİ: Puan Dağılımı (Histogram) --}}
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                        <h3 class="text-white font-bold mb-6 flex items-center gap-2">
+                            <i class="fas fa-chart-bar text-indigo-400"></i> TMDB Puan Dağılımı
+                        </h3>
+                        @if(empty($chartData['ratings']['data']))
+                            <div class="flex flex-col items-center justify-center h-48 text-slate-500">
+                                <i class="fas fa-star-half-alt text-4xl mb-3 opacity-20"></i>
+                                <p class="text-sm text-center px-4">Puan verisi bulunmuyor.</p>
+                            </div>
+                        @else
+                            <div class="relative h-64 w-full">
+                                <canvas id="ratingsChart"></canvas>
+                            </div>
+                        @endif
+                    </div>
+
                 </div>
 
             @endif
@@ -176,12 +210,12 @@
     @if (isset($hasData) && $hasData)
         <!-- Chart.js Kütüphanesi -->
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        
+
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 // Laravel'den gelen verileri JavaScript objesine dönüştürüyoruz
                 const chartData = @json($chartData);
-                
+
                 // Ortak renk paleti
                 const colors = [
                     'rgba(99, 102, 241, 0.8)',   // Indigo 500
@@ -193,7 +227,7 @@
                     'rgba(34, 197, 94, 0.8)',    // Green 500
                     'rgba(20, 184, 166, 0.8)'    // Teal 500
                 ];
-                
+
                 // Chart.js global ayarları (Koyu tema uyumlu)
                 Chart.defaults.color = '#94a3b8'; // text-slate-400
                 Chart.defaults.font.family = "'Inter', sans-serif";
@@ -243,10 +277,10 @@
                         maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
                         scales: {
-                            y: { 
+                            y: {
                                 beginAtZero: true,
                                 ticks: { stepSize: 1 }, // Sadece tam sayılar
-                                grid: { color: 'rgba(51, 65, 85, 0.5)' } 
+                                grid: { color: 'rgba(51, 65, 85, 0.5)' }
                             },
                             x: { grid: { display: false } }
                         }
@@ -274,10 +308,10 @@
                         maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
                         scales: {
-                            y: { 
+                            y: {
                                 beginAtZero: true,
                                 ticks: { stepSize: 1 },
-                                grid: { color: 'rgba(51, 65, 85, 0.5)' } 
+                                grid: { color: 'rgba(51, 65, 85, 0.5)' }
                             },
                             x: { grid: { display: false } }
                         }
@@ -302,15 +336,82 @@
                         maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
                         scales: {
-                            x: { 
+                            x: {
                                 beginAtZero: true,
                                 ticks: { stepSize: 1 },
-                                grid: { color: 'rgba(51, 65, 85, 0.5)' } 
+                                grid: { color: 'rgba(51, 65, 85, 0.5)' }
                             },
                             y: { grid: { display: false } }
                         }
                     }
                 });
+
+                // 📚 5. Haftalık İzleme (Radar Chart)
+                // Radar chart hangi günlerde daha aktif olduğunu gösterir
+                if (document.getElementById('weekdayChart')) {
+                    new Chart(document.getElementById('weekdayChart'), {
+                        type: 'radar',
+                        data: {
+                            labels: chartData.weekdays.labels,
+                            datasets: [{
+                                label: 'Film Sayısı',
+                                data: chartData.weekdays.data,
+                                backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                                borderColor: 'rgba(99, 102, 241, 1)',
+                                borderWidth: 2,
+                                pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: 'rgba(99, 102, 241, 1)'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                r: {
+                                    beginAtZero: true,
+                                    ticks: { stepSize: 1, color: '#94a3b8' },
+                                    grid: { color: 'rgba(51, 65, 85, 0.5)' },
+                                    pointLabels: { color: '#94a3b8', font: { size: 11 } }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // 📚 6. Puan Dağılımı (Bar Chart - Histogram tarzı)
+                if (document.getElementById('ratingsChart')) {
+                    new Chart(document.getElementById('ratingsChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: chartData.ratings.labels,
+                            datasets: [{
+                                label: 'Film Sayısı',
+                                data: chartData.ratings.data,
+                                backgroundColor: 'rgba(234, 179, 8, 0.8)', // Yellow 500
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { stepSize: 1 },
+                                    grid: { color: 'rgba(51, 65, 85, 0.5)' }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    title: { display: true, text: 'TMDB Puanı', color: '#94a3b8' }
+                                }
+                            }
+                        }
+                    });
+                }
             });
         </script>
     @endif
