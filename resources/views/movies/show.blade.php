@@ -369,232 +369,335 @@
         @endif
 
         {{-- ═══════════════════════════════════════════════════════════════════════
-             💬 YORUMLAR BÖLÜMÜ (PUBLIC/GLOBAL)
+             💬 YORUMLAR BÖLÜMÜ (PUBLIC/GLOBAL) - AJAX
 
-             @KAVRAM: Global Comments Pattern
-             Artık $movie->comments DEĞİL, $globalComments kullanıyoruz.
-             Tüm kullanıcılar aynı TMDB filminin yorumlarını görür.
+             @KAVRAM: Single Page Application (SPA) Pattern
+             Form submit → AJAX → Backend → JSON response → DOM'a ekle
+             Sayfa yenilenmez, smooth UX!
 
-             @KAVRAM: Alpine.js x-data
-             Reaktif state yönetimi:
-             - liked/disliked → Kullanıcının reaction durumu
-             - likeCount/dislikeCount → Sayaçlar
-             - AJAX ile backend'e istek → JSON response → State güncelle
+             @KAVRAM: Alpine.js Component State
+             - comments: Yorumlar array'i
+             - newComment: Form state
+             - submitComment(): AJAX submit fonksiyonu
         ═══════════════════════════════════════════════════════════════════════ --}}
-        <div class="bg-slate-900 rounded-[2rem] p-8 border border-slate-800 shadow-xl">
+        <div class="bg-slate-900 rounded-[2rem] p-8 border border-slate-800 shadow-xl"
+             x-data="{
+                comments: {{ json_encode($globalComments->map(function($c) {
+                    return [
+                        'id' => $c->id,
+                        'user_id' => $c->user_id,
+                        'user' => [
+                            'id' => $c->user->id,
+                            'name' => $c->user->name,
+                            'avatar' => $c->user->avatar,
+                        ],
+                        'body' => $c->body,
+                        'has_spoiler' => (bool)$c->has_spoiler,
+                        'created_at' => $c->created_at->toISOString(),
+                        'created_at_human' => $c->created_at->diffForHumans(),
+                        'updated_at' => $c->updated_at->toISOString(),
+                        'is_edited' => $c->updated_at->gt($c->created_at),
+                        'like_count' => $c->like_count ?? 0,
+                        'dislike_count' => $c->dislike_count ?? 0,
+                        'user_reaction' => $c->user_reaction ? [
+                            'is_like' => (bool)$c->user_reaction->is_like
+                        ] : null,
+                    ];
+                })->values()) }},
+                newComment: {
+                    body: '',
+                    has_spoiler: false,
+                    submitting: false,
+                    error: null
+                },
+                commentCount: {{ $globalComments->count() }},
+
+                async submitComment() {
+                    if (!this.newComment.body.trim()) {
+                        this.newComment.error = 'Yorum alanı boş bırakılamaz.';
+                        return;
+                    }
+                    if (this.newComment.body.length > 500) {
+                        this.newComment.error = 'Yorum en fazla 500 karakter olabilir.';
+                        return;
+                    }
+
+                    this.newComment.submitting = true;
+                    this.newComment.error = null;
+
+                    try {
+                        const formData = new FormData();
+                        formData.append('body', this.newComment.body);
+                        formData.append('has_spoiler', this.newComment.has_spoiler ? '1' : '0');
+
+                        const response = await fetch('{{ route('movies.comments.store', $movie) }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json',
+                            },
+                            body: formData
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            // Yeni yorumu listenin başına ekle
+                            this.comments.unshift(data.comment);
+                            this.commentCount++;
+                            // Formu temizle
+                            this.newComment.body = '';
+                            this.newComment.has_spoiler = false;
+                        } else {
+                            const errorData = await response.json();
+                            this.newComment.error = errorData.message || 'Yorum eklenirken hata oluştu.';
+                        }
+                    } catch (error) {
+                        console.error('Comment submit error:', error);
+                        this.newComment.error = 'Bir hata oluştu. Lütfen tekrar deneyin.';
+                    } finally {
+                        this.newComment.submitting = false;
+                    }
+                },
+
+                async deleteComment(commentId, index) {
+                    if (!confirm('Bu yorumu silmek istediğinize emin misiniz?')) return;
+
+                    try {
+                        const response = await fetch(`/movies/{{ $movie->id }}/comments/${commentId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json',
+                            }
+                        });
+
+                        if (response.ok) {
+                            this.comments.splice(index, 1);
+                            this.commentCount--;
+                        }
+                    } catch (error) {
+                        console.error('Delete error:', error);
+                        alert('Yorum silinirken hata oluştu.');
+                    }
+                }
+             }">
+
             <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
                 <i class="fas fa-comments text-indigo-400"></i>
                 Yorumlar
-                <span class="text-slate-500 text-sm font-normal">({{ $globalComments->count() }})</span>
+                <span class="text-slate-500 text-sm font-normal" x-text="`(${commentCount})`"></span>
             </h3>
 
-            {{-- YORUM FORMU --}}
-            <form action="{{ route('movies.comments.store', $movie) }}" method="POST" class="mb-8">
-                @csrf
+            {{-- YORUM FORMU (AJAX) --}}
+            <form @submit.prevent="submitComment()" class="mb-8">
                 <div class="flex flex-col gap-4">
                     <div>
                         <label for="comment-body" class="sr-only">Yorum yazın</label>
                         <textarea
                             id="comment-body"
-                            name="body"
+                            x-model="newComment.body"
                             rows="3"
                             maxlength="500"
                             placeholder="Bu film hakkında düşüncelerinizi yazın... Yorumunuz herkese açık olacak! (max 500 karakter)"
                             class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
-                        >{{ old('body') }}</textarea>
-                        @error('body')
-                            <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
-                        @enderror
+                            :disabled="newComment.submitting"
+                        ></textarea>
+                        <p x-show="newComment.error" x-text="newComment.error" class="text-red-400 text-sm mt-1"></p>
                     </div>
 
                     <div class="flex items-center justify-between">
                         <label class="inline-flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
-                            <input type="checkbox" name="has_spoiler" value="1"
+                            <input type="checkbox" x-model="newComment.has_spoiler"
+                                   :disabled="newComment.submitting"
                                    class="rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500/40">
                             <span><i class="fas fa-exclamation-triangle text-amber-500 mr-1"></i> Spoiler içeriyor</span>
                         </label>
 
                         <button type="submit"
-                                class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-2 rounded-xl transition-all">
-                            <i class="fas fa-paper-plane mr-2"></i> Gönder
+                                :disabled="newComment.submitting"
+                                class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-2 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span x-show="!newComment.submitting">
+                                <i class="fas fa-paper-plane mr-2"></i> Gönder
+                            </span>
+                            <span x-show="newComment.submitting">
+                                <i class="fas fa-spinner fa-spin mr-2"></i> Gönderiliyor...
+                            </span>
                         </button>
                     </div>
                 </div>
             </form>
 
             {{-- YORUM LİSTESİ --}}
-            @if($globalComments->isEmpty())
-                <div class="text-center py-8">
-                    <i class="fas fa-comment-slash text-4xl text-slate-700 mb-3"></i>
-                    <p class="text-slate-500">Henüz kimse yorum yapmamış. İlk yorumu sen yap!</p>
-                </div>
-            @else
-                <div class="space-y-4">
-                    @foreach($globalComments as $comment)
-                        {{-- Alpine.js: Her yorum için ayrı state --}}
-                        <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50"
-                             x-data="{
-                                editing: false,
-                                liked: {{ $comment->user_reaction && $comment->user_reaction->is_like ? 'true' : 'false' }},
-                                disliked: {{ $comment->user_reaction && !$comment->user_reaction->is_like ? 'true' : 'false' }},
-                                likeCount: {{ $comment->like_count ?? 0 }},
-                                dislikeCount: {{ $comment->dislike_count ?? 0 }},
-                                loading: false,
+            <div x-show="comments.length === 0" class="text-center py-8">
+                <i class="fas fa-comment-slash text-4xl text-slate-700 mb-3"></i>
+                <p class="text-slate-500">Henüz kimse yorum yapmamış. İlk yorumu sen yap!</p>
+            </div>
 
-                                async toggleLike() {
-                                    if (this.loading) return;
-                                    this.loading = true;
-                                    try {
-                                        const response = await fetch('{{ route('comments.like', $comment) }}', {
-                                            method: 'POST',
-                                            headers: {
-                                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                                'Accept': 'application/json',
-                                            }
-                                        });
-                                        const data = await response.json();
-                                        this.liked = data.liked;
-                                        this.disliked = data.disliked;
-                                        this.likeCount = data.likeCount;
-                                        this.dislikeCount = data.dislikeCount;
-                                    } catch (error) {
-                                        console.error('Like error:', error);
-                                    } finally {
-                                        this.loading = false;
-                                    }
-                                },
+            <div x-show="comments.length > 0" class="space-y-4">
+                <template x-for="(comment, index) in comments" :key="comment.id">
+                    <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50"
+                         x-data="{
+                            editing: false,
+                            revealed: false,
+                            liked: comment.user_reaction && comment.user_reaction.is_like,
+                            disliked: comment.user_reaction && !comment.user_reaction.is_like,
+                            likeCount: comment.like_count || 0,
+                            dislikeCount: comment.dislike_count || 0,
+                            loading: false,
 
-                                async toggleDislike() {
-                                    if (this.loading) return;
-                                    this.loading = true;
-                                    try {
-                                        const response = await fetch('{{ route('comments.dislike', $comment) }}', {
-                                            method: 'POST',
-                                            headers: {
-                                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                                'Accept': 'application/json',
-                                            }
-                                        });
-                                        const data = await response.json();
-                                        this.liked = data.liked;
-                                        this.disliked = data.disliked;
-                                        this.likeCount = data.likeCount;
-                                        this.dislikeCount = data.dislikeCount;
-                                    } catch (error) {
-                                        console.error('Dislike error:', error);
-                                    } finally {
-                                        this.loading = false;
-                                    }
+                            async toggleLike() {
+                                if (this.loading) return;
+                                this.loading = true;
+                                try {
+                                    const response = await fetch(`/comments/${comment.id}/like`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                            'Accept': 'application/json',
+                                        }
+                                    });
+                                    const data = await response.json();
+                                    this.liked = data.liked;
+                                    this.disliked = data.disliked;
+                                    this.likeCount = data.likeCount;
+                                    this.dislikeCount = data.dislikeCount;
+                                } catch (error) {
+                                    console.error('Like error:', error);
+                                } finally {
+                                    this.loading = false;
                                 }
-                             }">
+                            },
 
-                            {{-- Kullanıcı başlığı --}}
-                            <div class="flex items-center gap-3 mb-3">
-                                {{-- Avatar --}}
-                                @if($comment->user->avatar)
-                                    <img src="{{ Storage::url($comment->user->avatar) }}"
-                                         alt="{{ $comment->user->name }}"
-                                         class="w-10 h-10 rounded-full border-2 border-slate-700 object-cover">
-                                @else
-                                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center border-2 border-slate-700">
-                                        <span class="text-white font-bold text-sm">
-                                            {{ strtoupper(substr($comment->user->name, 0, 1)) }}
-                                        </span>
-                                    </div>
-                                @endif
+                            async toggleDislike() {
+                                if (this.loading) return;
+                                this.loading = true;
+                                try {
+                                    const response = await fetch(`/comments/${comment.id}/dislike`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                            'Accept': 'application/json',
+                                        }
+                                    });
+                                    const data = await response.json();
+                                    this.liked = data.liked;
+                                    this.disliked = data.disliked;
+                                    this.likeCount = data.likeCount;
+                                    this.dislikeCount = data.dislikeCount;
+                                } catch (error) {
+                                    console.error('Dislike error:', error);
+                                } finally {
+                                    this.loading = false;
+                                }
+                            }
+                         }">
 
-                                {{-- Kullanıcı adı --}}
-                                <div>
-                                    <span class="text-white font-semibold">
-                                        {{ $comment->user->name }}
-                                    </span>
-                                    @if($comment->user_id === auth()->id())
-                                        <span class="ml-2 text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full">Sen</span>
-                                    @endif
+                        {{-- Kullanıcı başlığı --}}
+                        <div class="flex items-center gap-3 mb-3">
+                            {{-- Avatar --}}
+                            <template x-if="comment.user.avatar">
+                                <img :src="`/storage/${comment.user.avatar}`"
+                                     :alt="comment.user.name"
+                                     class="w-10 h-10 rounded-full border-2 border-slate-700 object-cover">
+                            </template>
+                            <template x-if="!comment.user.avatar">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center border-2 border-slate-700">
+                                    <span class="text-white font-bold text-sm" x-text="comment.user.name.charAt(0).toUpperCase()"></span>
                                 </div>
+                            </template>
+
+                            {{-- Kullanıcı adı --}}
+                            <div>
+                                <span class="text-white font-semibold" x-text="comment.user.name"></span>
+                                <template x-if="comment.user_id === {{ auth()->id() }}">
+                                    <span class="ml-2 text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full">Sen</span>
+                                </template>
                             </div>
+                        </div>
 
-                            {{-- Spoiler uyarısı --}}
-                            @if($comment->has_spoiler)
-                                <div x-data="{ revealed: false }" class="relative">
-                                    <div x-show="!revealed"
-                                         class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-amber-300 text-sm mb-3">
-                                        <i class="fas fa-exclamation-triangle mr-2"></i>
-                                        <span class="font-medium">Spoiler İçerik</span>
-                                        <button @click="revealed = true" type="button"
-                                                class="ml-2 underline hover:no-underline">Göster</button>
-                                    </div>
-                                    <p x-show="revealed" x-cloak class="text-slate-300 leading-relaxed mb-3">{{ $comment->body }}</p>
+                        {{-- Spoiler uyarısı --}}
+                        <template x-if="comment.has_spoiler">
+                            <div class="relative">
+                                <div x-show="!revealed"
+                                     class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-amber-300 text-sm mb-3">
+                                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                                    <span class="font-medium">Spoiler İçerik</span>
+                                    <button @click="revealed = true" type="button"
+                                            class="ml-2 underline hover:no-underline">Göster</button>
                                 </div>
-                            @else
-                                <p x-show="!editing" class="text-slate-300 leading-relaxed mb-3">{{ $comment->body }}</p>
-                            @endif
+                                <p x-show="revealed" x-cloak class="text-slate-300 leading-relaxed mb-3" x-text="comment.body"></p>
+                            </div>
+                        </template>
+                        <template x-if="!comment.has_spoiler">
+                            <p x-show="!editing" class="text-slate-300 leading-relaxed mb-3" x-text="comment.body"></p>
+                        </template>
 
-                            {{-- Düzenleme formu (sadece kendi yorumunda) --}}
-                            @if($comment->user_id === auth()->id())
-                                <form x-show="editing" x-cloak
-                                      action="{{ route('movies.comments.update', [$movie, $comment]) }}"
-                                      method="POST" class="mb-3">
-                                    @csrf
-                                    @method('PUT')
-                                    <textarea name="body" rows="2" maxlength="500"
-                                              class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm resize-none mb-2"
-                                    >{{ $comment->body }}</textarea>
-                                    <div class="flex items-center gap-2">
-                                        <label class="inline-flex items-center gap-1 text-xs text-slate-400">
-                                            <input type="checkbox" name="has_spoiler" value="1"
-                                                   {{ $comment->has_spoiler ? 'checked' : '' }}
-                                                   class="rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500/40 w-3 h-3">
-                                            Spoiler
-                                        </label>
-                                        <div class="flex-1"></div>
-                                        <button type="button" @click="editing = false"
-                                                class="text-slate-500 hover:text-slate-300 text-sm">İptal</button>
-                                        <button type="submit"
-                                                class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-3 py-1 rounded-lg">Kaydet</button>
-                                    </div>
-                                </form>
-                            @endif
+                        {{-- Düzenleme formu (sadece kendi yorumunda) --}}
+                        <template x-if="comment.user_id === {{ auth()->id() }}">
+                            <form x-show="editing" x-cloak
+                                  :action="`/movies/{{ $movie->id }}/comments/${comment.id}`"
+                                  method="POST" class="mb-3">
+                                @csrf
+                                @method('PUT')
+                                <textarea name="body" rows="2" maxlength="500"
+                                          class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm resize-none mb-2"
+                                          x-text="comment.body"></textarea>
+                                <div class="flex items-center gap-2">
+                                    <label class="inline-flex items-center gap-1 text-xs text-slate-400">
+                                        <input type="checkbox" name="has_spoiler" value="1"
+                                               :checked="comment.has_spoiler"
+                                               class="rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500/40 w-3 h-3">
+                                        Spoiler
+                                    </label>
+                                    <div class="flex-1"></div>
+                                    <button type="button" @click="editing = false"
+                                            class="text-slate-500 hover:text-slate-300 text-sm">İptal</button>
+                                    <button type="submit"
+                                            class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-3 py-1 rounded-lg">Kaydet</button>
+                                </div>
+                            </form>
+                        </template>
 
-                            {{-- Alt bilgi ve butonlar --}}
-                            <div class="flex items-center justify-between pt-3 border-t border-slate-700/50">
-                                {{-- Sol: Tarih --}}
-                                <span class="text-xs text-slate-500">
-                                    <i class="fas fa-clock mr-1"></i>
-                                    {{ $comment->created_at->diffForHumans() }}
-                                    @if($comment->updated_at->gt($comment->created_at))
-                                        <span class="text-slate-600">(düzenlendi)</span>
-                                    @endif
-                                </span>
+                        {{-- Alt bilgi ve butonlar --}}
+                        <div class="flex items-center justify-between pt-3 border-t border-slate-700/50">
+                            {{-- Sol: Tarih --}}
+                            <span class="text-xs text-slate-500">
+                                <i class="fas fa-clock mr-1"></i>
+                                <span x-text="comment.created_at_human"></span>
+                                <template x-if="comment.is_edited">
+                                    <span class="text-slate-600">(düzenlendi)</span>
+                                </template>
+                            </span>
 
-                                {{-- Sağ: Butonlar --}}
-                                <div class="flex items-center gap-3">
-                                    {{-- Like butonu --}}
-                                    <button @click="toggleLike()"
-                                            :disabled="loading"
-                                            :class="liked ? 'text-green-400' : 'text-slate-500 hover:text-green-400'"
-                                            class="flex items-center gap-1.5 text-sm transition-colors disabled:opacity-50">
-                                        <i class="fas fa-thumbs-up"></i>
-                                        <span x-text="likeCount"></span>
-                                    </button>
+                            {{-- Sağ: Butonlar --}}
+                            <div class="flex items-center gap-3">
+                                {{-- Like butonu --}}
+                                <button @click="toggleLike()"
+                                        :disabled="loading"
+                                        :class="liked ? 'text-green-400' : 'text-slate-500 hover:text-green-400'"
+                                        class="flex items-center gap-1.5 text-sm transition-colors disabled:opacity-50">
+                                    <i class="fas fa-thumbs-up"></i>
+                                    <span x-text="likeCount"></span>
+                                </button>
 
-                                    {{-- Dislike butonu --}}
-                                    <button @click="toggleDislike()"
-                                            :disabled="loading"
-                                            :class="disliked ? 'text-red-400' : 'text-slate-500 hover:text-red-400'"
-                                            class="flex items-center gap-1.5 text-sm transition-colors disabled:opacity-50">
-                                        <i class="fas fa-thumbs-down"></i>
-                                        <span x-text="dislikeCount"></span>
-                                    </button>
+                                {{-- Dislike butonu --}}
+                                <button @click="toggleDislike()"
+                                        :disabled="loading"
+                                        :class="disliked ? 'text-red-400' : 'text-slate-500 hover:text-red-400'"
+                                        class="flex items-center gap-1.5 text-sm transition-colors disabled:opacity-50">
+                                    <i class="fas fa-thumbs-down"></i>
+                                    <span x-text="dislikeCount"></span>
+                                </button>
 
-                                    {{-- Düzenle/Sil (sadece kendi yorumunda) --}}
-                                    @if($comment->user_id === auth()->id())
+                                {{-- Düzenle/Sil (sadece kendi yorumunda) --}}
+                                <template x-if="comment.user_id === {{ auth()->id() }}">
+                                    <div class="flex items-center gap-2 ml-2">
                                         <button @click="editing = !editing" type="button"
                                                 x-show="!editing"
-                                                class="text-slate-500 hover:text-indigo-400 text-sm transition-colors ml-2">
+                                                class="text-slate-500 hover:text-indigo-400 text-sm transition-colors">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <form action="{{ route('movies.comments.destroy', [$movie, $comment]) }}"
+                                        <form :action="`/movies/{{ $movie->id }}/comments/${comment.id}`"
                                               method="POST" class="inline"
                                               onsubmit="return confirm('Bu yorumu silmek istediğinize emin misiniz?')">
                                             @csrf
@@ -604,13 +707,13 @@
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
-                                    @endif
-                                </div>
+                                    </div>
+                                </template>
                             </div>
                         </div>
-                    @endforeach
-                </div>
-            @endif
+                    </div>
+                </template>
+            </div>
         </div>
 
     </div>

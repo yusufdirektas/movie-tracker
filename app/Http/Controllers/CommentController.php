@@ -45,7 +45,7 @@ class CommentController extends Controller
      * 2. Comment::create() → tmdb_id ile kaydet (polymorphic ilişki YOK)
      * 3. Tüm kullanıcılar aynı tmdb_id'li yorumları görür
      */
-    public function store(Request $request, Movie $movie): RedirectResponse
+    public function store(Request $request, Movie $movie)
     {
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:500'],
@@ -56,13 +56,41 @@ class CommentController extends Controller
         ]);
 
         // Global yorum oluştur (tmdb_id ile)
-        Comment::create([
+        $comment = Comment::create([
             'user_id' => $request->user()->id,
             'tmdb_id' => $movie->tmdb_id,
             'body' => $validated['body'],
             'has_spoiler' => $validated['has_spoiler'] ?? false,
         ]);
 
+        // User'ı yükle
+        $comment->load('user');
+
+        // AJAX request ise JSON dön
+        if ($request->wantsJson()) {
+            return response()->json([
+                'comment' => [
+                    'id' => $comment->id,
+                    'user_id' => $comment->user_id,
+                    'user' => [
+                        'id' => $comment->user->id,
+                        'name' => $comment->user->name,
+                        'avatar' => $comment->user->avatar,
+                    ],
+                    'body' => $comment->body,
+                    'has_spoiler' => (bool)$comment->has_spoiler,
+                    'created_at' => $comment->created_at->toISOString(),
+                    'created_at_human' => $comment->created_at->diffForHumans(),
+                    'updated_at' => $comment->updated_at->toISOString(),
+                    'is_edited' => false,
+                    'like_count' => 0,
+                    'dislike_count' => 0,
+                    'user_reaction' => null,
+                ],
+            ], 201);
+        }
+
+        // Normal request ise redirect
         return redirect()
             ->route('movies.show', $movie)
             ->with('success', 'Yorumunuz herkese açık olarak yayınlandı!');
