@@ -53,6 +53,7 @@
                         {{-- ÇOKLU SEÇİM CHECKBOX'I --}}
                         <div class="absolute top-4 right-4 z-40">
                             <input type="checkbox" x-model="selectedMovies" value="{{ $movie->id }}" @click.stop
+                                aria-label="{{ $movie->title }} seç"
                                 class="w-6 h-6 rounded-lg text-indigo-500 bg-black/60 border-2 border-white/20 focus:ring-indigo-500 focus:ring-offset-0 focus:ring-offset-transparent cursor-pointer transition-all hover:scale-110 hover:border-white/50 shadow-xl">
                         </div>
                     </a>

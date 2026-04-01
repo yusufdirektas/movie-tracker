@@ -26,6 +26,20 @@
     </style>
 </head>
 <body class="bg-[#0f172a] text-slate-200 min-h-screen antialiased">
+    {{-- 
+        📚 SKIP TO CONTENT LINK
+        
+        Erişilebilirlik özelliği: Klavye kullanıcıları Tab tuşuyla gezinirken
+        bu link görünür olur ve menüyü atlayarak direkt içeriğe gitmelerini sağlar.
+        
+        sr-only: Görünmez ama ekran okuyucu okur
+        focus:not-sr-only: Tab ile odaklandığında görünür olur
+    --}}
+    <a href="#main-content" 
+       class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:bg-indigo-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-xl focus:outline-none">
+        İçeriğe Atla
+    </a>
+
     <div class="min-h-screen">
 
         {{-- Ana Menü (İzleme Listem burada yer alacak) --}}
@@ -41,7 +55,7 @@
         @endif
 
         {{-- Ana İçerik Alanı --}}
-        <main class="py-12">
+        <main id="main-content" class="py-12">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 {{-- Başarı / Hata Bildirimleri --}}

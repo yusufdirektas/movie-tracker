@@ -195,6 +195,7 @@
                                 ondrop="handleCollectionDrop(event)"
                             @endif>
                             <label class="absolute top-3 left-3 z-30">
+                                <span class="sr-only">{{ $movie->title }} seç</span>
                                 <input type="checkbox" class="collection-bulk-checkbox w-4 h-4 rounded border-slate-500 bg-slate-900 text-red-500 focus:ring-red-500/40" value="{{ $movie->id }}">
                             </label>
                             <a href="{{ route('movies.show', $movie) }}"
@@ -349,12 +350,12 @@ function copyToClipboard(elementId) {
     copyText.select();
     copyText.setSelectionRange(0, 99999);
     navigator.clipboard.writeText(copyText.value);
-    
+
     const btn = event.currentTarget;
     const oldHtml = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-check"></i>';
     btn.classList.replace('bg-indigo-600', 'bg-emerald-600');
-    
+
     setTimeout(() => {
         btn.innerHTML = oldHtml;
         btn.classList.replace('bg-emerald-600', 'bg-indigo-600');
