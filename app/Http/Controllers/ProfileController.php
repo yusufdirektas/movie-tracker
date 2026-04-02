@@ -155,7 +155,7 @@ class ProfileController extends Controller
     /**
      * 📚 Avatar silme
      */
-    public function deleteAvatar(Request $request): RedirectResponse
+    public function deleteAvatar(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $user = $request->user();
 
@@ -164,13 +164,20 @@ class ProfileController extends Controller
             $user->update(['avatar' => null]);
         }
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Avatar silindi.',
+            ]);
+        }
+
         return Redirect::route('profile.edit')->with('status', 'avatar-deleted');
     }
 
     /**
      * 📚 Bio güncelleme
      */
-    public function updateBio(Request $request): RedirectResponse
+    public function updateBio(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $request->validate([
             'bio' => ['nullable', 'string', 'max:500'],
@@ -184,6 +191,13 @@ class ProfileController extends Controller
             'show_recent_activities' => $request->boolean('show_recent_activities'),
         ]);
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Profil bilgileri güncellendi.',
+            ]);
+        }
+
         return Redirect::route('profile.edit')->with('status', 'bio-updated');
     }
 
@@ -194,7 +208,7 @@ class ProfileController extends Controller
      * - 'showcase_movies.*' → array içindeki her eleman için kural
      * - exists:movies,id → movies tablosunda var mı kontrol
      */
-    public function updateShowcase(Request $request): RedirectResponse
+    public function updateShowcase(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $request->validate([
             'showcase_movies' => ['nullable', 'array', 'max:5'], // Max 5 film
@@ -211,6 +225,14 @@ class ProfileController extends Controller
         $request->user()->update([
             'showcase_movies' => $validMovieIds,
         ]);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Vitrin filmleri güncellendi.',
+                'showcase_movies' => $validMovieIds,
+            ]);
+        }
 
         return Redirect::route('profile.edit')->with('status', 'showcase-updated');
     }

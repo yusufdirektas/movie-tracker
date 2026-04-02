@@ -12,7 +12,7 @@
 <div class="space-y-6 max-w-4xl mx-auto" x-data="avatarUploader()">
 
     {{-- 📚 AVATAR ÖNİZLEME MODAL --}}
-    <div x-show="showModal" 
+    <div x-show="showModal"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
@@ -21,10 +21,10 @@
          x-transition:leave-end="opacity-0"
          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
          x-cloak>
-        
+
         <div class="bg-slate-900 rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-hidden border border-slate-700"
              @click.outside="closePreview()">
-            
+
             {{-- Modal Header --}}
             <div class="flex items-center justify-between p-4 border-b border-slate-700">
                 <h3 class="text-lg font-bold text-white flex items-center gap-2">
@@ -35,17 +35,17 @@
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
-            
+
             <div class="p-4">
                 <div class="bg-slate-950 rounded-xl p-6 flex items-center justify-center min-h-[320px]">
                     <img :src="previewDataUrl" alt="Avatar önizleme"
                          class="w-48 h-48 rounded-full object-cover border-4 border-slate-700 shadow-2xl">
                 </div>
             </div>
-            
+
             {{-- Modal Footer --}}
             <div class="flex items-center justify-end gap-3 p-4 border-t border-slate-700 bg-slate-800/50">
-                <button type="button" @click="closePreview()" 
+                <button type="button" @click="closePreview()"
                         class="px-4 py-2 text-slate-400 hover:text-white transition">
                     İptal
                 </button>
@@ -88,7 +88,7 @@
                        accept="image/*"
                        class="hidden"
                        @change="openPreview($event)">
-                
+
                 <p class="text-slate-500 text-xs mt-3">Tıkla ve fotoğraf seç</p>
 
                 <div x-show="notice.show" x-transition x-cloak class="mt-3 w-full max-w-xs text-xs rounded-xl border px-3 py-2"
@@ -105,13 +105,29 @@
                 </div>
 
                 @if($user->avatar)
-                    <form id="delete-avatar-form" action="{{ route('profile.avatar.delete') }}" method="POST">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="text-xs text-red-400 hover:text-red-300 mt-2">
-                            <i class="fas fa-trash mr-1"></i> Avatarı Kaldır
-                        </button>
-                    </form>
+                    <button type="button"
+                        x-data="{ deleting: false }"
+                        @click="if(confirm('Avatarı silmek istediğinize emin misiniz?')) {
+                            deleting = true;
+                            fetch('{{ route('profile.avatar.delete') }}', {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                    'Accept': 'application/json',
+                                }
+                            }).then(r => r.json()).then(data => {
+                                if(data.success) {
+                                    document.getElementById('current-avatar').src = '{{ asset('images/default-avatar.png') }}';
+                                    $el.remove();
+                                }
+                            }).finally(() => deleting = false);
+                        }"
+                        :disabled="deleting"
+                        class="text-xs text-red-400 hover:text-red-300 mt-2 disabled:opacity-50">
+                        <i class="fas fa-trash mr-1" x-show="!deleting"></i>
+                        <i class="fas fa-spinner fa-spin mr-1" x-show="deleting"></i>
+                        Avatarı Kaldır
+                    </button>
                 @endif
 
                 @error('avatar')
@@ -123,63 +139,93 @@
                 @endif
             </div>
 
-            {{-- Bio ve Gizlilik --}}
-            <div class="flex-1">
-                <form action="{{ route('profile.bio.update') }}" method="POST">
-                    @csrf
-                    @method('PATCH')
+            {{-- Bio ve Gizlilik (AJAX) --}}
+            <div class="flex-1" x-data="{
+                bio: `{{ addslashes($user->bio ?? '') }}`,
+                isPublic: {{ $user->is_public ? 'true' : 'false' }},
+                showActivities: {{ $user->show_recent_activities ? 'true' : 'false' }},
+                saving: false,
+                saved: false,
 
-                    <div class="mb-4">
-                        <label for="bio" class="block text-sm font-medium text-slate-400 mb-2">Hakkında</label>
-                        <textarea id="bio"
-                                  name="bio"
-                                  rows="4"
-                                  maxlength="500"
-                                  placeholder="Kendinden bahset... Film zevklerin, favori türlerin..."
-                                  class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition">{{ old('bio', $user->bio) }}</textarea>
-                        <p class="text-xs text-slate-500 mt-1">
-                            <span x-data="{ count: {{ strlen($user->bio ?? '') }} }" x-text="count"></span>/500 karakter
-                        </p>
-                    </div>
+                async saveBio() {
+                    this.saving = true;
+                    this.saved = false;
 
-                    <div class="mb-4">
-                        <label class="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox"
-                                   name="is_public"
-                                   value="1"
-                                   {{ $user->is_public ? 'checked' : '' }}
-                                   class="w-5 h-5 rounded bg-slate-800 border-slate-600 text-indigo-500 focus:ring-indigo-500/20">
-                            <span class="text-slate-300">
-                                <i class="fas fa-globe text-green-400 mr-1"></i>
-                                Profilim herkese açık olsun
-                            </span>
-                        </label>
-                        <p class="text-xs text-slate-500 mt-1 ml-8">Kapalıysa sadece takip edenler profilinizi görebilir</p>
-                    </div>
+                    try {
+                        const response = await fetch('{{ route('profile.bio.update') }}', {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                bio: this.bio,
+                                is_public: this.isPublic,
+                                show_recent_activities: this.showActivities,
+                            })
+                        });
 
-                    <div class="mb-4">
-                        <label class="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox"
-                                   name="show_recent_activities"
-                                   value="1"
-                                   {{ $user->show_recent_activities ? 'checked' : '' }}
-                                   class="w-5 h-5 rounded bg-slate-800 border-slate-600 text-indigo-500 focus:ring-indigo-500/20">
-                            <span class="text-slate-300">
-                                <i class="fas fa-clock-rotate-left text-cyan-400 mr-1"></i>
-                                Son aktiviteler kartı profilimde görünsün
-                            </span>
-                        </label>
-                        <p class="text-xs text-slate-500 mt-1 ml-8">Kapalıysa son aktiviteler sadece senin profil düzenleme ekranında görünür.</p>
-                    </div>
+                        if (response.ok) {
+                            this.saved = true;
+                            setTimeout(() => this.saved = false, 3000);
+                        }
+                    } catch (error) {
+                        console.error('Bio save error:', error);
+                    } finally {
+                        this.saving = false;
+                    }
+                }
+            }">
+                <div class="mb-4">
+                    <label for="bio" class="block text-sm font-medium text-slate-400 mb-2">Hakkında</label>
+                    <textarea id="bio"
+                              x-model="bio"
+                              rows="4"
+                              maxlength="500"
+                              placeholder="Kendinden bahset... Film zevklerin, favori türlerin..."
+                              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"></textarea>
+                    <p class="text-xs text-slate-500 mt-1">
+                        <span x-text="bio.length"></span>/500 karakter
+                    </p>
+                </div>
 
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition">
-                        <i class="fas fa-save mr-1"></i> Kaydet
-                    </button>
+                <div class="mb-4">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox"
+                               x-model="isPublic"
+                               class="w-5 h-5 rounded bg-slate-800 border-slate-600 text-indigo-500 focus:ring-indigo-500/20">
+                        <span class="text-slate-300">
+                            <i class="fas fa-globe text-green-400 mr-1"></i>
+                            Profilim herkese açık olsun
+                        </span>
+                    </label>
+                    <p class="text-xs text-slate-500 mt-1 ml-8">Kapalıysa sadece takip edenler profilinizi görebilir</p>
+                </div>
 
-                    @if(session('status') === 'bio-updated')
-                        <span class="text-green-400 text-sm ml-3">Kaydedildi!</span>
-                    @endif
-                </form>
+                <div class="mb-4">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox"
+                               x-model="showActivities"
+                               class="w-5 h-5 rounded bg-slate-800 border-slate-600 text-indigo-500 focus:ring-indigo-500/20">
+                        <span class="text-slate-300">
+                            <i class="fas fa-clock-rotate-left text-cyan-400 mr-1"></i>
+                            Son aktiviteler kartı profilimde görünsün
+                        </span>
+                    </label>
+                    <p class="text-xs text-slate-500 mt-1 ml-8">Kapalıysa son aktiviteler sadece senin profil düzenleme ekranında görünür.</p>
+                </div>
+
+                <button type="button" @click="saveBio()" :disabled="saving"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition disabled:opacity-50">
+                    <i class="fas fa-spinner fa-spin mr-1" x-show="saving"></i>
+                    <i class="fas fa-save mr-1" x-show="!saving"></i>
+                    <span x-text="saving ? 'Kaydediliyor...' : 'Kaydet'"></span>
+                </button>
+
+                <span x-show="saved" x-transition class="text-green-400 text-sm ml-3">
+                    <i class="fas fa-check"></i> Kaydedildi!
+                </span>
             </div>
         </div>
     </div>
@@ -200,10 +246,7 @@
                 </a>
             </div>
         @else
-            <form action="{{ route('profile.showcase.update') }}" method="POST" x-data="showcaseSelector()">
-                @csrf
-                @method('PATCH')
-
+            <div x-data="showcaseSelector()">
                 {{-- Seçilen Filmler --}}
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-slate-400 mb-3">Seçilen Filmler (<span x-text="selected.length"></span>/5)</label>
@@ -225,7 +268,6 @@
                                         class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full text-white text-xs opacity-0 group-hover:opacity-100 transition">
                                     <i class="fas fa-times"></i>
                                 </button>
-                                <input type="hidden" name="showcase_movies[]" :value="movieId">
                             </div>
                         </template>
 
@@ -256,15 +298,17 @@
                     </div>
                 </div>
 
-                <button type="submit"
-                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition">
-                    <i class="fas fa-save mr-1"></i> Vitrini Kaydet
+                <button type="button" @click="saveShowcase()" :disabled="saving"
+                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition disabled:opacity-50">
+                    <i class="fas fa-spinner fa-spin mr-1" x-show="saving"></i>
+                    <i class="fas fa-save mr-1" x-show="!saving"></i>
+                    <span x-text="saving ? 'Kaydediliyor...' : 'Vitrini Kaydet'"></span>
                 </button>
 
-                @if(session('status') === 'showcase-updated')
-                    <span class="text-green-400 text-sm ml-3">Vitrin güncellendi!</span>
-                @endif
-            </form>
+                <span x-show="saved" x-transition class="text-green-400 text-sm ml-3">
+                    <i class="fas fa-check"></i> Vitrin güncellendi!
+                </span>
+            </div>
         @endif
     </div>
 
@@ -350,24 +394,24 @@ function avatarUploader() {
         showNotice(type, message) {
             this.notice = { show: true, type, message };
         },
-        
+
         // Dosya seçildiğinde önizleme modalını aç
         openPreview(event) {
             const file = event.target.files[0];
             if (!file) return;
-            
+
             // Dosya tipi kontrolü
             if (!file.type.startsWith('image/')) {
                 this.showNotice('error', 'Lütfen bir görsel dosyası seçin.');
                 return;
             }
-            
+
             // Dosya boyutu kontrolü (max 10MB)
             if (file.size > 10 * 1024 * 1024) {
                 this.showNotice('error', 'Dosya boyutu 10MB\'dan küçük olmalı.');
                 return;
             }
-            
+
             // Görseli oku ve önizlemeye bas
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -377,7 +421,7 @@ function avatarUploader() {
             };
             reader.readAsDataURL(file);
         },
-        
+
         // Modal kapat
         closePreview() {
             this.showModal = false;
@@ -387,13 +431,13 @@ function avatarUploader() {
             // Input'u temizle (aynı dosya tekrar seçilebilsin)
             document.getElementById('avatar-input').value = '';
         },
-        
+
         // Önizlemesi görülen görseli kaydet
         async saveAvatar() {
             if (!this.selectedFile || this.saving) return;
-             
+
             this.saving = true;
-             
+
             try {
                 const formData = new FormData();
                 formData.append('avatar', this.selectedFile, this.selectedFile.name || 'avatar.jpg');
@@ -424,7 +468,7 @@ function avatarUploader() {
                     this.showNotice('error', 'Avatar yüklenirken bir hata oluştu.');
                     this.saving = false;
                 }
-                
+
             } catch (error) {
                 console.error('Crop error:', error);
                 this.showNotice('error', 'Görsel işlenirken bir hata oluştu.');
@@ -439,6 +483,8 @@ function showcaseSelector() {
         // Mevcut vitrin filmlerini yükle
         selected: @json($user->showcase_movies ? json_decode($user->getRawOriginal('showcase_movies')) : []),
         draggedId: null,
+        saving: false,
+        saved: false,
 
         toggleMovie(movieId) {
             if (this.selected.includes(movieId)) {
@@ -482,6 +528,32 @@ function showcaseSelector() {
         getMovieTitle(movieId) {
             const el = document.querySelector(`[data-movie-id="${movieId}"]`);
             return el ? el.dataset.movieTitle : '';
+        },
+
+        async saveShowcase() {
+            this.saving = true;
+            this.saved = false;
+
+            try {
+                const response = await fetch('{{ route('profile.showcase.update') }}', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ showcase_movies: this.selected })
+                });
+
+                if (response.ok) {
+                    this.saved = true;
+                    setTimeout(() => this.saved = false, 3000);
+                }
+            } catch (error) {
+                console.error('Showcase save error:', error);
+            } finally {
+                this.saving = false;
+            }
         }
     }
 }
