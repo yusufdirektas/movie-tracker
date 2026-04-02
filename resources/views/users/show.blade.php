@@ -14,14 +14,14 @@
 
         <div class="relative flex flex-col md:flex-row items-center md:items-start gap-6">
             {{-- Avatar --}}
-            <img src="{{ $user->avatar_url }}" 
+            <img src="{{ $user->avatar_url }}"
                  alt="{{ $user->name }}"
                  class="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover shadow-2xl ring-4 ring-slate-800">
 
             {{-- Bilgiler --}}
             <div class="flex-1 text-center md:text-left">
                 <h1 class="text-3xl md:text-4xl font-black text-white mb-1">{{ $user->name }}</h1>
-                
+
                 {{-- Bio --}}
                 @if($user->bio)
                     <p class="text-slate-400 mb-4 max-w-lg">{{ $user->bio }}</p>
@@ -51,26 +51,61 @@
                     </div>
                 </div>
 
-                {{-- Takip Butonu --}}
+                {{-- Takip Butonu (AJAX) --}}
                 @if(!$isOwnProfile)
-                    @if($isFollowing)
-                        <form action="{{ route('users.unfollow', $user) }}" method="POST" class="inline-block">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit"
-                                class="px-6 py-2.5 rounded-xl font-bold text-sm transition-all bg-slate-800 text-slate-400 hover:bg-red-500/20 hover:text-red-400 border border-slate-700 hover:border-red-500/50">
-                                <i class="fas fa-user-check mr-2"></i> Takip Ediliyor
-                            </button>
-                        </form>
-                    @else
-                        <form action="{{ route('users.follow', $user) }}" method="POST" class="inline-block">
-                            @csrf
-                            <button type="submit"
-                                class="px-6 py-2.5 rounded-xl font-bold text-sm transition-all bg-indigo-500 text-white hover:bg-indigo-600">
-                                <i class="fas fa-user-plus mr-2"></i> Takip Et
-                            </button>
-                        </form>
-                    @endif
+                    <div x-data="{
+                        isFollowing: {{ $isFollowing ? 'true' : 'false' }},
+                        followersCount: {{ $stats['followers_count'] }},
+                        loading: false,
+
+                        async toggleFollow() {
+                            if (this.loading) return;
+                            this.loading = true;
+
+                            try {
+                                const url = this.isFollowing
+                                    ? '{{ route('users.unfollow', $user) }}'
+                                    : '{{ route('users.follow', $user) }}';
+                                const method = this.isFollowing ? 'DELETE' : 'POST';
+
+                                const response = await fetch(url, {
+                                    method: method,
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json',
+                                    }
+                                });
+
+                                const data = await response.json();
+
+                                if (data.success) {
+                                    this.isFollowing = !this.isFollowing;
+                                    this.followersCount = data.followers_count;
+                                }
+                            } catch (error) {
+                                console.error('Follow error:', error);
+                            } finally {
+                                this.loading = false;
+                            }
+                        }
+                    }" class="inline-block">
+                        <button @click="toggleFollow()"
+                            :disabled="loading"
+                            :class="isFollowing
+                                ? 'bg-slate-800 text-slate-400 hover:bg-red-500/20 hover:text-red-400 border border-slate-700 hover:border-red-500/50'
+                                : 'bg-indigo-500 text-white hover:bg-indigo-600'"
+                            class="px-6 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
+                            <template x-if="loading">
+                                <span><i class="fas fa-spinner fa-spin mr-2"></i></span>
+                            </template>
+                            <template x-if="!loading && isFollowing">
+                                <span><i class="fas fa-user-check mr-2"></i> Takip Ediliyor</span>
+                            </template>
+                            <template x-if="!loading && !isFollowing">
+                                <span><i class="fas fa-user-plus mr-2"></i> Takip Et</span>
+                            </template>
+                        </button>
+                    </div>
                 @else
                     <a href="{{ route('profile.edit') }}"
                         class="inline-block px-6 py-2.5 rounded-xl font-bold text-sm bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition-all">
@@ -144,22 +179,22 @@
     <div x-data="{ activeTab: 'recent' }" class="mb-8">
         {{-- Sekme Başlıkları --}}
         <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-            <button @click="activeTab = 'recent'" 
+            <button @click="activeTab = 'recent'"
                     :class="activeTab === 'recent' ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'"
                     class="px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors">
                 <i class="fas fa-clock mr-2"></i> Son İzlenenler
             </button>
-            <button @click="activeTab = 'favorites'" 
+            <button @click="activeTab = 'favorites'"
                     :class="activeTab === 'favorites' ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'"
                     class="px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors">
                 <i class="fas fa-heart mr-2"></i> Favoriler
             </button>
-            <button @click="activeTab = 'watchlist'" 
+            <button @click="activeTab = 'watchlist'"
                     :class="activeTab === 'watchlist' ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'"
                     class="px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors">
                 <i class="fas fa-bookmark mr-2"></i> İzlenecekler
             </button>
-            <button @click="activeTab = 'following'" 
+            <button @click="activeTab = 'following'"
                     :class="activeTab === 'following' ? 'bg-pink-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'"
                     class="px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors">
                 <i class="fas fa-users mr-2"></i> Takip Ettikleri
@@ -297,9 +332,9 @@
             @if($followingUsers->isNotEmpty())
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     @foreach($followingUsers as $followedUser)
-                        <a href="{{ route('users.show', $followedUser) }}" 
+                        <a href="{{ route('users.show', $followedUser) }}"
                            class="flex items-center gap-3 p-4 bg-slate-800/50 hover:bg-slate-800 rounded-xl transition-colors">
-                            <img src="{{ $followedUser->avatar_url }}" 
+                            <img src="{{ $followedUser->avatar_url }}"
                                  alt="{{ $followedUser->name }}"
                                  class="w-12 h-12 rounded-full object-cover">
                             <div class="min-w-0">

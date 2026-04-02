@@ -78,25 +78,38 @@
                         </div>
                     </div>
 
-                    {{-- Takip Butonu --}}
-                    @if(in_array($user->id, $followingIds))
-                        <form action="{{ route('users.unfollow', $user) }}" method="POST">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit"
-                                class="w-full py-2.5 rounded-xl font-bold text-sm transition-all bg-slate-800 text-slate-400 hover:bg-red-500/20 hover:text-red-400 border border-slate-700 hover:border-red-500/50">
-                                <i class="fas fa-user-check mr-2"></i> Takip Ediliyor
-                            </button>
-                        </form>
-                    @else
-                        <form action="{{ route('users.follow', $user) }}" method="POST">
-                            @csrf
-                            <button type="submit"
-                                class="w-full py-2.5 rounded-xl font-bold text-sm transition-all bg-indigo-500 text-white hover:bg-indigo-600">
-                                <i class="fas fa-user-plus mr-2"></i> Takip Et
-                            </button>
-                        </form>
-                    @endif
+                    {{-- Takip Butonu (AJAX) --}}
+                    <div x-data="{
+                        isFollowing: {{ in_array($user->id, $followingIds) ? 'true' : 'false' }},
+                        loading: false,
+                        async toggle() {
+                            if (this.loading) return;
+                            this.loading = true;
+                            try {
+                                const url = this.isFollowing
+                                    ? '{{ route('users.unfollow', $user) }}'
+                                    : '{{ route('users.follow', $user) }}';
+                                const response = await fetch(url, {
+                                    method: this.isFollowing ? 'DELETE' : 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json',
+                                    }
+                                });
+                                if (response.ok) this.isFollowing = !this.isFollowing;
+                            } catch (e) { console.error(e); }
+                            finally { this.loading = false; }
+                        }
+                    }">
+                        <button @click="toggle()" :disabled="loading"
+                            :class="isFollowing
+                                ? 'bg-slate-800 text-slate-400 hover:bg-red-500/20 hover:text-red-400 border border-slate-700 hover:border-red-500/50'
+                                : 'bg-indigo-500 text-white hover:bg-indigo-600'"
+                            class="w-full py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
+                            <i :class="loading ? 'fas fa-spinner fa-spin' : (isFollowing ? 'fas fa-user-check' : 'fas fa-user-plus')" class="mr-2"></i>
+                            <span x-text="isFollowing ? 'Takip Ediliyor' : 'Takip Et'"></span>
+                        </button>
+                    </div>
                 </div>
             @endforeach
         </div>

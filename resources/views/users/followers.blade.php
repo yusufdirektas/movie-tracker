@@ -45,26 +45,39 @@
                         <p class="text-slate-500 text-sm">{{ $follower->movies_count }} film izledi</p>
                     </div>
 
-                    {{-- Takip Butonu --}}
+                    {{-- Takip Butonu (AJAX) --}}
                     @if($follower->id !== auth()->id())
-                        @if(auth()->user()->isFollowing($follower))
-                            <form action="{{ route('users.unfollow', $follower) }}" method="POST">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit"
-                                    class="px-4 py-2 rounded-xl text-sm font-bold bg-slate-800 text-slate-400 hover:bg-red-500/20 hover:text-red-400 border border-slate-700 hover:border-red-500/50 transition-all">
-                                    <i class="fas fa-user-check mr-1"></i> Takip
-                                </button>
-                            </form>
-                        @else
-                            <form action="{{ route('users.follow', $follower) }}" method="POST">
-                                @csrf
-                                <button type="submit"
-                                    class="px-4 py-2 rounded-xl text-sm font-bold bg-indigo-500 text-white hover:bg-indigo-600 transition-all">
-                                    <i class="fas fa-user-plus mr-1"></i> Takip Et
-                                </button>
-                            </form>
-                        @endif
+                        <div x-data="{
+                            isFollowing: {{ auth()->user()->isFollowing($follower) ? 'true' : 'false' }},
+                            loading: false,
+                            async toggle() {
+                                if (this.loading) return;
+                                this.loading = true;
+                                try {
+                                    const url = this.isFollowing
+                                        ? '{{ route('users.unfollow', $follower) }}'
+                                        : '{{ route('users.follow', $follower) }}';
+                                    const response = await fetch(url, {
+                                        method: this.isFollowing ? 'DELETE' : 'POST',
+                                        headers: {
+                                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                            'Accept': 'application/json',
+                                        }
+                                    });
+                                    if (response.ok) this.isFollowing = !this.isFollowing;
+                                } catch (e) { console.error(e); }
+                                finally { this.loading = false; }
+                            }
+                        }">
+                            <button @click="toggle()" :disabled="loading"
+                                :class="isFollowing
+                                    ? 'bg-slate-800 text-slate-400 hover:bg-red-500/20 hover:text-red-400 border border-slate-700 hover:border-red-500/50'
+                                    : 'bg-indigo-500 text-white hover:bg-indigo-600'"
+                                class="px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50">
+                                <i :class="loading ? 'fas fa-spinner fa-spin' : (isFollowing ? 'fas fa-user-check' : 'fas fa-user-plus')" class="mr-1"></i>
+                                <span x-text="isFollowing ? 'Takip' : 'Takip Et'"></span>
+                            </button>
+                        </div>
                     @endif
                 </div>
             @endforeach
