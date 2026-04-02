@@ -25,9 +25,23 @@ class BulkActionController extends Controller
             ->delete();
 
         if ($deletedCount === 0) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Silinecek uygun film bulunamadı.',
+                ], 404);
+            }
             return back()
                 ->with('info', 'Silinecek uygun film bulunamadı.')
                 ->with('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $deletedCount . ' film başarıyla silindi.',
+                'deleted_count' => $deletedCount,
+            ]);
         }
 
         return back()->with('success', $deletedCount . ' film başarıyla silindi.');
@@ -44,8 +58,6 @@ class BulkActionController extends Controller
         ]);
 
         // Her filmi tek tek güncelliyoruz: zaten watched_at varsa dokunma, yoksa şimdiyi yaz.
-        // NOT: DB::raw('COALESCE(watched_at, NOW())') SQLite'ta çalışmaz çünkü NOW() MySQL fonksiyonudur.
-        // Bu yüzden PHP tarafında Carbon ile çözüyoruz.
         $movies = Movie::whereIn('id', $request->movie_ids)
             ->where('user_id', Auth::id())
             ->get();
@@ -58,9 +70,24 @@ class BulkActionController extends Controller
         }
 
         if ($movies->isEmpty()) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'İşaretlenecek uygun film bulunamadı.',
+                ], 404);
+            }
             return back()
                 ->with('info', 'İşaretlenecek uygun film bulunamadı.')
                 ->with('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $movies->count() . ' film izlendi olarak işaretlendi.',
+                'updated_count' => $movies->count(),
+                'movie_ids' => $movies->pluck('id'),
+            ]);
         }
 
         return back()->with('success', $movies->count() . ' film izlendi olarak işaretlendi.');
@@ -84,9 +111,23 @@ class BulkActionController extends Controller
             ]);
 
         if ($updatedCount === 0) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Güncellenecek uygun film bulunamadı.',
+                ], 404);
+            }
             return back()
                 ->with('info', 'Güncellenecek uygun film bulunamadı.')
                 ->with('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $updatedCount . ' film izlenmedi olarak işaretlendi.',
+                'updated_count' => $updatedCount,
+            ]);
         }
 
         return back()->with('success', $updatedCount . ' film izlenmedi olarak işaretlendi.');
@@ -113,6 +154,12 @@ class BulkActionController extends Controller
             ->toArray();
 
         if (empty($validMovieIds)) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Koleksiyona eklenecek uygun film bulunamadı.',
+                ], 404);
+            }
             return back()
                 ->with('info', 'Koleksiyona eklenecek uygun film bulunamadı.')
                 ->with('info_action', 'Seçim yapıp tekrar deneyebilirsin.');
@@ -120,6 +167,15 @@ class BulkActionController extends Controller
 
         // syncWithoutDetaching ile mevcutları koruyarak yenilerini ekleriz
         $collection->movies()->syncWithoutDetaching($validMovieIds);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => count($validMovieIds) . ' film koleksiyona başarıyla eklendi.',
+                'added_count' => count($validMovieIds),
+                'collection_id' => $collection->id,
+            ]);
+        }
 
         return back()->with('success', count($validMovieIds) . ' film koleksiyona başarıyla eklendi.');
     }
@@ -142,6 +198,12 @@ class BulkActionController extends Controller
             ]);
 
         if ($updatedCount === 0) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Önceliği güncellenecek uygun film bulunamadı.',
+                ], 404);
+            }
             return back()
                 ->with('info', 'Önceliği güncellenecek uygun film bulunamadı.')
                 ->with('info_action', 'Lütfen yalnızca kendi arşivindeki filmleri seçtiğinden emin ol.');
@@ -152,6 +214,16 @@ class BulkActionController extends Controller
             3 => 'Düşük',
             default => 'Normal',
         };
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $updatedCount . " film için öncelik \"$label\" olarak güncellendi.",
+                'updated_count' => $updatedCount,
+                'priority' => (int) $request->watch_priority,
+                'priority_label' => $label,
+            ]);
+        }
 
         return back()->with('success', $updatedCount . " film için öncelik \"$label\" olarak güncellendi.");
     }

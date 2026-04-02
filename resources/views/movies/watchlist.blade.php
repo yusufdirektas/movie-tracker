@@ -107,7 +107,7 @@
                     </button>
                 </div>
 
-                {{-- İşlem Butonları --}}
+                {{-- İşlem Butonları (AJAX) --}}
                 <div class="flex flex-wrap items-center justify-center gap-3">
 
                     {{-- Koleksiyona Ekle --}}
@@ -118,34 +118,26 @@
                                 <i class="fas fa-folder-plus text-teal-400"></i> Koleksiyona Ekle <i class="fas fa-chevron-down text-xs ml-1"></i>
                             </button>
 
-                            <div x-show="showDropdown" style="display: none;"
+                            <div x-show="showDropdown" x-cloak
                                 class="absolute bottom-full mb-2 right-0 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
-                                <form action="{{ route('movies.bulk.collection') }}" method="POST" class="flex flex-col max-h-48 overflow-y-auto">
-                                    @csrf
-                                    <template x-for="id in selectedMovies">
-                                        <input type="hidden" name="movie_ids[]" :value="id">
-                                    </template>
+                                <div class="flex flex-col max-h-48 overflow-y-auto">
                                     @foreach($collections as $collection)
-                                        <button type="submit" name="collection_id" value="{{ $collection->id }}"
+                                        <button type="button"
+                                            @click="bulkAddToCollection({{ $collection->id }}); showDropdown = false"
                                             class="text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white border-b border-slate-700/50 last:border-0 transition-colors">
                                             <i class="fas fa-{{ $collection->icon }} mr-2" style="color: {{ $collection->color }}"></i> {{ $collection->name }}
                                         </button>
                                     @endforeach
-                                </form>
+                                </div>
                             </div>
                         </div>
                     @endif
 
                     {{-- İzlendi İşaretle --}}
-                    <form action="{{ route('movies.bulk.watched') }}" method="POST">
-                        @csrf
-                        <template x-for="id in selectedMovies">
-                            <input type="hidden" name="movie_ids[]" :value="id">
-                        </template>
-                        <button type="submit" class="bg-emerald-500/20 hover:bg-emerald-500 hover:text-white text-emerald-400 text-sm font-bold px-4 py-2 rounded-xl transition-colors border border-emerald-500/30 flex items-center gap-2">
-                            <i class="fas fa-check"></i> İzlendi İşaretle
-                        </button>
-                    </form>
+                    <button type="button" @click="bulkMarkWatched()"
+                        class="bg-emerald-500/20 hover:bg-emerald-500 hover:text-white text-emerald-400 text-sm font-bold px-4 py-2 rounded-xl transition-colors border border-emerald-500/30 flex items-center gap-2">
+                        <i class="fas fa-check"></i> İzlendi İşaretle
+                    </button>
 
                     {{-- Öncelik Güncelle --}}
                     <div x-data="{ openPriority: false }" class="relative">
@@ -154,40 +146,30 @@
                             <i class="fas fa-bolt"></i> Öncelik
                         </button>
 
-                        <div x-show="openPriority" style="display:none;"
+                        <div x-show="openPriority" x-cloak
                             class="absolute bottom-full mb-2 right-0 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
-                            <form action="{{ route('movies.bulk.priority') }}" method="POST" class="flex flex-col">
-                                @csrf
-                                <template x-for="id in selectedMovies">
-                                    <input type="hidden" name="movie_ids[]" :value="id">
-                                </template>
-                                <button type="submit" name="watch_priority" value="1"
+                            <div class="flex flex-col">
+                                <button type="button" @click="bulkUpdatePriority(1); openPriority = false"
                                     class="text-left px-4 py-3 text-sm text-red-300 hover:bg-slate-700 transition-colors">
                                     <i class="fas fa-angles-up mr-2"></i> Yüksek
                                 </button>
-                                <button type="submit" name="watch_priority" value="2"
+                                <button type="button" @click="bulkUpdatePriority(2); openPriority = false"
                                     class="text-left px-4 py-3 text-sm text-amber-300 hover:bg-slate-700 transition-colors border-t border-slate-700/50">
                                     <i class="fas fa-equals mr-2"></i> Normal
                                 </button>
-                                <button type="submit" name="watch_priority" value="3"
+                                <button type="button" @click="bulkUpdatePriority(3); openPriority = false"
                                     class="text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 transition-colors border-t border-slate-700/50">
                                     <i class="fas fa-angles-down mr-2"></i> Düşük
                                 </button>
-                            </form>
+                            </div>
                         </div>
                     </div>
 
                     {{-- Sil --}}
-                    <form action="{{ route('movies.bulk.delete') }}" method="POST" onsubmit="return confirm('Seçili filmleri arşivden silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')">
-                        @csrf
-                        @method('DELETE')
-                        <template x-for="id in selectedMovies">
-                            <input type="hidden" name="movie_ids[]" :value="id">
-                        </template>
-                        <button type="submit" class="bg-red-500/20 hover:bg-red-500 hover:text-white text-red-500 text-sm font-bold px-4 py-2 rounded-xl transition-colors border border-red-500/30 flex items-center gap-2">
-                            <i class="fas fa-trash-alt"></i> Sil
-                        </button>
-                    </form>
+                    <button type="button" @click="bulkDelete()"
+                        class="bg-red-500/20 hover:bg-red-500 hover:text-white text-red-500 text-sm font-bold px-4 py-2 rounded-xl transition-colors border border-red-500/30 flex items-center gap-2">
+                        <i class="fas fa-trash-alt"></i> Sil
+                    </button>
                 </div>
             </div>
         </div>
@@ -273,6 +255,120 @@ function watchlistFilter() {
                 console.error('Sayfalama hatası:', err);
             }
             this.loading = false;
+        },
+
+        // ==========================================
+        // 🎬 BULK ACTIONS (Toplu İşlemler - AJAX)
+        // ==========================================
+
+        async bulkMarkWatched() {
+            if (this.selectedMovies.length === 0) return;
+
+            try {
+                const response = await fetch('{{ route('movies.bulk.watched') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ movie_ids: this.selectedMovies })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.selectedMovies = [];
+                    this._fetch(false);
+                    if (typeof showToast === 'function') showToast(data.message, 'success');
+                }
+            } catch (error) {
+                console.error('Bulk watched error:', error);
+            }
+        },
+
+        async bulkAddToCollection(collectionId) {
+            if (this.selectedMovies.length === 0) return;
+
+            try {
+                const response = await fetch('{{ route('movies.bulk.collection') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        movie_ids: this.selectedMovies,
+                        collection_id: collectionId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.selectedMovies = [];
+                    if (typeof showToast === 'function') showToast(data.message, 'success');
+                }
+            } catch (error) {
+                console.error('Bulk collection error:', error);
+            }
+        },
+
+        async bulkUpdatePriority(priority) {
+            if (this.selectedMovies.length === 0) return;
+
+            try {
+                const response = await fetch('{{ route('movies.bulk.priority') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        movie_ids: this.selectedMovies,
+                        watch_priority: priority
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.selectedMovies = [];
+                    this._fetch(false);
+                    if (typeof showToast === 'function') showToast(data.message, 'success');
+                }
+            } catch (error) {
+                console.error('Bulk priority error:', error);
+            }
+        },
+
+        async bulkDelete() {
+            if (this.selectedMovies.length === 0) return;
+            if (!confirm('Seçili filmleri arşivden silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
+
+            try {
+                const response = await fetch('{{ route('movies.bulk.delete') }}', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ movie_ids: this.selectedMovies })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.selectedMovies = [];
+                    this._fetch(false);
+                    if (typeof showToast === 'function') showToast(data.message, 'success');
+                }
+            } catch (error) {
+                console.error('Bulk delete error:', error);
+            }
         }
     };
 }
