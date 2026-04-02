@@ -97,12 +97,14 @@ class CommentController extends Controller
     }
 
     /**
-     * Yorum güncelle
+     * Yorum güncelle (AJAX destekli)
      */
-    public function update(Request $request, Movie $movie, Comment $comment): RedirectResponse
+    public function update(Request $request, Movie $movie, Comment $comment)
     {
-        // Sadece kendi yorumunu düzenleyebilir
         if ($comment->user_id !== $request->user()->id) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Yetkisiz'], 403);
+            }
             abort(403);
         }
 
@@ -116,25 +118,44 @@ class CommentController extends Controller
             'has_spoiler' => $validated['has_spoiler'] ?? false,
         ]);
 
-        return redirect()
-            ->route('movies.show', $movie)
-            ->with('success', 'Yorumunuz güncellendi!');
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Yorum güncellendi!',
+                'comment' => [
+                    'id' => $comment->id,
+                    'body' => $comment->body,
+                    'has_spoiler' => (bool)$comment->has_spoiler,
+                    'updated_at' => $comment->updated_at->toISOString(),
+                    'is_edited' => true,
+                ],
+            ]);
+        }
+
+        return redirect()->route('movies.show', $movie)->with('success', 'Yorumunuz güncellendi!');
     }
 
     /**
-     * Yorum sil
+     * Yorum sil (AJAX destekli)
      */
-    public function destroy(Request $request, Movie $movie, Comment $comment): RedirectResponse
+    public function destroy(Request $request, Movie $movie, Comment $comment)
     {
-        // Sadece kendi yorumunu silebilir
         if ($comment->user_id !== $request->user()->id) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Yetkisiz'], 403);
+            }
             abort(403);
         }
 
         $comment->delete();
 
-        return redirect()
-            ->route('movies.show', $movie)
-            ->with('success', 'Yorumunuz silindi.');
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Yorum silindi!',
+            ]);
+        }
+
+        return redirect()->route('movies.show', $movie)->with('success', 'Yorumunuz silindi.');
     }
 }

@@ -152,42 +152,140 @@
                         </div>
                     @endif
 
-                    {{-- Kişisel Notlarım --}}
-                    <div class="mb-8">
+                    {{-- Kişisel Notlarım (AJAX Auto-Save) --}}
+                    {{--
+                    @KAVRAM: Debounce Pattern
+
+                    Kullanıcı her tuşa bastığında API çağrısı yapmak istemeyiz.
+                    Debounce: Son tuşa basıldıktan X ms sonra çalış.
+
+                    Örnek: 500ms debounce
+                    - Kullanıcı "Harika" yazıyor (5 tuş)
+                    - Her tuşta timer sıfırlanır
+                    - Son tuştan 500ms sonra API çağrılır (1 kez)
+                    --}}
+                    <div class="mb-8" x-data="{
+                        note: {{ json_encode($movie->personal_note ?? '') }},
+                        saving: false,
+                        saved: false,
+                        error: null,
+                        debounceTimer: null,
+
+                        debounceSave() {
+                            clearTimeout(this.debounceTimer);
+                            this.debounceTimer = setTimeout(() => this.saveNote(), 800);
+                        },
+
+                        async saveNote() {
+                            if (this.saving) return;
+                            this.saving = true;
+                            this.error = null;
+
+                            try {
+                                const formData = new FormData();
+                                formData.append('personal_note', this.note);
+                                formData.append('_method', 'PATCH');
+
+                                const response = await fetch('{{ route('movies.update', $movie) }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: formData
+                                });
+
+                                if (response.ok) {
+                                    this.saved = true;
+                                    setTimeout(() => this.saved = false, 2000);
+                                } else {
+                                    this.error = 'Kaydetme başarısız.';
+                                }
+                            } catch (e) {
+                                this.error = 'Bir hata oluştu.';
+                            } finally {
+                                this.saving = false;
+                            }
+                        }
+                    }">
                         <h3 class="text-slate-500 font-black mb-3 uppercase text-[10px] tracking-widest">Kişisel Notlarım</h3>
-                        <form action="{{ route('movies.update', $movie) }}" method="POST" class="space-y-3">
-                            @csrf
-                            @method('PATCH')
+                        <div class="space-y-3">
                             <textarea
-                                name="personal_note"
+                                x-model="note"
+                                @input="debounceSave()"
                                 rows="4"
                                 maxlength="1000"
                                 placeholder="Bu film hakkında özel notlarını yaz..."
-                                class="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition">{{ old('personal_note', $movie->personal_note) }}</textarea>
+                                class="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"></textarea>
 
-                            @error('personal_note')
-                                <p class="text-xs text-red-400">{{ $message }}</p>
-                            @enderror
+                            <p x-show="error" x-text="error" class="text-xs text-red-400"></p>
 
                             <div class="flex items-center justify-between">
                                 <span class="text-[11px] text-slate-500">Maksimum 1000 karakter</span>
-                                <button type="submit"
-                                    class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-bold transition border border-slate-600">
-                                    <i class="fas fa-sticky-note mr-1"></i> Notu Kaydet
-                                </button>
+                                <div class="flex items-center gap-2">
+                                    <span x-show="saving" class="text-xs text-slate-400">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i> Kaydediliyor...
+                                    </span>
+                                    <span x-show="saved" x-cloak class="text-xs text-emerald-400">
+                                        <i class="fas fa-check mr-1"></i> Kaydedildi!
+                                    </span>
+                                    <button @click="saveNote()"
+                                        :disabled="saving"
+                                        class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-bold transition border border-slate-600 disabled:opacity-50">
+                                        <i class="fas fa-sticky-note mr-1"></i> Notu Kaydet
+                                    </button>
+                                </div>
                             </div>
-                        </form>
+                        </div>
                     </div>
 
-                    {{-- Aksiyon Butonları --}}
-                    <div class="flex flex-wrap gap-4 items-start">
-                        <form action="{{ route('movies.update', $movie) }}" method="POST">
-                            @csrf @method('PATCH')
-                            <button class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl text-sm font-black transition-all shadow-lg shadow-indigo-600/20">
-                                <i class="fas {{ $movie->is_watched ? 'fa-eye-slash' : 'fa-eye' }} mr-2"></i>
-                                {{ $movie->is_watched ? 'İzlemedim Olarak İşaretle' : 'İzledim Olarak İşaretle' }}
-                            </button>
-                        </form>
+                    {{-- Aksiyon Butonları (AJAX) --}}
+                    <div class="flex flex-wrap gap-4 items-start" x-data="{
+                        isWatched: {{ $movie->is_watched ? 'true' : 'false' }},
+                        loading: false,
+
+                        async toggleWatched() {
+                            if (this.loading) return;
+                            this.loading = true;
+
+                            try {
+                                const response = await fetch('{{ route('movies.update', $movie) }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/x-www-form-urlencoded'
+                                    },
+                                    body: '_method=PATCH'
+                                });
+
+                                const data = await response.json();
+                                if (data.success) {
+                                    this.isWatched = data.is_watched;
+                                    if (typeof showToast === 'function') {
+                                        showToast(data.message, 'success');
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('Toggle watch error:', e);
+                            } finally {
+                                this.loading = false;
+                            }
+                        }
+                    }">
+                        <button @click="toggleWatched()"
+                            :disabled="loading"
+                            class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl text-sm font-black transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50">
+                            <template x-if="loading">
+                                <span><i class="fas fa-spinner fa-spin mr-2"></i> İşleniyor...</span>
+                            </template>
+                            <template x-if="!loading && isWatched">
+                                <span><i class="fas fa-eye-slash mr-2"></i> İzlemedim Olarak İşaretle</span>
+                            </template>
+                            <template x-if="!loading && !isWatched">
+                                <span><i class="fas fa-eye mr-2"></i> İzledim Olarak İşaretle</span>
+                            </template>
+                        </button>
 
                         {{-- Koleksiyona Ekle Dropdown --}}
                         <div x-data="{
@@ -478,6 +576,36 @@
                     } catch (error) {
                         console.error('Delete error:', error);
                         alert('Yorum silinirken hata oluştu.');
+                    }
+                },
+
+                async updateComment(commentId, index, body, hasSpoiler) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('body', body);
+                        formData.append('has_spoiler', hasSpoiler ? '1' : '0');
+                        formData.append('_method', 'PUT');
+
+                        const response = await fetch(`/movies/{{ $movie->id }}/comments/${commentId}`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json',
+                            },
+                            body: formData
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.comments[index].body = data.comment.body;
+                            this.comments[index].has_spoiler = data.comment.has_spoiler;
+                            this.comments[index].is_edited = true;
+                            return true;
+                        }
+                        return false;
+                    } catch (error) {
+                        console.error('Update error:', error);
+                        return false;
                     }
                 }
              }">

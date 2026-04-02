@@ -546,6 +546,14 @@ class MovieController extends Controller
             'watched_at' => $newWatchedStatus ? ($movie->watched_at ?? now()) : null,
         ]);
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $newWatchedStatus ? 'Film izlendi olarak işaretlendi!' : 'Film izlenmedi olarak işaretlendi.',
+                'is_watched' => $newWatchedStatus,
+            ]);
+        }
+
         return back()->with('success', 'Film durumu güncellendi.');
     }
 
