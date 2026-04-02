@@ -306,16 +306,13 @@
                             </div>
                         </a>
 
-                        {{-- Koleksiyondan Çıkar --}}
-                        <form action="{{ route('collections.removeMovie', [$collection, $movie]) }}" method="POST"
-                            class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-30">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" title="Koleksiyondan çıkar"
-                                class="w-8 h-8 bg-red-500/80 backdrop-blur text-white rounded-lg flex items-center justify-center hover:bg-red-600 transition-all text-xs shadow-lg">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </form>
+                        {{-- Koleksiyondan Çıkar (AJAX) --}}
+                        <button type="button"
+                            title="Koleksiyondan çıkar"
+                            onclick="removeMovieFromCollection({{ $movie->id }}, this)"
+                            class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-30 w-8 h-8 bg-red-500/80 backdrop-blur text-white rounded-lg flex items-center justify-center hover:bg-red-600 text-xs shadow-lg">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                 @endforeach
                 </div>
@@ -626,6 +623,38 @@ function copyToClipboard(elementId) {
         });
 
         return confirm('Seçili filmleri koleksiyondan çıkarmak istediğine emin misin?');
+    }
+
+    // ─── TEKİL FİLM ÇIKARMA (AJAX) ───
+    async function removeMovieFromCollection(movieId, button) {
+        try {
+            const response = await fetch(`/collections/{{ $collection->id }}/movies/${movieId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                }
+            });
+
+            if (response.ok) {
+                // Card'ı animasyonla kaldır
+                const card = button.closest('.collection-movie-item');
+                card.style.transition = 'opacity 0.3s, transform 0.3s';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.9)';
+                setTimeout(() => card.remove(), 300);
+
+                // Boş state kontrolü
+                const grid = document.getElementById('collectionGrid');
+                if (grid && grid.children.length <= 1) {
+                    // Sayfa yenileme - boş state göster
+                    window.location.reload();
+                }
+            }
+        } catch (error) {
+            console.error('Remove error:', error);
+            alert('Film çıkarılırken hata oluştu.');
+        }
     }
 </script>
 @endpush

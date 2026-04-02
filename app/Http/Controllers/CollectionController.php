@@ -113,12 +113,28 @@ class CollectionController extends Controller
 
         $user = Auth::user();
 
-        $user->collections()->create([
+        $collection = $user->collections()->create([
             'name' => $request->name,
             'description' => $request->description,
             'color' => $request->color ?? '#6366f1',
             'icon' => $request->icon ?? 'folder',
         ]);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Koleksiyon oluşturuldu!',
+                'collection' => [
+                    'id' => $collection->id,
+                    'name' => $collection->name,
+                    'description' => $collection->description,
+                    'color' => $collection->color,
+                    'icon' => $collection->icon,
+                    'movies_count' => 0,
+                    'url' => route('collections.show', $collection),
+                ],
+            ]);
+        }
 
         return back()->with('success', 'Koleksiyon oluşturuldu!');
     }
@@ -145,11 +161,18 @@ class CollectionController extends Controller
     /**
      * Koleksiyonu sil
      */
-    public function destroy(Collection $collection)
+    public function destroy(Request $request, Collection $collection)
     {
         $this->authorize('delete', $collection);
 
         $collection->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Koleksiyon silindi!',
+            ]);
+        }
 
         return redirect()->route('collections.index')->with('success', 'Koleksiyon silindi!');
     }
@@ -246,7 +269,7 @@ class CollectionController extends Controller
     /**
      * Bir koleksiyondan film çıkar
      */
-    public function removeMovie(Collection $collection, Movie $movie)
+    public function removeMovie(Request $request, Collection $collection, Movie $movie)
     {
         $this->authorize('update', $collection);
 
@@ -256,6 +279,14 @@ class CollectionController extends Controller
         }
 
         $collection->movies()->detach($movie->id);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Film koleksiyondan çıkarıldı!',
+                'movie_id' => $movie->id,
+            ]);
+        }
 
         return back()->with('success', 'Film koleksiyondan çıkarıldı!');
     }
