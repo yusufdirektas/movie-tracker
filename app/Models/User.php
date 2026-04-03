@@ -152,6 +152,51 @@ class User extends Authenticatable
     }
 
     // =========================================================================
+    // 📚 AKTİVİTE SİSTEMİ İLİŞKİLERİ (Activity Feed)
+    // =========================================================================
+
+    /**
+     * Kullanıcının yaptığı tüm aktiviteler
+     *
+     * Örnek: $user->activities → Bu kullanıcının tüm aksiyonları
+     */
+    public function activities(): HasMany
+    {
+        return $this->hasMany(Activity::class);
+    }
+
+    /**
+     * 📚 TAKİP EDİLENLERİN AKTİVİTELERİNİ GETİR (Feed)
+     *
+     * @KAVRAM: Bu bir ilişki değil, sorgu yardımcısıdır.
+     * Takip edilen kullanıcıların aktivitelerini çeker.
+     *
+     * @param int $limit Kaç aktivite çekilecek
+     * @return \Illuminate\Database\Eloquent\Collection
+     *
+     * Kullanım: $user->getFeed(20)
+     */
+    public function getFeed(int $limit = 20, ?int $beforeId = null): \Illuminate\Database\Eloquent\Collection
+    {
+        // Takip edilen kullanıcıların ID'lerini al
+        $followingIds = $this->following()->pluck('users.id')->toArray();
+
+        // Kendi aktivitelerini de ekle (opsiyonel)
+        $followingIds[] = $this->id;
+
+        $query = Activity::with(['user', 'subject']) // Eager loading: N+1 sorunu önler
+            ->whereIn('user_id', $followingIds)
+            ->orderByDesc('id'); // created_at yerine id kullanıyoruz (daha hızlı)
+
+        // Cursor-based pagination: "Bu ID'den öncekiler"
+        if ($beforeId) {
+            $query->where('id', '<', $beforeId);
+        }
+
+        return $query->limit($limit)->get();
+    }
+
+    // =========================================================================
     // 📚 TAKİP SİSTEMİ İLİŞKİLERİ (Follow System Relationships)
     // =========================================================================
     //

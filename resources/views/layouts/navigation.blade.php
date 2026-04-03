@@ -109,14 +109,36 @@
                         <span class="ysd-nav-label">{{ __('İstatistikler') }}</span>
                     </a>
 
-                    <a href="{{ route('users.index') }}"
-                        class="ysd-nav-item {{ request()->routeIs('users.*') || request()->routeIs('feed') ? 'is-active' : '' }}"
-                        aria-label="Keşfet"
-                        data-nav-item
-                        @if (request()->routeIs('users.*') || request()->routeIs('feed')) aria-current="page" @endif>
-                        <i class="fas fa-users ysd-nav-icon text-pink-400"></i>
-                        <span class="ysd-nav-label">{{ __('Keşfet') }}</span>
-                    </a>
+                    {{-- 📚 Sosyal Dropdown (Feed & Keşfet) --}}
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click="open = !open" @click.away="open = false"
+                            class="ysd-nav-item {{ request()->routeIs('users.*') || request()->routeIs('feed') ? 'is-active' : '' }}"
+                            aria-label="Sosyal menü">
+                            <i class="fas fa-users ysd-nav-icon text-pink-400"></i>
+                            <span class="ysd-nav-label">{{ __('Sosyal') }}</span>
+                            <i class="fas fa-chevron-down text-xs ml-1 transition-transform" :class="{ 'rotate-180': open }"></i>
+                        </button>
+
+                        <div x-show="open" x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                            class="absolute right-0 mt-2 w-48 rounded-xl bg-slate-800 border border-slate-700 shadow-xl py-2 z-50"
+                            style="display: none;">
+
+                            <a href="{{ route('feed') }}"
+                                class="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors {{ request()->routeIs('feed') ? 'bg-slate-700 text-white' : '' }}">
+                                <i class="fas fa-stream text-indigo-400"></i>
+                                Aktivite Feed
+                            </a>
+
+                            <a href="{{ route('users.index') }}"
+                                class="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors {{ request()->routeIs('users.index') ? 'bg-slate-700 text-white' : '' }}">
+                                <i class="fas fa-search text-pink-400"></i>
+                                Kullanıcıları Keşfet
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 

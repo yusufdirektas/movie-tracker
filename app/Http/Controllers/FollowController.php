@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -44,6 +45,10 @@ class FollowController extends Controller
         }
 
         $currentUser->follow($user);
+
+        // 📚 AKTİVİTE KAYDET
+        // Takip etme aksiyonunu feed'de göster
+        Activity::logFollowed($currentUser, $user);
 
         Log::info('follow_user', [
             'follower_id' => $currentUser->id,

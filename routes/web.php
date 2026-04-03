@@ -14,6 +14,7 @@ use App\Http\Controllers\BulkActionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\FollowController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\ActivityController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -37,6 +38,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/privacy/archive/toggle', [PrivacyController::class, 'toggleArchive'])->name('privacy.archive.toggle');
     Route::post('/privacy/collection/{collection}/toggle', [PrivacyController::class, 'toggleCollection'])->name('privacy.collection.toggle');
     Route::post('/privacy/regenerate-token', [PrivacyController::class, 'regenerateToken'])->name('privacy.regenerate-token');
+
+    // 📚 AKTİVİTE FEED
+    // Takip edilen kullanıcıların aktivitelerini gösterir
+    Route::get('/feed', [ActivityController::class, 'index'])->name('feed');
 });
 
 // Toplu İçe Aktarma Sayfası
@@ -125,7 +130,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/movies/{movie}/comments', [CommentController::class, 'store'])->name('movies.comments.store');
     Route::put('/movies/{movie}/comments/{comment}', [CommentController::class, 'update'])->name('movies.comments.update');
     Route::delete('/movies/{movie}/comments/{comment}', [CommentController::class, 'destroy'])->name('movies.comments.destroy');
-    
+
     // Reaction rotaları (AJAX - JSON response)
     Route::post('/comments/{comment}/like', [\App\Http\Controllers\ReactionController::class, 'like'])
         ->middleware('throttle:60,1') // 60 istek/dakika

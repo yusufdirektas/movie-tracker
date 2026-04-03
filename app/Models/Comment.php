@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Observers\CommentObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +32,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * Veritabanından çekerken otomatik tip dönüşümü.
  * has_spoiler: 0/1 → false/true
  */
+#[ObservedBy([CommentObserver::class])]
 class Comment extends Model
 {
     protected $fillable = [

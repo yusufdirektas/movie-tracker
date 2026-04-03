@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\Activity;
 use App\Models\Movie;
 use Illuminate\Support\Facades\Cache;
 
@@ -21,37 +22,58 @@ use Illuminate\Support\Facades\Cache;
  *
  * ÖRNEK SENARYO:
  * Kullanıcı film ekledi → MovieController::store() çalıştı → Movie::create() oldu
- * → Observer otomatik tetiklendi → Cache temizlendi
- * → Kullanıcı istatistik sayfasına gitti → Güncel veri gösterildi
+ * → Observer otomatik tetiklendi → Cache temizlendi + Aktivite kaydedildi
+ * → Takipçiler feed'de "Ahmet yeni film ekledi" gördü
  */
 class MovieObserver
 {
     /**
-     * Film oluşturulduğunda cache'i temizle
+     * Film oluşturulduğunda
      *
-     * 📚 Neden temizliyoruz?
-     * Yeni film eklendi = İstatistikler değişti (film sayısı, toplam süre vs.)
-     * Eski cache'deki veriler artık yanlış, temizlememiz lazım.
+     * @KAVRAM: isDirty() vs wasChanged()
+     * - isDirty('field'): Model kaydedilmeden ÖNCE değişti mi? (before save)
+     * - wasChanged('field'): Model kaydedildikten SONRA değişti mi? (after save)
+     *
+     * created() içinde wasChanged kullanmıyoruz çünkü
+     * yeni kayıt = tüm alanlar "yeni"
      */
     public function created(Movie $movie): void
     {
         $this->clearUserCache($movie->user_id);
+
+        // Aktivite kaydet: Watchlist'e mi eklendi, yoksa izlendi olarak mı?
+        if ($movie->is_watched) {
+            Activity::logWatched($movie->user, $movie);
+        } else {
+            Activity::logAddedToWatchlist($movie->user, $movie);
+        }
     }
 
     /**
-     * Film güncellendiğinde cache'i temizle
+     * Film güncellendiğinde
      *
-     * 📚 Neden temizliyoruz?
-     * Film izlendi olarak işaretlendi veya puan verildi
-     * = İstatistikler değişti
+     * @KAVRAM: wasChanged() kullanımı
+     * - Sadece gerçekten değişen alanlar için aktivite oluştur
+     * - Gereksiz aktivite spam'ini önler
      */
     public function updated(Movie $movie): void
     {
         $this->clearUserCache($movie->user_id);
+
+        // İzlendi durumu değiştiyse ve artık izlendi ise
+        if ($movie->wasChanged('is_watched') && $movie->is_watched) {
+            Activity::logWatched($movie->user, $movie);
+        }
+
+        // Puan değiştiyse ve puan verildiyse
+        if ($movie->wasChanged('personal_rating') && $movie->personal_rating !== null) {
+            Activity::logRated($movie->user, $movie, $movie->personal_rating);
+        }
     }
 
     /**
      * Film silindiğinde cache'i temizle
+     * (Silinen film için aktivite oluşturmuyoruz - anlamsız olur)
      */
     public function deleted(Movie $movie): void
     {
