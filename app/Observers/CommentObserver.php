@@ -5,11 +5,12 @@ namespace App\Observers;
 use App\Models\Activity;
 use App\Models\Comment;
 use App\Models\Movie;
+use App\Services\BadgeService;
 
 /**
  * 📚 YORUM OBSERVER
  *
- * Yorum yapıldığında aktivite oluşturur.
+ * Yorum yapıldığında aktivite oluşturur ve rozetleri kontrol eder.
  *
  * @KAVRAM: Observer Registration
  * - Bu observer'ı Comment modeline bağlamak için:
@@ -19,7 +20,7 @@ use App\Models\Movie;
 class CommentObserver
 {
     /**
-     * Yorum oluşturulduğunda aktivite kaydet
+     * Yorum oluşturulduğunda aktivite kaydet ve rozet kontrol et
      */
     public function created(Comment $comment): void
     {
@@ -32,5 +33,10 @@ class CommentObserver
                 Activity::logCommented($comment->user, $comment, $movie);
             }
         }
+
+        // 📚 ROZET KONTROLÜ
+        // Yorum sayısına bağlı rozetleri kontrol et (critic)
+        // app() ile resolve etmek constructor injection'dan daha güvenilir test ortamında
+        app(BadgeService::class)->checkAndAwardBadges($comment->user);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Activity;
 use App\Models\Movie;
+use App\Services\BadgeService;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -22,11 +23,15 @@ use Illuminate\Support\Facades\Cache;
  *
  * ÖRNEK SENARYO:
  * Kullanıcı film ekledi → MovieController::store() çalıştı → Movie::create() oldu
- * → Observer otomatik tetiklendi → Cache temizlendi + Aktivite kaydedildi
+ * → Observer otomatik tetiklendi → Cache temizlendi + Aktivite kaydedildi + Rozetler kontrol edildi
  * → Takipçiler feed'de "Ahmet yeni film ekledi" gördü
  */
 class MovieObserver
 {
+    public function __construct(
+        private BadgeService $badgeService
+    ) {}
+
     /**
      * Film oluşturulduğunda
      *
@@ -47,6 +52,10 @@ class MovieObserver
         } else {
             Activity::logAddedToWatchlist($movie->user, $movie);
         }
+
+        // 📚 ROZET KONTROLÜ
+        // Film eklendiğinde rozetleri kontrol et (first-movie, watch-count vs.)
+        $this->badgeService->checkAndAwardBadges($movie->user);
     }
 
     /**
@@ -69,6 +78,10 @@ class MovieObserver
         if ($movie->wasChanged('personal_rating') && $movie->personal_rating !== null) {
             Activity::logRated($movie->user, $movie, $movie->personal_rating);
         }
+
+        // 📚 ROZET KONTROLÜ
+        // Film güncellendi, rozetleri kontrol et (izleme sayısı, puan sayısı vs.)
+        $this->badgeService->checkAndAwardBadges($movie->user);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -163,6 +164,52 @@ class User extends Authenticatable
     public function activities(): HasMany
     {
         return $this->hasMany(Activity::class);
+    }
+
+    // =========================================================================
+    // 📚 ROZET SİSTEMİ İLİŞKİLERİ (Badge System)
+    // =========================================================================
+
+    /**
+     * Kullanıcının kazandığı rozetler
+     *
+     * @KAVRAM: BelongsToMany İlişki
+     * - Many-to-Many ilişki için kullanılır
+     * - Pivot tablo (user_badges) üzerinden bağlanır
+     *
+     * withPivot('earned_at'): Rozet kazanma tarihini de çeker
+     *
+     * Örnek:
+     *   $user->badges // Tüm rozetler
+     *   $user->badges->first()->pivot->earned_at // İlk rozet ne zaman kazanıldı
+     */
+    public function badges(): BelongsToMany
+    {
+        return $this->belongsToMany(Badge::class, 'user_badges', 'user_id', 'badge_id')
+            ->withPivot('earned_at');
+    }
+
+    /**
+     * Kullanıcı bu rozete sahip mi?
+     */
+    public function hasBadge(string $badgeId): bool
+    {
+        return $this->badges()->where('badge_id', $badgeId)->exists();
+    }
+
+    /**
+     * Kullanıcıya rozet ver
+     *
+     * @return bool Rozet verildi mi (zaten varsa false)
+     */
+    public function awardBadge(string $badgeId): bool
+    {
+        if ($this->hasBadge($badgeId)) {
+            return false;
+        }
+
+        $this->badges()->attach($badgeId, ['earned_at' => now()]);
+        return true;
     }
 
     /**

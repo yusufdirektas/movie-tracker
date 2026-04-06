@@ -29,4 +29,26 @@ class MovieFactory extends Factory
             'watched_at' => now(),
         ];
     }
+
+    /**
+     * Film izlendi olarak işaretle
+     */
+    public function watched(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_watched' => true,
+            'watched_at' => now(),
+        ]);
+    }
+
+    /**
+     * Film izlenmedi (watchlist'te) olarak işaretle
+     */
+    public function unwatched(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_watched' => false,
+            'watched_at' => null,
+        ]);
+    }
 }

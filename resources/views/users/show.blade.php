@@ -116,6 +116,38 @@
         </div>
     </div>
 
+    {{-- ROZETLER --}}
+    @if($earnedBadges->isNotEmpty())
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-trophy text-amber-400"></i>
+                    Rozetler
+                </h2>
+                @if($isOwnProfile)
+                    <a href="{{ route('badges.index') }}"
+                       class="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+                        Tümünü Gör <i class="fas fa-chevron-right ml-1"></i>
+                    </a>
+                @endif
+            </div>
+
+            <div class="bg-gradient-to-br from-slate-900/80 to-slate-800/50 border border-slate-700/50 rounded-2xl p-4">
+                <div class="flex flex-wrap justify-center md:justify-start gap-2">
+                    @foreach($earnedBadges->take(8) as $badge)
+                        <x-badge :badge="$badge" size="sm" :earned="true" />
+                    @endforeach
+
+                    @if($earnedBadges->count() > 8)
+                        <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-sm font-bold">
+                            +{{ $earnedBadges->count() - 8 }}
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- VİTRİN FİLMLERİ --}}
     @if($showcaseMovies->isNotEmpty())
         <div class="mb-8">

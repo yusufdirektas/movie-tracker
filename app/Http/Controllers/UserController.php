@@ -178,9 +178,13 @@ class UserController extends Controller
         $isFollowing = $currentUser ? $currentUser->isFollowing($user) : false;
         $isOwnProfile = $currentUser && $currentUser->id === $user->id;
 
+        // Kazanılan rozetler
+        $earnedBadges = $user->badges()->orderBy('user_badges.earned_at', 'desc')->get();
+
         return view('users.show', compact(
             'user', 'stats', 'recentMovies', 'favoriteMovies', 'watchlistMovies',
-            'showcaseMovies', 'followingUsers', 'recentActivities', 'isFollowing', 'isOwnProfile'
+            'showcaseMovies', 'followingUsers', 'recentActivities', 'isFollowing', 'isOwnProfile',
+            'earnedBadges'
         ));
     }
 

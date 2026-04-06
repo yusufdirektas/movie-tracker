@@ -132,6 +132,12 @@
                                 Aktivite Feed
                             </a>
 
+                            <a href="{{ route('badges.index') }}"
+                                class="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors {{ request()->routeIs('badges.*') ? 'bg-slate-700 text-white' : '' }}">
+                                <i class="fas fa-trophy text-amber-400"></i>
+                                Rozetlerim
+                            </a>
+
                             <a href="{{ route('users.index') }}"
                                 class="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors {{ request()->routeIs('users.index') ? 'bg-slate-700 text-white' : '' }}">
                                 <i class="fas fa-search text-pink-400"></i>

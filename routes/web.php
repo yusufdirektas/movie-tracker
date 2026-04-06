@@ -42,6 +42,11 @@ Route::middleware('auth')->group(function () {
     // 📚 AKTİVİTE FEED
     // Takip edilen kullanıcıların aktivitelerini gösterir
     Route::get('/feed', [ActivityController::class, 'index'])->name('feed');
+
+    // 📚 ROZET SİSTEMİ
+    // Kullanıcının rozetlerini ve ilerleme durumunu gösterir
+    Route::get('/badges', [\App\Http\Controllers\BadgeController::class, 'index'])->name('badges.index');
+    Route::get('/badges/{badge}', [\App\Http\Controllers\BadgeController::class, 'show'])->name('badges.show');
 });
 
 // Toplu İçe Aktarma Sayfası

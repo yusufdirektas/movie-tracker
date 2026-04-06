@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Activity;
 use App\Models\User;
+use App\Services\BadgeService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -22,6 +23,10 @@ use Illuminate\Support\Facades\Log;
  */
 class FollowController extends Controller
 {
+    public function __construct(
+        private BadgeService $badgeService
+    ) {}
+
     /**
      * Bir kullanıcıyı takip et
      *
@@ -49,6 +54,10 @@ class FollowController extends Controller
         // 📚 AKTİVİTE KAYDET
         // Takip etme aksiyonunu feed'de göster
         Activity::logFollowed($currentUser, $user);
+
+        // 📚 ROZET KONTROLÜ
+        // Takip sayısına bağlı rozetleri kontrol et (social-butterfly)
+        $this->badgeService->checkAndAwardBadges($currentUser);
 
         Log::info('follow_user', [
             'follower_id' => $currentUser->id,
