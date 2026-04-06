@@ -196,4 +196,8 @@ Route::middleware('auth')->group(function () {
     // Takipçiler / Takip Edilenler Listesi
     Route::get('/users/{user}/followers', [FollowController::class, 'followers'])->name('users.followers');
     Route::get('/users/{user}/following', [FollowController::class, 'following'])->name('users.following');
+
+    // 📚 KARŞILAŞTIRMA
+    // İki kullanıcının film listelerini karşılaştır
+    Route::get('/users/{user}/compare', [UserController::class, 'compare'])->name('users.compare');
 });

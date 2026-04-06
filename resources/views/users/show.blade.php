@@ -105,6 +105,14 @@
                                 <span><i class="fas fa-user-plus mr-2"></i> Takip Et</span>
                             </template>
                         </button>
+
+                        {{-- Karşılaştır Butonu --}}
+                        <a href="{{ route('users.compare', $user) }}"
+                           class="px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-800/50 text-slate-400 hover:bg-purple-500/20 hover:text-purple-400 border border-slate-700 hover:border-purple-500/50 transition-all"
+                           title="Film listelerinizi karşılaştır">
+                            <i class="fas fa-code-compare"></i>
+                            <span class="hidden sm:inline ml-2">Karşılaştır</span>
+                        </a>
                     </div>
                 @else
                     <a href="{{ route('profile.edit') }}"

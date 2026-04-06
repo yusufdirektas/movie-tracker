@@ -223,4 +223,141 @@ class UserController extends Controller
 
         return view('users.feed', compact('activities', 'period'));
     }
+
+    /**
+     * İki kullanıcının film listelerini karşılaştır
+     *
+     * GET /users/{user}/compare
+     *
+     * 📚 KÜME TEORİSİ İLE KARŞILAŞTIRMA
+     *
+     * Bu metod matematik küme işlemlerini kullanır:
+     * - A ∩ B (Kesişim): Ortak filmler → intersect()
+     * - A - B (Fark): Sadece A'da olanlar → diff()
+     * - B - A (Fark): Sadece B'de olanlar → diff()
+     *
+     * Jaccard Benzerliği = |A ∩ B| / |A ∪ B|
+     * A ∪ B = A + B - (A ∩ B)
+     *
+     * Örnek:
+     * A = {Film1, Film2, Film3}
+     * B = {Film2, Film3, Film4}
+     * Kesişim = {Film2, Film3} → 2 film
+     * Birleşim = {Film1, Film2, Film3, Film4} → 4 film
+     * Benzerlik = 2/4 = %50
+     */
+    public function compare(User $user)
+    {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        // Kendini karşılaştıramazsın
+        if ($currentUser->id === $user->id) {
+            return redirect()->route('users.show', $user)
+                ->with('info', 'Kendinizle karşılaştırma yapamazsınız.');
+        }
+
+        // Gizli profil kontrolü
+        if (!$user->is_public && !$currentUser->isFollowing($user)) {
+            abort(403, 'Bu kullanıcının profili gizli.');
+        }
+
+        /**
+         * 📚 PERFORMANS: tmdb_id ile karşılaştırma
+         *
+         * Neden tmdb_id?
+         * - İki farklı kullanıcı aynı filmi eklediğinde farklı movie.id'leri olur
+         * - Ama aynı tmdb_id'ye sahiptirler
+         * - Bu yüzden tmdb_id ile karşılaştırıyoruz
+         *
+         * pluck('tmdb_id'): Sadece tmdb_id'leri çek (bellek tasarrufu)
+         */
+        $myMovieIds = $currentUser->movies()
+            ->where('is_watched', true)
+            ->whereNotNull('tmdb_id')
+            ->pluck('tmdb_id');
+
+        $theirMovieIds = $user->movies()
+            ->where('is_watched', true)
+            ->whereNotNull('tmdb_id')
+            ->pluck('tmdb_id');
+
+        /**
+         * 📚 COLLECTION METHODS
+         *
+         * intersect(): İki koleksiyonun kesişimi (ortak elemanlar)
+         * diff(): İlk koleksiyonda olup ikincisinde olmayan elemanlar
+         * values(): Anahtarları sıfırla (intersect/diff key'leri korur)
+         */
+        $commonIds = $myMovieIds->intersect($theirMovieIds)->values();
+        $onlyMineIds = $myMovieIds->diff($theirMovieIds)->values();
+        $onlyTheirsIds = $theirMovieIds->diff($myMovieIds)->values();
+
+        /**
+         * 📚 JACCARD SİMİLARİTY (Benzerlik Katsayısı)
+         *
+         * Jaccard Index = |A ∩ B| / |A ∪ B|
+         *
+         * |A ∪ B| = |A| + |B| - |A ∩ B|
+         *
+         * Değer aralığı: 0 (hiç benzerlik yok) → 1 (tamamen aynı)
+         */
+        $unionCount = $myMovieIds->count() + $theirMovieIds->count() - $commonIds->count();
+        $similarity = $unionCount > 0
+            ? round(($commonIds->count() / $unionCount) * 100)
+            : 0;
+
+        /**
+         * 📚 whereIn() ile toplu sorgulama
+         *
+         * Her film için ayrı sorgu yapmak yerine
+         * WHERE tmdb_id IN (1, 2, 3, 4, 5) ile tek sorguda çekiyoruz
+         *
+         * N+1 problemi yerine 3 sorgu: ortak + sadece ben + sadece o
+         */
+        $commonMovies = $commonIds->isNotEmpty()
+            ? $currentUser->movies()
+                ->where('is_watched', true)
+                ->whereIn('tmdb_id', $commonIds)
+                ->orderByDesc('watched_at')
+                ->take(20)
+                ->get()
+            : collect();
+
+        $onlyMineMovies = $onlyMineIds->isNotEmpty()
+            ? $currentUser->movies()
+                ->where('is_watched', true)
+                ->whereIn('tmdb_id', $onlyMineIds)
+                ->orderByDesc('watched_at')
+                ->take(20)
+                ->get()
+            : collect();
+
+        $onlyTheirsMovies = $onlyTheirsIds->isNotEmpty()
+            ? $user->movies()
+                ->where('is_watched', true)
+                ->whereIn('tmdb_id', $onlyTheirsIds)
+                ->orderByDesc('watched_at')
+                ->take(20)
+                ->get()
+            : collect();
+
+        // İstatistikler
+        $stats = [
+            'common_count' => $commonIds->count(),
+            'only_mine_count' => $onlyMineIds->count(),
+            'only_theirs_count' => $onlyTheirsIds->count(),
+            'my_total' => $myMovieIds->count(),
+            'their_total' => $theirMovieIds->count(),
+            'similarity' => $similarity,
+        ];
+
+        return view('users.compare', compact(
+            'user',
+            'commonMovies',
+            'onlyMineMovies',
+            'onlyTheirsMovies',
+            'stats'
+        ));
+    }
 }
