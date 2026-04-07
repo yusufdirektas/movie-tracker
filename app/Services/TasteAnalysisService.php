@@ -260,13 +260,39 @@ class TasteAnalysisService
             $topCommon[$actor] = $countA + $castB[$actor];
         }
         arsort($topCommon);
+        
+        $topActorsSlice = array_slice($topCommon, 0, 8, true);
+        $enrichedTopActors = [];
+        
+        if (!empty($topActorsSlice)) {
+            $tmdbService = app(\App\Services\TmdbService::class);
+            foreach ($topActorsSlice as $actor => $totalFilms) {
+                $cacheKey = 'actor_image_' . md5($actor);
+                $profilePath = \Illuminate\Support\Facades\Cache::rememberForever($cacheKey, function() use ($tmdbService, $actor) {
+                    $response = $tmdbService->searchPerson($actor);
+                    if ($response && $response->successful()) {
+                        $results = $response->json('results');
+                        if (!empty($results) && !empty($results[0]['profile_path'])) {
+                            return $results[0]['profile_path'];
+                        }
+                    }
+                    return null;
+                });
+                
+                $enrichedTopActors[] = [
+                    'name' => $actor,
+                    'total_films' => $totalFilms,
+                    'profile_path' => $profilePath
+                ];
+            }
+        }
 
         return [
             'score'         => min($score, 100),
             'common_count'  => count($commonCast),
             'my_unique'     => count($castA),
             'their_unique'  => count($castB),
-            'top_common'    => array_slice($topCommon, 0, 6, true),
+            'top_common'    => $enrichedTopActors,
             'my_top'        => array_slice($castA, 0, 5, true),
             'their_top'     => array_slice($castB, 0, 5, true),
         ];

@@ -262,15 +262,22 @@
                     </div>
 
                     @if(!empty($analysis['dimensions']['cast']['top_common']))
-                        <div class="grid grid-cols-2 gap-2 flex-1">
-                            @foreach($analysis['dimensions']['cast']['top_common'] as $actor => $totalFilms)
-                                <div class="flex items-center gap-2 bg-slate-800/50 rounded-xl px-3 py-2.5">
-                                    <div class="bg-pink-500/20 w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0">
-                                        <i class="fas fa-user-tie text-pink-400 text-xs"></i>
+                        <div class="grid grid-cols-2 gap-3 flex-1">
+                            @foreach($analysis['dimensions']['cast']['top_common'] as $actor)
+                                <div class="flex items-center gap-3 bg-slate-800/80 hover:bg-slate-700/80 transition-colors rounded-xl p-2 border border-slate-700/50 relative overflow-hidden group">
+                                    <div class="w-12 h-12 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
+                                        @if(!empty($actor['profile_path']))
+                                            <img src="https://image.tmdb.org/t/p/w185{{ $actor['profile_path'] }}" 
+                                                 alt="{{ $actor['name'] }}" 
+                                                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                        @else
+                                            <i class="fas fa-user-tie text-slate-700 text-xl"></i>
+                                        @endif
+                                        <div class="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-lg"></div>
                                     </div>
-                                    <div class="min-w-0">
-                                        <span class="text-sm text-white font-medium block truncate">{{ $actor }}</span>
-                                        <span class="text-xs text-slate-500">{{ $totalFilms }} film</span>
+                                    <div class="min-w-0 pr-1">
+                                        <span class="text-xs text-slate-200 font-bold block truncate" title="{{ $actor['name'] }}">{{ $actor['name'] }}</span>
+                                        <span class="text-[10px] text-pink-400 font-medium">{{ $actor['total_films'] }} ortak film</span>
                                     </div>
                                 </div>
                             @endforeach
