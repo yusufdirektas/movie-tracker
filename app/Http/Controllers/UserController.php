@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\TasteAnalysisService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,6 +18,15 @@ use Illuminate\Support\Facades\Auth;
  */
 class UserController extends Controller
 {
+    /**
+     * 📚 CONSTRUCTOR INJECTION (Yapıcı Metod Enjeksiyonu)
+     *
+     * Laravel'in Service Container'ı TasteAnalysisService'i otomatik oluşturur.
+     * Controller'da sadece $this->tasteAnalysis->analyze() diye çağırırız.
+     */
+    public function __construct(
+        protected TasteAnalysisService $tasteAnalysis
+    ) {}
     /**
      * Kullanıcı arama sayfası / keşfet
      *
@@ -225,26 +235,23 @@ class UserController extends Controller
     }
 
     /**
-     * İki kullanıcının film listelerini karşılaştır
+     * İki kullanıcının film zevklerini çok boyutlu analiz et
      *
      * GET /users/{user}/compare
      *
-     * 📚 KÜME TEORİSİ İLE KARŞILAŞTIRMA
+     * 📚 SPOTIFY WRAPPED TARZI UYUM ANALİZİ
      *
-     * Bu metod matematik küme işlemlerini kullanır:
-     * - A ∩ B (Kesişim): Ortak filmler → intersect()
-     * - A - B (Fark): Sadece A'da olanlar → diff()
-     * - B - A (Fark): Sadece B'de olanlar → diff()
+     * Eski sistem: Sadece ortak film sayısı → basit Jaccard
+     * Yeni sistem: 6 boyutlu analiz → ağırlıklı skor
      *
-     * Jaccard Benzerliği = |A ∩ B| / |A ∪ B|
-     * A ∪ B = A + B - (A ∩ B)
+     * 1. Ortak filmler    (%25)  → Jaccard Similarity
+     * 2. Tür uyumu        (%25)  → Cosine Similarity
+     * 3. Yönetmen uyumu   (%15)  → Jaccard Similarity
+     * 4. Oyuncu uyumu     (%15)  → Jaccard Similarity
+     * 5. Dönem uyumu      (%10)  → Cosine Similarity
+     * 6. Puan eğilimi     (%10)  → Fark bazlı
      *
-     * Örnek:
-     * A = {Film1, Film2, Film3}
-     * B = {Film2, Film3, Film4}
-     * Kesişim = {Film2, Film3} → 2 film
-     * Birleşim = {Film1, Film2, Film3, Film4} → 4 film
-     * Benzerlik = 2/4 = %50
+     * Tüm hesaplama TasteAnalysisService'e devredilir (Single Responsibility).
      */
     public function compare(User $user)
     {
@@ -263,93 +270,53 @@ class UserController extends Controller
         }
 
         /**
-         * 📚 PERFORMANS: tmdb_id ile karşılaştırma
+         * 📚 SERVİS KATMANI KULLANIMI
          *
-         * Neden tmdb_id?
-         * - İki farklı kullanıcı aynı filmi eklediğinde farklı movie.id'leri olur
-         * - Ama aynı tmdb_id'ye sahiptirler
-         * - Bu yüzden tmdb_id ile karşılaştırıyoruz
-         *
-         * pluck('tmdb_id'): Sadece tmdb_id'leri çek (bellek tasarrufu)
+         * Controller'da iş mantığı OLMAMALI. Sadece:
+         * 1. Yetkilendirme kontrolü ✅ (yukarıda yapıldı)
+         * 2. Servisi çağır ✅ (aşağıda)
+         * 3. View'a gönder ✅ (en altta)
          */
-        $myMovieIds = $currentUser->movies()
-            ->where('is_watched', true)
-            ->whereNotNull('tmdb_id')
-            ->pluck('tmdb_id');
+        $analysis = $this->tasteAnalysis->analyze($currentUser, $user);
 
-        $theirMovieIds = $user->movies()
-            ->where('is_watched', true)
-            ->whereNotNull('tmdb_id')
-            ->pluck('tmdb_id');
+        // Film listelerini göstermek için asıl movie nesnelerini çek
+        $movieDimension = $analysis['dimensions']['movies'];
 
-        /**
-         * 📚 COLLECTION METHODS
-         *
-         * intersect(): İki koleksiyonun kesişimi (ortak elemanlar)
-         * diff(): İlk koleksiyonda olup ikincisinde olmayan elemanlar
-         * values(): Anahtarları sıfırla (intersect/diff key'leri korur)
-         */
-        $commonIds = $myMovieIds->intersect($theirMovieIds)->values();
-        $onlyMineIds = $myMovieIds->diff($theirMovieIds)->values();
-        $onlyTheirsIds = $theirMovieIds->diff($myMovieIds)->values();
-
-        /**
-         * 📚 JACCARD SİMİLARİTY (Benzerlik Katsayısı)
-         *
-         * Jaccard Index = |A ∩ B| / |A ∪ B|
-         *
-         * |A ∪ B| = |A| + |B| - |A ∩ B|
-         *
-         * Değer aralığı: 0 (hiç benzerlik yok) → 1 (tamamen aynı)
-         */
-        $unionCount = $myMovieIds->count() + $theirMovieIds->count() - $commonIds->count();
-        $similarity = $unionCount > 0
-            ? round(($commonIds->count() / $unionCount) * 100)
-            : 0;
-
-        /**
-         * 📚 whereIn() ile toplu sorgulama
-         *
-         * Her film için ayrı sorgu yapmak yerine
-         * WHERE tmdb_id IN (1, 2, 3, 4, 5) ile tek sorguda çekiyoruz
-         *
-         * N+1 problemi yerine 3 sorgu: ortak + sadece ben + sadece o
-         */
-        $commonMovies = $commonIds->isNotEmpty()
+        $commonMovies = $movieDimension['common_tmdb_ids']->isNotEmpty()
             ? $currentUser->movies()
                 ->where('is_watched', true)
-                ->whereIn('tmdb_id', $commonIds)
+                ->whereIn('tmdb_id', $movieDimension['common_tmdb_ids'])
                 ->orderByDesc('watched_at')
                 ->take(20)
                 ->get()
             : collect();
 
-        $onlyMineMovies = $onlyMineIds->isNotEmpty()
+        $onlyMineMovies = $movieDimension['only_a_tmdb_ids']->isNotEmpty()
             ? $currentUser->movies()
                 ->where('is_watched', true)
-                ->whereIn('tmdb_id', $onlyMineIds)
+                ->whereIn('tmdb_id', $movieDimension['only_a_tmdb_ids'])
                 ->orderByDesc('watched_at')
                 ->take(20)
                 ->get()
             : collect();
 
-        $onlyTheirsMovies = $onlyTheirsIds->isNotEmpty()
+        $onlyTheirsMovies = $movieDimension['only_b_tmdb_ids']->isNotEmpty()
             ? $user->movies()
                 ->where('is_watched', true)
-                ->whereIn('tmdb_id', $onlyTheirsIds)
+                ->whereIn('tmdb_id', $movieDimension['only_b_tmdb_ids'])
                 ->orderByDesc('watched_at')
                 ->take(20)
                 ->get()
             : collect();
 
-        // İstatistikler
+        // Uyumluluk için eski stats yapısını da koru (mevcut view uyumluluğu)
         $stats = [
-            'common_count' => $commonIds->count(),
-            'only_mine_count' => $onlyMineIds->count(),
-            'only_theirs_count' => $onlyTheirsIds->count(),
-            'my_total' => $myMovieIds->count(),
-            'their_total' => $theirMovieIds->count(),
-            'similarity' => $similarity,
+            'common_count'     => $movieDimension['common_count'],
+            'only_mine_count'  => $movieDimension['only_a_count'],
+            'only_theirs_count' => $movieDimension['only_b_count'],
+            'my_total'         => $analysis['my_total'],
+            'their_total'      => $analysis['their_total'],
+            'similarity'       => $analysis['overall_score'],
         ];
 
         return view('users.compare', compact(
@@ -357,7 +324,8 @@ class UserController extends Controller
             'commonMovies',
             'onlyMineMovies',
             'onlyTheirsMovies',
-            'stats'
+            'stats',
+            'analysis'
         ));
     }
 }

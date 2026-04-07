@@ -9,32 +9,34 @@ use Illuminate\Support\Facades\Log;
 
 class FetchMissingMovieData extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'movies:fetch-missing-data';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Eksik tür (genres) veya yönetmen (director) bilgisi olan filmleri TMDB\'den günceller.';
+    protected $description = 'Eksik tür (genres), yönetmen (director) veya oyuncu (cast) bilgisi olan filmleri TMDB\'den günceller.';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(TmdbService $tmdbService)
     {
         $this->info('Eksik film verilerini güncelleme işlemi başlıyor...');
 
-        // Türleri (genres) veya yönetmeni boş olan tüm filmleri getir
-        $movies = Movie::whereNull('genres')
-            ->orWhereNull('director')
-            ->orWhere('director', 'Bilinmiyor')
-            ->get();
+        /**
+         * 📚 SADECE CAST'İ OLMAYAN FİLMLERİ ÇEK
+         *
+         * Dün komut searchMovie() + getMovieDetails() yapıyordu.
+         * AMA filmlerimizin zaten tmdb_id'si var!
+         * Gereksiz arama = gereksiz API çağrısı + hata riski.
+         *
+         * Yeni yaklaşım: tmdb_id'si olan ama cast'i olmayan filmleri
+         * doğrudan getMovieDetails(tmdb_id) ile güncelle.
+         */
+        $movies = Movie::withoutEvents(function () {
+            return Movie::whereNotNull('tmdb_id')
+                ->where(function ($query) {
+                    $query->whereNull('cast')
+                        ->orWhereNull('genres')
+                        ->orWhereNull('director')
+                        ->orWhere('director', 'Bilinmiyor');
+                })
+                ->get(['id', 'tmdb_id', 'title', 'media_type', 'genres', 'director', 'cast', 'poster_path']);
+        });
 
         if ($movies->isEmpty()) {
             $this->info('Güncellenecek eksik veri kalmadı. Her şey tam!');
@@ -45,72 +47,87 @@ class FetchMissingMovieData extends Command
         $bar = $this->output->createProgressBar($movies->count());
         $bar->start();
 
+        $updated = 0;
+        $failed = 0;
+
         foreach ($movies as $movie) {
-            // TMDB araması yap
-            $response = $tmdbService->searchMovie($movie->title, substr($movie->release_date, 0, 4));
-            
-            if ($response && $response->successful() && !empty($response->json()['results'])) {
-                $tmdbMovie = $response->json()['results'][0]; // İlk sonuç
-                $tmdbId = $tmdbMovie['id'];
+            try {
+                /**
+                 * 📚 DOĞRUDAN tmdb_id İLE DETAY ÇEK
+                 *
+                 * Eski yöntem: searchMovie(title) → sonuç al → getMovieDetails(id)
+                 *   Problem: 2 API çağrısı, arama yanlış eşleşebilir
+                 *
+                 * Yeni yöntem: getMovieDetails(tmdb_id) → 1 API çağrısı, kesin sonuç
+                 *   tmdb_id zaten veritabanında kayıtlı, aramanın anlamı yok!
+                 */
+                $detailsResponse = $tmdbService->getMovieDetails($movie->tmdb_id);
 
-                // 2. Adım: Film Detaylarını Çek (Tür İsimleri ve Yönetmen için)
-                $detailsResponse = $tmdbService->getMovieDetails($tmdbId);
-                
-                if ($detailsResponse && $detailsResponse->successful()) {
-                    $details = $detailsResponse->json();
-                    
-                    // Türleri ayıkla
-                    $genres = [];
-                    if (isset($details['genres']) && is_array($details['genres'])) {
-                        foreach ($details['genres'] as $genre) {
-                            $genres[] = $genre['name'];
-                        }
-                    }
-
-                    // Yönetmeni ayıkla
-                    $director = 'Bilinmiyor';
-                    if (isset($details['credits']['crew']) && is_array($details['credits']['crew'])) {
-                        foreach ($details['credits']['crew'] as $crewMember) {
-                            if ($crewMember['job'] === 'Director') {
-                                $director = $crewMember['name'];
-                                break;
-                            }
-                        }
-                    }
-
-                    // Güncelle
-                    try {
-                        $movie->update([
-                            'tmdb_id' => $tmdbId,
-                            'genres' => !empty($genres) ? $genres : null,
-                            'director' => $director,
-                            'poster_path' => $details['poster_path'] ?? $movie->poster_path, // Eksikse posteri de tamamla
-                        ]);
-                    } catch (\Exception $e) {
-                        Log::warning("TMDB kaydetme hatası (Muhtemelen duplicate TMDB ID): " . $movie->title);
-                        // Eğer tmdb_id unique hatası veriyorsa sadece tür/yönetmen kaydedebiliriz:
-                        // Ancak Eloquent modelinde tmdb_id 'dirty' olarak kaldığı için önce refresh yapmalıyız.
-                        $movie->refresh();
-                        $movie->update([
-                            'genres' => !empty($genres) ? $genres : null,
-                            'director' => $director,
-                            'poster_path' => $details['poster_path'] ?? $movie->poster_path, // Eksikse posteri de tamamla
-                        ]);
-                    }
+                if (! $detailsResponse?->successful()) {
+                    $failed++;
+                    $bar->advance();
+                    usleep(300000);
+                    continue;
                 }
-            } else {
-                Log::warning("TMDB'de bulunamadı: " . $movie->title);
+
+                $details = $detailsResponse->json();
+
+                // Türleri ayıkla
+                $genres = collect($details['genres'] ?? [])->pluck('name')->toArray();
+
+                // Yönetmeni ayıkla
+                $director = collect($details['credits']['crew'] ?? [])
+                    ->firstWhere('job', 'Director')['name'] ?? 'Bilinmiyor';
+
+                // Oyuncu kadrosunu ayıkla (ilk 5 baş rol)
+                $castNames = collect($details['credits']['cast'] ?? [])
+                    ->take(5)
+                    ->pluck('name')
+                    ->values()
+                    ->toArray();
+
+                // Güncelle (sadece boş alanları doldur)
+                $updateData = [];
+
+                if (empty($movie->genres)) {
+                    $updateData['genres'] = !empty($genres) ? $genres : null;
+                }
+                if (empty($movie->director) || $movie->director === 'Bilinmiyor') {
+                    $updateData['director'] = $director;
+                }
+                if (empty($movie->cast)) {
+                    $updateData['cast'] = !empty($castNames) ? $castNames : null;
+                }
+                if (empty($movie->poster_path) && !empty($details['poster_path'])) {
+                    $updateData['poster_path'] = $details['poster_path'];
+                }
+
+                if (!empty($updateData)) {
+                    // JSON alanlarını encode et (Query builder'da Eloquent cast'ler çalışmaz)
+                    if (isset($updateData['cast']) && is_array($updateData['cast'])) {
+                        $updateData['cast'] = json_encode($updateData['cast']);
+                    }
+                    if (isset($updateData['genres']) && is_array($updateData['genres'])) {
+                        $updateData['genres'] = json_encode($updateData['genres']);
+                    }
+                    // Query builder kullan (model events ve lazy loading sorununu bypass eder)
+                    Movie::where('id', $movie->id)->update($updateData);
+                    $updated++;
+                }
+            } catch (\Exception $e) {
+                $failed++;
+                Log::warning("TMDB güncelleme hatası [{$movie->tmdb_id}]: " . $e->getMessage());
             }
 
             $bar->advance();
-            
-            // TMDB API limitlerine takılmamak için (saniyede ~40 limitine karşı küçük bir bekleme)
-            usleep(200000); // 0.2 saniye
+
+            // TMDB API rate limit: ~40 req/s → 250ms bekleme güvenli
+            usleep(250000);
         }
 
         $bar->finish();
-        
+
         $this->newLine();
-        $this->info('Güncelleme işlemi tamamlandı!');
+        $this->info("✓ Güncelleme tamamlandı! {$updated} güncellendi, {$failed} başarısız.");
     }
 }

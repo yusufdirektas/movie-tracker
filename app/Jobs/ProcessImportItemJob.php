@@ -127,13 +127,21 @@ class ProcessImportItemJob implements ShouldQueue
             $releaseDate = $detail['release_date'] ?? null;
         }
 
+        // Oyuncu kadrosunu çek (ilk 5 baş rol, billing order'a göre)
+        $castNames = collect($detail['credits']['cast'] ?? [])
+            ->take(5)
+            ->pluck('name')
+            ->values()
+            ->toArray();
+
         Movie::query()->create([
             'user_id' => $batch->user_id,
             'tmdb_id' => (string) $tmdbId,
             'media_type' => $mediaType,
             'title' => $title,
-            'director' => $director,
-            'genres' => $genres,
+            'director'   => $director,
+            'cast'       => $castNames,
+            'genres'     => $genres,
             'poster_path' => $detail['poster_path'] ?? null,
             'rating' => $detail['vote_average'] ?? null,
             'runtime' => $runtime,
