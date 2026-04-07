@@ -262,22 +262,29 @@
                     </div>
 
                     @if(!empty($analysis['dimensions']['cast']['top_common']))
-                        <div class="grid grid-cols-3 gap-4 flex-1 items-center justify-center mt-3">
+                        <div class="grid grid-cols-3 gap-2 flex-1 mt-3">
                             @foreach($analysis['dimensions']['cast']['top_common'] as $actor)
-                                <div class="flex flex-col items-center text-center group cursor-default">
-                                    <div class="w-16 h-16 mb-2 rounded-full bg-slate-900 border-2 border-slate-700/50 group-hover:border-pink-500/50 flex items-center justify-center relative overflow-hidden shadow-md transition-colors duration-300">
-                                        @if(!empty($actor['profile_path']))
-                                            <img src="https://image.tmdb.org/t/p/w185{{ $actor['profile_path'] }}" 
-                                                 alt="{{ $actor['name'] }}" 
-                                                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                                            <div class="absolute inset-0 bg-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                        @else
-                                            <i class="fas fa-user-tie text-slate-700 text-2xl"></i>
-                                        @endif
-                                    </div>
-                                    <div class="w-full">
-                                        <span class="text-xs text-slate-200 font-bold block truncate" title="{{ $actor['name'] }}">{{ $actor['name'] }}</span>
-                                        <span class="text-[10px] text-slate-500 font-medium tracking-wide mt-0.5 block">{{ $actor['total_films'] }} ortak film</span>
+                                <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default">
+                                    @if(!empty($actor['profile_path']))
+                                        <img src="https://image.tmdb.org/t/p/w185{{ $actor['profile_path'] }}" 
+                                             alt="{{ $actor['name'] }}" 
+                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                                    @else
+                                        <div class="w-full h-full flex items-center justify-center bg-slate-800">
+                                            <i class="fas fa-user-tie text-slate-600 text-3xl"></i>
+                                        </div>
+                                    @endif
+                                    
+                                    {{-- Karartma Gradienti --}}
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+                                    
+                                    {{-- Hover Tint --}}
+                                    <div class="absolute inset-0 bg-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                                    {{-- Metin Alanı --}}
+                                    <div class="absolute bottom-0 inset-x-0 p-2 text-center transform translate-y-0.5 group-hover:-translate-y-0.5 transition-transform duration-300">
+                                        <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $actor['name'] }}">{{ $actor['name'] }}</span>
+                                        <span class="text-[9px] text-pink-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $actor['total_films'] }} FILM</span>
                                     </div>
                                 </div>
                             @endforeach
