@@ -310,7 +310,7 @@
                                 !empty($analysis['dimensions']['decades']['their_decades']) ? max($analysis['dimensions']['decades']['their_decades']) : 1
                             );
                         @endphp
-                        <div class="space-y-4 flex-1">
+                        <div class="space-y-3 flex-1">
                             @foreach($allDecades as $decade)
                                 @php
                                     $myCount = $analysis['dimensions']['decades']['my_decades'][$decade] ?? 0;
@@ -318,16 +318,20 @@
                                     $myPercent = $globalMax > 0 ? round(($myCount / $globalMax) * 100) : 0;
                                     $theirPercent = $globalMax > 0 ? round(($theirCount / $globalMax) * 100) : 0;
                                 @endphp
-                                <div>
-                                    <div class="flex items-center justify-between mb-1.5 px-1">
+                                <div class="bg-slate-800/30 rounded-xl p-3 border border-slate-700/50">
+                                    <div class="flex items-center justify-between mb-2">
                                         <span class="text-xs text-slate-300 font-bold tracking-wide">{{ $decade }}</span>
-                                        <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400"><span class="text-indigo-400">{{ $myCount }}</span> / <span class="text-purple-400">{{ $theirCount }}</span></span>
+                                        <span class="text-[10px] bg-slate-900 px-2 py-0.5 rounded border border-slate-800 text-slate-400">
+                                            <span class="text-indigo-400 font-bold">{{ $myCount }}</span> <span class="mx-0.5 opacity-50">/</span> <span class="text-purple-400 font-bold">{{ $theirCount }}</span>
+                                        </span>
                                     </div>
-                                    <div class="flex flex-col gap-1">
-                                        <div class="w-full bg-slate-800 rounded-full h-[6px] overflow-hidden">
+                                    <div class="flex flex-col gap-1.5">
+                                        {{-- Senin Barın --}}
+                                        <div class="w-full bg-slate-700/50 rounded-full h-[6px] overflow-hidden relative" title="Sen: {{ $myCount }} film">
                                             <div class="bg-indigo-500 h-full rounded-full transition-all" style="width: {{ $myPercent }}%"></div>
                                         </div>
-                                        <div class="w-full bg-slate-800 rounded-full h-[6px] overflow-hidden">
+                                        {{-- Onun Barı --}}
+                                        <div class="w-full bg-slate-700/50 rounded-full h-[6px] overflow-hidden relative" title="{{ $user->name }}: {{ $theirCount }} film">
                                             <div class="bg-purple-500 h-full rounded-full transition-all" style="width: {{ $theirPercent }}%"></div>
                                         </div>
                                     </div>
