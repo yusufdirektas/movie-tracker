@@ -234,14 +234,14 @@
                             <div class="max-h-[310px] overflow-y-auto pr-1 pb-1 custom-scrollbar">
                                 <div class="grid grid-cols-3 gap-2">
                                     @foreach($analysis['dimensions']['genres']['top_common'] as $index => $genreObj)
-                                    @php 
-                                        $style = $genreStyles[$genreObj['name']] ?? ['color' => 'text-indigo-400', 'border' => 'group-hover:border-indigo-400/50', 'icon' => 'fa-film']; 
+                                    @php
+                                        $style = $genreStyles[$genreObj['name']] ?? ['color' => 'text-indigo-400', 'border' => 'group-hover:border-indigo-400/50', 'icon' => 'fa-film'];
                                     @endphp
                                     <div class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 {{ $style['border'] }} group shadow-lg cursor-default flex flex-col items-center justify-center transition-all duration-300">
                                         <div class="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950/90 z-0"></div>
-                                        
+
                                         <i class="fas {{ $style['icon'] }} text-3xl mb-3 {{ $style['color'] }} group-hover:scale-125 group-hover:-translate-y-1 transition-all duration-500 ease-out z-10 drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]"></i>
-                                        
+
                                         <div class="absolute bottom-2 inset-x-0 px-1 text-center z-10">
                                             <span class="text-[11px] text-white font-bold block leading-tight truncate px-1">{{ $genreObj['name'] }}</span>
                                             <span class="text-[9px] text-slate-500 font-bold mt-0.5 block">{{ $genreObj['count'] }} FİLM</span>
@@ -279,18 +279,18 @@
                                     @foreach($analysis['dimensions']['directors']['top_common'] as $index => $director)
                                     <div class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default">
                                         @if(!empty($director['profile_path']))
-                                            <img src="https://image.tmdb.org/t/p/w185{{ $director['profile_path'] }}" 
-                                                 alt="{{ $director['name'] }}" 
+                                            <img src="https://image.tmdb.org/t/p/w185{{ $director['profile_path'] }}"
+                                                 alt="{{ $director['name'] }}"
                                                  class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
                                         @else
                                             <div class="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-800">
                                                 <i class="fas fa-video text-slate-600 text-3xl"></i>
                                             </div>
                                         @endif
-                                        
+
                                         {{-- Karartma Gradienti --}}
                                         <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                                        
+
                                         {{-- Hover Tint --}}
                                         <div class="absolute inset-0 bg-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
@@ -332,18 +332,18 @@
                                     @foreach($analysis['dimensions']['cast']['top_common'] as $index => $actor)
                                     <div class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default">
                                         @if(!empty($actor['profile_path']))
-                                            <img src="https://image.tmdb.org/t/p/w185{{ $actor['profile_path'] }}" 
-                                                 alt="{{ $actor['name'] }}" 
+                                            <img src="https://image.tmdb.org/t/p/w185{{ $actor['profile_path'] }}"
+                                                 alt="{{ $actor['name'] }}"
                                                  class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
                                         @else
                                             <div class="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-800">
                                                 <i class="fas fa-user-tie text-slate-600 text-3xl"></i>
                                             </div>
                                         @endif
-                                        
+
                                         {{-- Karartma Gradienti --}}
                                         <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                                        
+
                                         {{-- Hover Tint --}}
                                         <div class="absolute inset-0 bg-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
@@ -456,7 +456,7 @@
                                     <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">Senin Ortalaman</p>
                                     <p class="text-4xl font-black text-indigo-400">{{ $analysis['dimensions']['ratings']['my_avg'] }}</p>
                                     <p class="text-xs text-slate-600 mt-1 mb-auto">/ 10 TMDB</p>
-                                    
+
                                     <div class="mt-4 pt-4 border-t border-slate-800">
                                         <p class="text-xs text-slate-500 mb-1">Kişisel</p>
                                         @if($analysis['dimensions']['ratings']['my_personal'] > 0)
@@ -474,7 +474,7 @@
                                     <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">{{ Str::limit($user->name, 10) }}</p>
                                     <p class="text-4xl font-black text-purple-400">{{ $analysis['dimensions']['ratings']['their_avg'] }}</p>
                                     <p class="text-xs text-slate-600 mt-1 mb-auto">/ 10 TMDB</p>
-                                    
+
                                     <div class="mt-4 pt-4 border-t border-slate-800">
                                         <p class="text-xs text-slate-500 mb-1">Kişisel</p>
                                         @if($analysis['dimensions']['ratings']['their_personal'] > 0)

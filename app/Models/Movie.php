@@ -34,7 +34,6 @@ class Movie extends Model
         'media_type',
         'title',
         'director',
-        'cast',
         'genres',
         'poster_path',
         'rating',
@@ -54,7 +53,6 @@ class Movie extends Model
         'watched_at' => 'date',
         'release_date' => 'date',
         'genres' => 'array', // JSON → PHP array otomatik dönüşüm
-        'cast' => 'array',   // JSON → PHP array otomatik dönüşüm (oyuncular)
     ];
 
     public function user(): BelongsTo

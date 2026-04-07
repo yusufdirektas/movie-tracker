@@ -534,13 +534,13 @@ class TmdbService
             if ($hasExactMatch) {
                 $popularity = $result['popularity'] ?? 0;
                 $voteCount = $result['vote_count'] ?? 0;
-                
+
                 // Popülerlik bonusu (0-0.15 arası)
                 // pop 10+ → 0.05, pop 20+ → 0.10, pop 30+ → 0.15
                 if ($popularity >= 10) {
                     $maxScore += min(0.15, $popularity / 200);
                 }
-                
+
                 // Oy sayısı bonusu (0-0.10 arası)
                 // 1000+ oy → önemli film, bonus ver
                 if ($voteCount >= 1000) {
@@ -830,17 +830,6 @@ class TmdbService
     }
 
     /**
-     * 1.6. Kişi / Oyuncu Arama
-     */
-    public function searchPerson(string $query)
-    {
-        return $this->request('/search/person', [
-            'query'         => $query,
-            'include_adult' => false,
-        ]);
-    }
-
-    /**
      * 2. Film Detayı (yönetmen bilgisi dahil)
      */
     public function getMovieDetails(int|string $id)
@@ -890,6 +879,19 @@ class TmdbService
     {
         return $this->request('/movie/now_playing', [
             'region' => 'TR',
+        ]);
+    }
+
+    /**
+     * 6. Kişi Ara (Aktör, Yönetmen vb.)
+     *
+     * @param string $query Aranacak isim
+     * @return \Illuminate\Http\Client\Response|null
+     */
+    public function searchPerson(string $query)
+    {
+        return $this->request('/search/person', [
+            'query' => $query,
         ]);
     }
 }
