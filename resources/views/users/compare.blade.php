@@ -190,20 +190,31 @@
                         <span class="ml-auto text-2xl font-black text-indigo-400">%{{ $analysis['dimensions']['genres']['score'] }}</span>
                     </div>
 
-                    @if(!empty($analysis['dimensions']['genres']['common']))
-                        <div class="space-y-2">
-                            @foreach($analysis['dimensions']['genres']['common'] as $genre => $count)
-                                @php
-                                    $maxCount = max(array_values($analysis['dimensions']['genres']['common']));
-                                    $percent = $maxCount > 0 ? round(($count / $maxCount) * 100) : 0;
-                                @endphp
-                                <div class="flex items-center gap-3">
-                                    <span class="text-sm text-slate-300 w-24 truncate">{{ $genre }}</span>
-                                    <div class="flex-1 bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                                        <div class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-1000"
-                                             style="width: {{ $percent }}%"></div>
+                    @if(!empty($analysis['dimensions']['genres']['top_common']))
+                        <div class="grid grid-cols-3 gap-2 flex-1 mt-3">
+                            @foreach($analysis['dimensions']['genres']['top_common'] as $genreObj)
+                                <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default flex-shrink-0">
+                                    @if(!empty($genreObj['poster_path']))
+                                        <img src="https://image.tmdb.org/t/p/w185{{ $genreObj['poster_path'] }}" 
+                                             alt="{{ $genreObj['name'] }}" 
+                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                                    @else
+                                        <div class="w-full h-full flex items-center justify-center bg-slate-800">
+                                            <i class="fas fa-boxes text-slate-600 text-3xl"></i>
+                                        </div>
+                                    @endif
+                                    
+                                    {{-- Karartma Gradienti --}}
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+                                    
+                                    {{-- Hover Tint --}}
+                                    <div class="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                                    {{-- Metin Alanı --}}
+                                    <div class="absolute bottom-0 inset-x-0 p-2 text-center transform translate-y-0.5 group-hover:-translate-y-0.5 transition-transform duration-300">
+                                        <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $genreObj['name'] }}">{{ $genreObj['name'] }}</span>
+                                        <span class="text-[9px] text-indigo-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $genreObj['count'] }} FİLM</span>
                                     </div>
-                                    <span class="text-xs text-slate-500 w-8 text-right">{{ $count }}</span>
                                 </div>
                             @endforeach
                         </div>

@@ -184,7 +184,26 @@ class TasteAnalysisService
             $topCommon[$genre] = min($countA, $genresB[$genre]);
         }
         arsort($topCommon);
-        $topCommon = array_slice($topCommon, 0, 8, true);
+        // Top common enriched con resümler (posters)
+        $enrichedCommonGenres = [];
+        $slicedCommon = array_slice($topCommon, 0, 6, true);
+        
+        foreach ($slicedCommon as $genre => $countA) {
+            $sampleMovie = $moviesA->first(function($m) use ($genre) {
+                return !empty($m->poster_path) && is_array($m->genres) && in_array($genre, $m->genres);
+            });
+            if (!$sampleMovie) {
+                $sampleMovie = $moviesB->first(function($m) use ($genre) {
+                    return !empty($m->poster_path) && is_array($m->genres) && in_array($genre, $m->genres);
+                });
+            }
+            
+            $enrichedCommonGenres[] = [
+                'name' => $genre,
+                'count' => min($countA, $genresB[$genre]),
+                'poster_path' => $sampleMovie ? $sampleMovie->poster_path : null
+            ];
+        }
 
         $score = round($this->cosineSimilarity($genresA, $genresB) * 100);
 
@@ -193,7 +212,7 @@ class TasteAnalysisService
             'my_genres'   => $genresA,
             'their_genres' => $genresB,
             'common'      => $topCommon,
-            'top_common'  => array_keys(array_slice($topCommon, 0, 5, true)),
+            'top_common'  => $enrichedCommonGenres,
         ];
     }
 
