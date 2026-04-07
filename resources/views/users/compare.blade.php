@@ -218,7 +218,7 @@
                 </div>
 
                 {{-- YÖNETMEN UYUMU KARTI --}}
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col h-full">
                     <div class="flex items-center gap-3 mb-5">
                         <div class="bg-purple-500/10 w-10 h-10 rounded-xl flex items-center justify-center">
                             <i class="fas fa-bullhorn text-purple-400"></i>
@@ -231,7 +231,7 @@
                     </div>
 
                     @if(!empty($analysis['dimensions']['directors']['top_common']))
-                        <div class="grid grid-cols-1 gap-2">
+                        <div class="grid grid-cols-1 gap-2 flex-1">
                             @foreach($analysis['dimensions']['directors']['top_common'] as $director => $totalFilms)
                                 <div class="flex items-center gap-3 bg-slate-800/50 rounded-xl px-4 py-2.5">
                                     <div class="bg-purple-500/20 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -243,15 +243,15 @@
                             @endforeach
                         </div>
                     @else
-                        <div class="text-center py-6">
-                            <i class="fas fa-ghost text-slate-700 text-3xl mb-2"></i>
+                        <div class="m-auto py-8 text-center opacity-75">
+                            <i class="fas fa-ghost text-slate-700 text-4xl mb-3"></i>
                             <p class="text-slate-500 text-sm">Ortak yönetmen bulunamadı.</p>
                         </div>
                     @endif
                 </div>
 
                 {{-- OYUNCU UYUMU KARTI --}}
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col h-full">
                     <div class="flex items-center gap-3 mb-5">
                         <div class="bg-pink-500/10 w-10 h-10 rounded-xl flex items-center justify-center">
                             <i class="fas fa-users text-pink-400"></i>
@@ -264,7 +264,7 @@
                     </div>
 
                     @if(!empty($analysis['dimensions']['cast']['top_common']))
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-2 gap-2 flex-1">
                             @foreach($analysis['dimensions']['cast']['top_common'] as $actor => $totalFilms)
                                 <div class="flex items-center gap-2 bg-slate-800/50 rounded-xl px-3 py-2.5">
                                     <div class="bg-pink-500/20 w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -278,15 +278,15 @@
                             @endforeach
                         </div>
                     @else
-                        <div class="text-center py-6">
-                            <i class="fas fa-ghost text-slate-700 text-3xl mb-2"></i>
+                        <div class="m-auto py-8 text-center opacity-75">
+                            <i class="fas fa-ghost text-slate-700 text-4xl mb-3"></i>
                             <p class="text-slate-500 text-sm">Ortak oyuncu bulunamadı.</p>
                         </div>
                     @endif
                 </div>
 
                 {{-- DÖNEM UYUMU KARTI --}}
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col h-full">
                     <div class="flex items-center gap-3 mb-5">
                         <div class="bg-amber-500/10 w-10 h-10 rounded-xl flex items-center justify-center">
                             <i class="fas fa-clock-rotate-left text-amber-400"></i>
@@ -301,48 +301,46 @@
                     @if(!empty($analysis['dimensions']['decades']['my_decades']) || !empty($analysis['dimensions']['decades']['their_decades']))
                         @php
                             $allDecades = array_unique(array_merge(
-                                array_keys($analysis['dimensions']['decades']['my_decades']),
-                                array_keys($analysis['dimensions']['decades']['their_decades'])
+                                array_keys($analysis['dimensions']['decades']['my_decades'] ?? []),
+                                array_keys($analysis['dimensions']['decades']['their_decades'] ?? [])
                             ));
                             sort($allDecades);
-                            // Tüm değerler arasındaki global maximum'u bul
                             $globalMax = max(
                                 !empty($analysis['dimensions']['decades']['my_decades']) ? max($analysis['dimensions']['decades']['my_decades']) : 1,
                                 !empty($analysis['dimensions']['decades']['their_decades']) ? max($analysis['dimensions']['decades']['their_decades']) : 1
                             );
                         @endphp
-                        <div class="space-y-3">
+                        <div class="space-y-4 flex-1">
                             @foreach($allDecades as $decade)
                                 @php
                                     $myCount = $analysis['dimensions']['decades']['my_decades'][$decade] ?? 0;
                                     $theirCount = $analysis['dimensions']['decades']['their_decades'][$decade] ?? 0;
-                                    // Global max'a göre oran hesapla (böylece barlar gerçekçi olur)
                                     $myPercent = $globalMax > 0 ? round(($myCount / $globalMax) * 100) : 0;
                                     $theirPercent = $globalMax > 0 ? round(($theirCount / $globalMax) * 100) : 0;
                                 @endphp
                                 <div>
-                                    <div class="flex items-center justify-between mb-1">
-                                        <span class="text-xs text-slate-400 font-bold">{{ $decade }}</span>
-                                        <span class="text-xs text-slate-600">{{ $myCount }} / {{ $theirCount }}</span>
+                                    <div class="flex items-center justify-between mb-1.5 px-1">
+                                        <span class="text-xs text-slate-300 font-bold tracking-wide">{{ $decade }}</span>
+                                        <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400"><span class="text-indigo-400">{{ $myCount }}</span> / <span class="text-purple-400">{{ $theirCount }}</span></span>
                                     </div>
-                                    <div class="flex gap-1">
-                                        <div class="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden">
+                                    <div class="flex flex-col gap-1">
+                                        <div class="w-full bg-slate-800 rounded-full h-[6px] overflow-hidden">
                                             <div class="bg-indigo-500 h-full rounded-full transition-all" style="width: {{ $myPercent }}%"></div>
                                         </div>
-                                        <div class="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden">
+                                        <div class="w-full bg-slate-800 rounded-full h-[6px] overflow-hidden">
                                             <div class="bg-purple-500 h-full rounded-full transition-all" style="width: {{ $theirPercent }}%"></div>
                                         </div>
                                     </div>
                                 </div>
                             @endforeach
                         </div>
-                        <div class="flex items-center justify-center gap-6 mt-3 text-xs text-slate-500">
-                            <span><span class="inline-block w-2 h-2 rounded-full bg-indigo-500 mr-1"></span>Sen</span>
-                            <span><span class="inline-block w-2 h-2 rounded-full bg-purple-500 mr-1"></span>{{ Str::limit($user->name, 10) }}</span>
+                        <div class="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-slate-800 text-xs text-slate-400">
+                            <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-indigo-500"></span>Sen</span>
+                            <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-purple-500"></span>{{ Str::limit($user->name, 10) }}</span>
                         </div>
                     @else
-                        <div class="text-center py-6">
-                            <i class="fas fa-ghost text-slate-700 text-3xl mb-2"></i>
+                        <div class="m-auto py-8 text-center opacity-75">
+                            <i class="fas fa-ghost text-slate-700 text-4xl mb-3"></i>
                             <p class="text-slate-500 text-sm">Dönem verisi bulunamadı.</p>
                         </div>
                     @endif
@@ -361,44 +359,50 @@
                         <span class="ml-auto text-2xl font-black text-yellow-400">%{{ $analysis['dimensions']['ratings']['score'] }}</span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-6">
-                        @if(!empty($analysis['dimensions']['ratings']['insufficient']))
-                            <div class="col-span-2 text-center py-6">
-                                <i class="fas fa-exclamation-triangle text-yellow-500/50 text-3xl mb-2"></i>
-                                <p class="text-slate-400 text-sm">Karşılaştırma için iki tarafın da puanlı filmi olmalı.</p>
-                            </div>
-                        @else
-                        {{-- Benim Puanım --}}
-                        <div class="text-center">
-                            <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5">
-                                <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">Senin Ortalaman</p>
-                                <p class="text-4xl font-black text-indigo-400">{{ $analysis['dimensions']['ratings']['my_avg'] }}</p>
-                                <p class="text-xs text-slate-600 mt-1">/ 10 TMDB</p>
-                                @if($analysis['dimensions']['ratings']['my_personal'] > 0)
-                                    <div class="mt-2 pt-2 border-t border-slate-800">
-                                        <p class="text-xs text-slate-500">Kişisel</p>
-                                        <p class="text-lg font-bold text-indigo-300">{{ $analysis['dimensions']['ratings']['my_personal'] }} <span class="text-xs text-slate-600">/5</span></p>
+                        <div class="grid grid-cols-2 gap-6">
+                            @if(!empty($analysis['dimensions']['ratings']['insufficient']))
+                                <div class="col-span-2 text-center py-6">
+                                    <i class="fas fa-exclamation-triangle text-yellow-500/50 text-3xl mb-2"></i>
+                                    <p class="text-slate-400 text-sm">Karşılaştırma için iki tarafın da puanlı filmi olmalı.</p>
+                                </div>
+                            @else
+                            {{-- Benim Puanım --}}
+                            <div class="flex flex-col text-center">
+                                <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5 flex flex-col h-full">
+                                    <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">Senin Ortalaman</p>
+                                    <p class="text-4xl font-black text-indigo-400">{{ $analysis['dimensions']['ratings']['my_avg'] }}</p>
+                                    <p class="text-xs text-slate-600 mt-1 mb-auto">/ 10 TMDB</p>
+                                    
+                                    <div class="mt-4 pt-4 border-t border-slate-800">
+                                        <p class="text-xs text-slate-500 mb-1">Kişisel</p>
+                                        @if($analysis['dimensions']['ratings']['my_personal'] > 0)
+                                            <p class="text-xl font-bold text-indigo-300">{{ $analysis['dimensions']['ratings']['my_personal'] }} <span class="text-xs text-slate-600 font-normal">/ 5</span></p>
+                                        @else
+                                            <p class="text-sm font-medium text-slate-600">—</p>
+                                        @endif
                                     </div>
-                                @endif
+                                </div>
                             </div>
-                        </div>
 
-                        {{-- Onun Puanı --}}
-                        <div class="text-center">
-                            <div class="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-5">
-                                <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">{{ Str::limit($user->name, 10) }}</p>
-                                <p class="text-4xl font-black text-purple-400">{{ $analysis['dimensions']['ratings']['their_avg'] }}</p>
-                                <p class="text-xs text-slate-600 mt-1">/ 10 TMDB</p>
-                                @if($analysis['dimensions']['ratings']['their_personal'] > 0)
-                                    <div class="mt-2 pt-2 border-t border-slate-800">
-                                        <p class="text-xs text-slate-500">Kişisel</p>
-                                        <p class="text-lg font-bold text-purple-300">{{ $analysis['dimensions']['ratings']['their_personal'] }} <span class="text-xs text-slate-600">/5</span></p>
+                            {{-- Onun Puanı --}}
+                            <div class="flex flex-col text-center">
+                                <div class="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-5 flex flex-col h-full">
+                                    <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">{{ Str::limit($user->name, 10) }}</p>
+                                    <p class="text-4xl font-black text-purple-400">{{ $analysis['dimensions']['ratings']['their_avg'] }}</p>
+                                    <p class="text-xs text-slate-600 mt-1 mb-auto">/ 10 TMDB</p>
+                                    
+                                    <div class="mt-4 pt-4 border-t border-slate-800">
+                                        <p class="text-xs text-slate-500 mb-1">Kişisel</p>
+                                        @if($analysis['dimensions']['ratings']['their_personal'] > 0)
+                                            <p class="text-xl font-bold text-purple-300">{{ $analysis['dimensions']['ratings']['their_personal'] }} <span class="text-xs text-slate-600 font-normal">/ 5</span></p>
+                                        @else
+                                            <p class="text-sm font-medium text-slate-600">—</p>
+                                        @endif
                                     </div>
-                                @endif
+                                </div>
                             </div>
+                            @endif
                         </div>
-                        @endif
-                    </div>
                 </div>
 
             </div>
