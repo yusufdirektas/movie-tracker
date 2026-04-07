@@ -14,14 +14,13 @@
         </a>
 
         <div class="flex items-center justify-center gap-8 mb-8">
-            {{-- Ben --}}
             <div class="text-center">
-                <div class="relative">
+                <div class="relative w-20 h-20 mx-auto">
                     <img src="{{ auth()->user()->avatar_url }}"
                          alt="{{ auth()->user()->name }}"
-                         class="w-20 h-20 rounded-full object-cover mx-auto shadow-lg ring-4 ring-indigo-500/50">
-                    <div class="absolute -bottom-1 -right-1 bg-indigo-500 w-6 h-6 rounded-full flex items-center justify-center">
-                        <i class="fas fa-user text-white text-xs"></i>
+                         class="w-full h-full rounded-full object-cover shadow-lg ring-4 ring-indigo-500/50">
+                    <div class="absolute bottom-0 right-0 bg-indigo-500 w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900">
+                        <i class="fas fa-user text-white text-[10px]"></i>
                     </div>
                 </div>
                 <p class="mt-2 font-bold text-white">{{ auth()->user()->name }}</p>
@@ -72,14 +71,13 @@
                 <p class="text-xs text-slate-500 mt-1 font-medium">6 Boyutlu Uyum</p>
             </div>
 
-            {{-- Karşı Taraf --}}
             <div class="text-center">
-                <div class="relative">
+                <div class="relative w-20 h-20 mx-auto">
                     <img src="{{ $user->avatar_url }}"
                          alt="{{ $user->name }}"
-                         class="w-20 h-20 rounded-full object-cover mx-auto shadow-lg ring-4 ring-purple-500/50">
-                    <div class="absolute -bottom-1 -right-1 bg-purple-500 w-6 h-6 rounded-full flex items-center justify-center">
-                        <i class="fas fa-user text-white text-xs"></i>
+                         class="w-full h-full rounded-full object-cover shadow-lg ring-4 ring-purple-500/50">
+                    <div class="absolute bottom-0 right-0 bg-purple-500 w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900">
+                        <i class="fas fa-user text-white text-[10px]"></i>
                     </div>
                 </div>
                 <p class="mt-2 font-bold text-white">{{ $user->name }}</p>
