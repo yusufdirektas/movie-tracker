@@ -184,24 +184,14 @@ class TasteAnalysisService
             $topCommon[$genre] = min($countA, $genresB[$genre]);
         }
         arsort($topCommon);
-        // Top common enriched con resümler (posters)
+        // Top common enriched
         $enrichedCommonGenres = [];
-        $slicedCommon = array_slice($topCommon, 0, 6, true);
+        $slicedCommon = array_slice($topCommon, 0, 18, true);
         
         foreach ($slicedCommon as $genre => $countA) {
-            $sampleMovie = $moviesA->first(function($m) use ($genre) {
-                return !empty($m->poster_path) && is_array($m->genres) && in_array($genre, $m->genres);
-            });
-            if (!$sampleMovie) {
-                $sampleMovie = $moviesB->first(function($m) use ($genre) {
-                    return !empty($m->poster_path) && is_array($m->genres) && in_array($genre, $m->genres);
-                });
-            }
-            
             $enrichedCommonGenres[] = [
                 'name' => $genre,
-                'count' => min($countA, $genresB[$genre]),
-                'poster_path' => $sampleMovie ? $sampleMovie->poster_path : null
+                'count' => min($countA, $genresB[$genre])
             ];
         }
 
@@ -246,7 +236,7 @@ class TasteAnalysisService
         }
         arsort($topCommon);
         
-        $topDirectorsSlice = array_slice($topCommon, 0, 6, true);
+        $topDirectorsSlice = array_slice($topCommon, 0, 15, true);
         $enrichedTopDirectors = [];
         
         if (!empty($topDirectorsSlice)) {
@@ -307,7 +297,7 @@ class TasteAnalysisService
         }
         arsort($topCommon);
         
-        $topActorsSlice = array_slice($topCommon, 0, 8, true);
+        $topActorsSlice = array_slice($topCommon, 0, 15, true);
         $enrichedTopActors = [];
         
         if (!empty($topActorsSlice)) {

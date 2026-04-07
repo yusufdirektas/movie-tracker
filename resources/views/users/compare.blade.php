@@ -191,32 +191,53 @@
                     </div>
 
                     @if(!empty($analysis['dimensions']['genres']['top_common']))
-                        <div class="grid grid-cols-3 gap-2 flex-1 mt-3">
-                            @foreach($analysis['dimensions']['genres']['top_common'] as $genreObj)
-                                <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default flex-shrink-0">
-                                    @if(!empty($genreObj['poster_path']))
-                                        <img src="https://image.tmdb.org/t/p/w185{{ $genreObj['poster_path'] }}" 
-                                             alt="{{ $genreObj['name'] }}" 
-                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
-                                    @else
-                                        <div class="w-full h-full flex items-center justify-center bg-slate-800">
-                                            <i class="fas fa-boxes text-slate-600 text-3xl"></i>
-                                        </div>
-                                    @endif
-                                    
-                                    {{-- Karartma Gradienti --}}
-                                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                                    
-                                    {{-- Hover Tint --}}
-                                    <div class="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                                    {{-- Metin Alanı --}}
-                                    <div class="absolute bottom-0 inset-x-0 p-2 text-center transform translate-y-0.5 group-hover:-translate-y-0.5 transition-transform duration-300">
-                                        <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $genreObj['name'] }}">{{ $genreObj['name'] }}</span>
-                                        <span class="text-[9px] text-indigo-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $genreObj['count'] }} FİLM</span>
+                        @php
+                            $genreStyles = [
+                                'Aksiyon' => ['color' => 'text-orange-500', 'border' => 'group-hover:border-orange-500/50', 'icon' => 'fa-fire'],
+                                'Macera' => ['color' => 'text-emerald-500', 'border' => 'group-hover:border-emerald-500/50', 'icon' => 'fa-mountain-sun'],
+                                'Animasyon' => ['color' => 'text-pink-500', 'border' => 'group-hover:border-pink-500/50', 'icon' => 'fa-smile-beam'],
+                                'Komedi' => ['color' => 'text-yellow-400', 'border' => 'group-hover:border-yellow-400/50', 'icon' => 'fa-masks-theater'],
+                                'Suç' => ['color' => 'text-slate-400', 'border' => 'group-hover:border-slate-400/50', 'icon' => 'fa-handcuffs'],
+                                'Belgesel' => ['color' => 'text-stone-400', 'border' => 'group-hover:border-stone-400/50', 'icon' => 'fa-video'],
+                                'Dram' => ['color' => 'text-blue-500', 'border' => 'group-hover:border-blue-500/50', 'icon' => 'fa-face-sad-tear'],
+                                'Aile' => ['color' => 'text-sky-400', 'border' => 'group-hover:border-sky-400/50', 'icon' => 'fa-house-chimney'],
+                                'Fantastik' => ['color' => 'text-purple-400', 'border' => 'group-hover:border-purple-400/50', 'icon' => 'fa-wand-magic-sparkles'],
+                                'Tarih' => ['color' => 'text-amber-600', 'border' => 'group-hover:border-amber-600/50', 'icon' => 'fa-scroll'],
+                                'Korku' => ['color' => 'text-red-600', 'border' => 'group-hover:border-red-600/50', 'icon' => 'fa-ghost'],
+                                'Müzik' => ['color' => 'text-fuchsia-400', 'border' => 'group-hover:border-fuchsia-400/50', 'icon' => 'fa-music'],
+                                'Gizem' => ['color' => 'text-indigo-400', 'border' => 'group-hover:border-indigo-400/50', 'icon' => 'fa-magnifying-glass'],
+                                'Romantik' => ['color' => 'text-rose-400', 'border' => 'group-hover:border-rose-400/50', 'icon' => 'fa-heart'],
+                                'Bilim Kurgu' => ['color' => 'text-cyan-400', 'border' => 'group-hover:border-cyan-400/50', 'icon' => 'fa-robot'],
+                                'TV Filmi' => ['color' => 'text-slate-500', 'border' => 'group-hover:border-slate-500/50', 'icon' => 'fa-tv'],
+                                'Gerilim' => ['color' => 'text-red-500', 'border' => 'group-hover:border-red-500/50', 'icon' => 'fa-bolt'],
+                                'Savaş' => ['color' => 'text-stone-500', 'border' => 'group-hover:border-stone-500/50', 'icon' => 'fa-jet-fighter'],
+                                'Vahşi Batı' => ['color' => 'text-amber-700', 'border' => 'group-hover:border-amber-700/50', 'icon' => 'fa-hat-cowboy'],
+                            ];
+                        @endphp
+                        <div x-data="{ expanded: false }" class="flex-1 flex flex-col mt-3">
+                            <div class="grid grid-cols-3 gap-2">
+                                @foreach($analysis['dimensions']['genres']['top_common'] as $index => $genreObj)
+                                    @php 
+                                        $style = $genreStyles[$genreObj['name']] ?? ['color' => 'text-indigo-400', 'border' => 'group-hover:border-indigo-400/50', 'icon' => 'fa-film']; 
+                                    @endphp
+                                    <div x-show="expanded || {{ $index }} < 6" 
+                                         class="relative overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 {{ $style['border'] }} group shadow-lg cursor-default flex flex-col items-center justify-center transition-all duration-300">
+                                        
+                                        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950/80"></div>
+                                        
+                                        <i class="fas {{ $style['icon'] }} text-4xl mb-3 {{ $style['color'] }} group-hover:scale-125 group-hover:-translate-y-1 transition-all duration-500 ease-out z-10 drop-shadow-lg"></i>
+                                        
+                                        <span class="text-xs text-white font-bold block text-center px-1 z-10 leading-tight">{{ $genreObj['name'] }}</span>
+                                        <span class="text-[10px] text-slate-500 font-bold mt-1 z-10">{{ $genreObj['count'] }} FİLM</span>
                                     </div>
-                                </div>
-                            @endforeach
+                                @endforeach
+                            </div>
+                            @if(count($analysis['dimensions']['genres']['top_common']) > 6)
+                                <button @click="expanded = !expanded" class="mt-3 w-full py-2 bg-slate-800/50 hover:bg-slate-800 border border-transparent hover:border-slate-700 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all duration-300 flex items-center justify-center gap-2">
+                                    <span x-show="!expanded"><i class="fas fa-chevron-down text-[10px]"></i> Daha Fazla Göster ({{ count($analysis['dimensions']['genres']['top_common']) - 6 }})</span>
+                                    <span x-show="expanded" style="display: none;"><i class="fas fa-chevron-up text-[10px]"></i> Daha Az Göster</span>
+                                </button>
+                            @endif
                         </div>
                     @else
                         <div class="text-center py-6">
@@ -240,32 +261,41 @@
                     </div>
 
                     @if(!empty($analysis['dimensions']['directors']['top_common']))
-                        <div class="grid grid-cols-3 gap-2 flex-1 mt-3">
-                            @foreach($analysis['dimensions']['directors']['top_common'] as $director)
-                                <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default">
-                                    @if(!empty($director['profile_path']))
-                                        <img src="https://image.tmdb.org/t/p/w185{{ $director['profile_path'] }}" 
-                                             alt="{{ $director['name'] }}" 
-                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
-                                    @else
-                                        <div class="w-full h-full flex items-center justify-center bg-slate-800">
-                                            <i class="fas fa-video text-slate-600 text-3xl"></i>
-                                        </div>
-                                    @endif
-                                    
-                                    {{-- Karartma Gradienti --}}
-                                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                                    
-                                    {{-- Hover Tint --}}
-                                    <div class="absolute inset-0 bg-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <div x-data="{ expanded: false }" class="flex-1 flex flex-col mt-3">
+                            <div class="grid grid-cols-3 gap-2">
+                                @foreach($analysis['dimensions']['directors']['top_common'] as $index => $director)
+                                    <div x-show="expanded || {{ $index }} < 6" 
+                                         class="relative overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default">
+                                        @if(!empty($director['profile_path']))
+                                            <img src="https://image.tmdb.org/t/p/w185{{ $director['profile_path'] }}" 
+                                                 alt="{{ $director['name'] }}" 
+                                                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                                        @else
+                                            <div class="w-full h-full flex items-center justify-center bg-slate-800">
+                                                <i class="fas fa-video text-slate-600 text-3xl"></i>
+                                            </div>
+                                        @endif
+                                        
+                                        {{-- Karartma Gradienti --}}
+                                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+                                        
+                                        {{-- Hover Tint --}}
+                                        <div class="absolute inset-0 bg-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-                                    {{-- Metin Alanı --}}
-                                    <div class="absolute bottom-0 inset-x-0 p-2 text-center transform translate-y-0.5 group-hover:-translate-y-0.5 transition-transform duration-300">
-                                        <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $director['name'] }}">{{ $director['name'] }}</span>
-                                        <span class="text-[9px] text-purple-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $director['total_films'] }} FILM</span>
+                                        {{-- Metin Alanı --}}
+                                        <div class="absolute bottom-0 inset-x-0 p-2 text-center transform translate-y-0.5 group-hover:-translate-y-0.5 transition-transform duration-300">
+                                            <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $director['name'] }}">{{ $director['name'] }}</span>
+                                            <span class="text-[9px] text-purple-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $director['total_films'] }} FILM</span>
+                                        </div>
                                     </div>
-                                </div>
-                            @endforeach
+                                @endforeach
+                            </div>
+                            @if(count($analysis['dimensions']['directors']['top_common']) > 6)
+                                <button @click="expanded = !expanded" class="mt-3 w-full py-2 bg-slate-800/50 hover:bg-slate-800 border border-transparent hover:border-slate-700 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all duration-300 flex items-center justify-center gap-2">
+                                    <span x-show="!expanded"><i class="fas fa-chevron-down text-[10px]"></i> Daha Fazla Göster ({{ count($analysis['dimensions']['directors']['top_common']) - 6 }})</span>
+                                    <span x-show="expanded" style="display: none;"><i class="fas fa-chevron-up text-[10px]"></i> Daha Az Göster</span>
+                                </button>
+                            @endif
                         </div>
                     @else
                         <div class="m-auto py-8 text-center opacity-75">
@@ -289,32 +319,41 @@
                     </div>
 
                     @if(!empty($analysis['dimensions']['cast']['top_common']))
-                        <div class="grid grid-cols-3 gap-2 flex-1 mt-3">
-                            @foreach($analysis['dimensions']['cast']['top_common'] as $actor)
-                                <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default">
-                                    @if(!empty($actor['profile_path']))
-                                        <img src="https://image.tmdb.org/t/p/w185{{ $actor['profile_path'] }}" 
-                                             alt="{{ $actor['name'] }}" 
-                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
-                                    @else
-                                        <div class="w-full h-full flex items-center justify-center bg-slate-800">
-                                            <i class="fas fa-user-tie text-slate-600 text-3xl"></i>
-                                        </div>
-                                    @endif
-                                    
-                                    {{-- Karartma Gradienti --}}
-                                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                                    
-                                    {{-- Hover Tint --}}
-                                    <div class="absolute inset-0 bg-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <div x-data="{ expanded: false }" class="flex-1 flex flex-col mt-3">
+                            <div class="grid grid-cols-3 gap-2">
+                                @foreach($analysis['dimensions']['cast']['top_common'] as $index => $actor)
+                                    <div x-show="expanded || {{ $index }} < 6" 
+                                         class="relative overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default">
+                                        @if(!empty($actor['profile_path']))
+                                            <img src="https://image.tmdb.org/t/p/w185{{ $actor['profile_path'] }}" 
+                                                 alt="{{ $actor['name'] }}" 
+                                                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                                        @else
+                                            <div class="w-full h-full flex items-center justify-center bg-slate-800">
+                                                <i class="fas fa-user-tie text-slate-600 text-3xl"></i>
+                                            </div>
+                                        @endif
+                                        
+                                        {{-- Karartma Gradienti --}}
+                                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+                                        
+                                        {{-- Hover Tint --}}
+                                        <div class="absolute inset-0 bg-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-                                    {{-- Metin Alanı --}}
-                                    <div class="absolute bottom-0 inset-x-0 p-2 text-center transform translate-y-0.5 group-hover:-translate-y-0.5 transition-transform duration-300">
-                                        <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $actor['name'] }}">{{ $actor['name'] }}</span>
-                                        <span class="text-[9px] text-pink-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $actor['total_films'] }} FILM</span>
+                                        {{-- Metin Alanı --}}
+                                        <div class="absolute bottom-0 inset-x-0 p-2 text-center transform translate-y-0.5 group-hover:-translate-y-0.5 transition-transform duration-300">
+                                            <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $actor['name'] }}">{{ $actor['name'] }}</span>
+                                            <span class="text-[9px] text-pink-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $actor['total_films'] }} FILM</span>
+                                        </div>
                                     </div>
-                                </div>
-                            @endforeach
+                                @endforeach
+                            </div>
+                            @if(count($analysis['dimensions']['cast']['top_common']) > 6)
+                                <button @click="expanded = !expanded" class="mt-3 w-full py-2 bg-slate-800/50 hover:bg-slate-800 border border-transparent hover:border-slate-700 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all duration-300 flex items-center justify-center gap-2">
+                                    <span x-show="!expanded"><i class="fas fa-chevron-down text-[10px]"></i> Daha Fazla Göster ({{ count($analysis['dimensions']['cast']['top_common']) - 6 }})</span>
+                                    <span x-show="expanded" style="display: none;"><i class="fas fa-chevron-up text-[10px]"></i> Daha Az Göster</span>
+                                </button>
+                            @endif
                         </div>
                     @else
                         <div class="m-auto py-8 text-center opacity-75">
