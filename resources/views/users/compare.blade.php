@@ -229,14 +229,30 @@
                     </div>
 
                     @if(!empty($analysis['dimensions']['directors']['top_common']))
-                        <div class="grid grid-cols-1 gap-2 flex-1">
-                            @foreach($analysis['dimensions']['directors']['top_common'] as $director => $totalFilms)
-                                <div class="flex items-center gap-3 bg-slate-800/50 rounded-xl px-4 py-2.5">
-                                    <div class="bg-purple-500/20 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0">
-                                        <i class="fas fa-video text-purple-400 text-sm"></i>
+                        <div class="grid grid-cols-3 gap-2 flex-1 mt-3">
+                            @foreach($analysis['dimensions']['directors']['top_common'] as $director)
+                                <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default">
+                                    @if(!empty($director['profile_path']))
+                                        <img src="https://image.tmdb.org/t/p/w185{{ $director['profile_path'] }}" 
+                                             alt="{{ $director['name'] }}" 
+                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                                    @else
+                                        <div class="w-full h-full flex items-center justify-center bg-slate-800">
+                                            <i class="fas fa-video text-slate-600 text-3xl"></i>
+                                        </div>
+                                    @endif
+                                    
+                                    {{-- Karartma Gradienti --}}
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+                                    
+                                    {{-- Hover Tint --}}
+                                    <div class="absolute inset-0 bg-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                                    {{-- Metin Alanı --}}
+                                    <div class="absolute bottom-0 inset-x-0 p-2 text-center transform translate-y-0.5 group-hover:-translate-y-0.5 transition-transform duration-300">
+                                        <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $director['name'] }}">{{ $director['name'] }}</span>
+                                        <span class="text-[9px] text-purple-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $director['total_films'] }} FILM</span>
                                     </div>
-                                    <span class="text-sm text-white font-medium truncate">{{ $director }}</span>
-                                    <span class="ml-auto text-xs text-slate-500 flex-shrink-0">{{ $totalFilms }} film</span>
                                 </div>
                             @endforeach
                         </div>
