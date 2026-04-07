@@ -262,22 +262,22 @@
                     </div>
 
                     @if(!empty($analysis['dimensions']['cast']['top_common']))
-                        <div class="grid grid-cols-2 gap-3 flex-1">
+                        <div class="grid grid-cols-3 gap-4 flex-1 items-center justify-center mt-3">
                             @foreach($analysis['dimensions']['cast']['top_common'] as $actor)
-                                <div class="flex items-center gap-3 bg-slate-800/80 hover:bg-slate-700/80 transition-colors rounded-xl p-2 border border-slate-700/50 relative overflow-hidden group">
-                                    <div class="w-12 h-12 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
+                                <div class="flex flex-col items-center text-center group cursor-default">
+                                    <div class="w-16 h-16 mb-2 rounded-full bg-slate-900 border-2 border-slate-700/50 group-hover:border-pink-500/50 flex items-center justify-center relative overflow-hidden shadow-md transition-colors duration-300">
                                         @if(!empty($actor['profile_path']))
                                             <img src="https://image.tmdb.org/t/p/w185{{ $actor['profile_path'] }}" 
                                                  alt="{{ $actor['name'] }}" 
                                                  class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                            <div class="absolute inset-0 bg-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                         @else
-                                            <i class="fas fa-user-tie text-slate-700 text-xl"></i>
+                                            <i class="fas fa-user-tie text-slate-700 text-2xl"></i>
                                         @endif
-                                        <div class="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-lg"></div>
                                     </div>
-                                    <div class="min-w-0 pr-1">
+                                    <div class="w-full">
                                         <span class="text-xs text-slate-200 font-bold block truncate" title="{{ $actor['name'] }}">{{ $actor['name'] }}</span>
-                                        <span class="text-[10px] text-pink-400 font-medium">{{ $actor['total_films'] }} ortak film</span>
+                                        <span class="text-[10px] text-slate-500 font-medium tracking-wide mt-0.5 block">{{ $actor['total_films'] }} ortak film</span>
                                     </div>
                                 </div>
                             @endforeach
