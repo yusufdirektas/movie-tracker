@@ -237,15 +237,12 @@
                                     @php
                                         $style = $genreStyles[$genreObj['name']] ?? ['color' => 'text-indigo-400', 'border' => 'group-hover:border-indigo-400/50', 'icon' => 'fa-film'];
                                     @endphp
-                                    <div class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 {{ $style['border'] }} group shadow-lg cursor-default flex flex-col items-center justify-center transition-all duration-300">
-                                        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950/90 z-0"></div>
-
-                                        <i class="fas {{ $style['icon'] }} text-3xl mb-3 {{ $style['color'] }} group-hover:scale-125 group-hover:-translate-y-1 transition-all duration-500 ease-out z-10 drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]"></i>
-
-                                        <div class="absolute bottom-2 inset-x-0 px-1 text-center z-10">
-                                            <span class="text-[11px] text-white font-bold block leading-tight truncate px-1">{{ $genreObj['name'] }}</span>
-                                            <span class="text-[9px] text-slate-500 font-bold mt-0.5 block">{{ $genreObj['count'] }} FİLM</span>
+                                    <div class="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 rounded-xl p-3 text-center transition-all duration-200 group cursor-default">
+                                        <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-slate-900/80 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                            <i class="fas {{ $style['icon'] }} {{ $style['color'] }} text-lg"></i>
                                         </div>
+                                        <p class="text-white text-xs font-semibold truncate">{{ $genreObj['name'] }}</p>
+                                        <p class="text-slate-500 text-[10px] mt-0.5">{{ $genreObj['count'] }} film</p>
                                     </div>
                                 @endforeach
                                 </div>
@@ -273,11 +270,17 @@
                     </div>
 
                     @if(!empty($analysis['dimensions']['directors']['top_common']))
-                        <div class="mt-3 border-t border-slate-800/50 pt-3">
-                            <div class="max-h-[310px] overflow-y-auto pr-1 pb-1 custom-scrollbar">
+                        <div class="mt-3 border-t border-slate-800/50 pt-3" x-data="{ expanded: false }">
+                            @php $totalDirectors = count($analysis['dimensions']['directors']['top_common']); @endphp
+                            
+                            <div :class="expanded ? 'max-h-[310px] overflow-y-auto custom-scrollbar' : ''" class="pr-1 pb-1">
                                 <div class="grid grid-cols-3 gap-2">
                                     @foreach($analysis['dimensions']['directors']['top_common'] as $index => $director)
-                                    <div class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default">
+                                    <div class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default"
+                                         x-show="expanded || {{ $index }} < 6"
+                                         x-transition:enter="transition ease-out duration-200"
+                                         x-transition:enter-start="opacity-0 scale-95"
+                                         x-transition:enter-end="opacity-100 scale-100">
                                         @if(!empty($director['profile_path']))
                                             <img src="https://image.tmdb.org/t/p/w185{{ $director['profile_path'] }}"
                                                  alt="{{ $director['name'] }}"
@@ -303,6 +306,14 @@
                                 @endforeach
                                 </div>
                             </div>
+                            
+                            @if($totalDirectors > 6)
+                                <button @click="expanded = !expanded" 
+                                        class="w-full mt-3 py-2 text-xs font-medium text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    <span x-text="expanded ? 'Daha az göster' : '+{{ $totalDirectors - 6 }} kişi daha'"></span>
+                                    <i class="fas" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                </button>
+                            @endif
                         </div>
                     @else
                         <div class="m-auto py-8 text-center opacity-75">
@@ -326,11 +337,17 @@
                     </div>
 
                     @if(!empty($analysis['dimensions']['cast']['top_common']))
-                        <div class="mt-3 border-t border-slate-800/50 pt-3">
-                            <div class="max-h-[310px] overflow-y-auto pr-1 pb-1 custom-scrollbar">
+                        <div class="mt-3 border-t border-slate-800/50 pt-3" x-data="{ expanded: false }">
+                            @php $totalActors = count($analysis['dimensions']['cast']['top_common']); @endphp
+                            
+                            <div :class="expanded ? 'max-h-[310px] overflow-y-auto custom-scrollbar' : ''" class="pr-1 pb-1">
                                 <div class="grid grid-cols-3 gap-2">
                                     @foreach($analysis['dimensions']['cast']['top_common'] as $index => $actor)
-                                    <div class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default">
+                                    <div class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default"
+                                         x-show="expanded || {{ $index }} < 6"
+                                         x-transition:enter="transition ease-out duration-200"
+                                         x-transition:enter-start="opacity-0 scale-95"
+                                         x-transition:enter-end="opacity-100 scale-100">
                                         @if(!empty($actor['profile_path']))
                                             <img src="https://image.tmdb.org/t/p/w185{{ $actor['profile_path'] }}"
                                                  alt="{{ $actor['name'] }}"
@@ -356,6 +373,14 @@
                                 @endforeach
                                 </div>
                             </div>
+                            
+                            @if($totalActors > 6)
+                                <button @click="expanded = !expanded" 
+                                        class="w-full mt-3 py-2 text-xs font-medium text-pink-400 hover:text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    <span x-text="expanded ? 'Daha az göster' : '+{{ $totalActors - 6 }} kişi daha'"></span>
+                                    <i class="fas" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                </button>
+                            @endif
                         </div>
                     @else
                         <div class="m-auto py-8 text-center opacity-75">
@@ -366,7 +391,7 @@
                 </div>
 
                 {{-- DÖNEM UYUMU KARTI --}}
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col h-full">
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col">
                     <div class="flex items-center gap-3 mb-5">
                         <div class="bg-amber-500/10 w-10 h-10 rounded-xl flex items-center justify-center">
                             <i class="fas fa-clock-rotate-left text-amber-400"></i>
@@ -390,37 +415,37 @@
                                 !empty($analysis['dimensions']['decades']['their_decades']) ? max($analysis['dimensions']['decades']['their_decades']) : 1
                             );
                         @endphp
-                        <div class="space-y-3 flex-1">
-                            @foreach($allDecades as $decade)
-                                @php
-                                    $myCount = $analysis['dimensions']['decades']['my_decades'][$decade] ?? 0;
-                                    $theirCount = $analysis['dimensions']['decades']['their_decades'][$decade] ?? 0;
-                                    $myPercent = $globalMax > 0 ? round(($myCount / $globalMax) * 100) : 0;
-                                    $theirPercent = $globalMax > 0 ? round(($theirCount / $globalMax) * 100) : 0;
-                                @endphp
-                                <div class="bg-slate-800/30 rounded-xl p-3 border border-slate-700/50">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-xs text-slate-300 font-bold tracking-wide">{{ $decade }}</span>
-                                        <span class="text-[10px] bg-slate-900 px-2 py-0.5 rounded border border-slate-800 text-slate-400">
-                                            <span class="text-indigo-400 font-bold">{{ $myCount }}</span> <span class="mx-0.5 opacity-50">/</span> <span class="text-purple-400 font-bold">{{ $theirCount }}</span>
-                                        </span>
-                                    </div>
-                                    <div class="flex flex-col gap-1.5">
-                                        {{-- Senin Barın --}}
-                                        <div class="w-full bg-slate-700/50 rounded-full h-[6px] overflow-hidden relative" title="Sen: {{ $myCount }} film">
-                                            <div class="bg-indigo-500 h-full rounded-full transition-all" style="width: {{ $myPercent }}%"></div>
+                        <div class="mt-3 border-t border-slate-800/50 pt-3">
+                            <div class="grid grid-cols-3 gap-2">
+                                @foreach($allDecades as $decade)
+                                    @php
+                                        $myCount = $analysis['dimensions']['decades']['my_decades'][$decade] ?? 0;
+                                        $theirCount = $analysis['dimensions']['decades']['their_decades'][$decade] ?? 0;
+                                        $total = $myCount + $theirCount;
+                                    @endphp
+                                    <div class="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 rounded-xl p-3 text-center transition-all duration-200 group cursor-default">
+                                        <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-slate-900/80 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                            <i class="fas fa-calendar text-amber-400 text-lg"></i>
                                         </div>
-                                        {{-- Onun Barı --}}
-                                        <div class="w-full bg-slate-700/50 rounded-full h-[6px] overflow-hidden relative" title="{{ $user->name }}: {{ $theirCount }} film">
-                                            <div class="bg-purple-500 h-full rounded-full transition-all" style="width: {{ $theirPercent }}%"></div>
+                                        <p class="text-white text-xs font-semibold">{{ $decade }}</p>
+                                        <div class="flex items-center justify-center gap-1 mt-1">
+                                            <span class="text-[10px] text-indigo-400 font-bold">{{ $myCount }}</span>
+                                            <span class="text-[10px] text-slate-600">/</span>
+                                            <span class="text-[10px] text-purple-400 font-bold">{{ $theirCount }}</span>
                                         </div>
                                     </div>
+                                @endforeach
+                            </div>
+                            <div class="flex items-center justify-center gap-6 mt-4 pt-3 border-t border-slate-800/50">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded bg-indigo-500"></span>
+                                    <span class="text-xs text-slate-300 font-medium">Sen</span>
                                 </div>
-                            @endforeach
-                        </div>
-                        <div class="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-slate-800 text-xs text-slate-400">
-                            <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-indigo-500"></span>Sen</span>
-                            <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-purple-500"></span>{{ Str::limit($user->name, 10) }}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded bg-purple-500"></span>
+                                    <span class="text-xs text-slate-300 font-medium">{{ $user->name }}</span>
+                                </div>
+                            </div>
                         </div>
                     @else
                         <div class="m-auto py-8 text-center opacity-75">

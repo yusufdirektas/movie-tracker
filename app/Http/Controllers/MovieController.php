@@ -382,11 +382,18 @@ class MovieController extends Controller
                 // Film: credits.crew → yönetmen, title → başlık
                 $director = collect($data['credits']['crew'] ?? [])->firstWhere('job', 'Director')['name'] ?? 'Bilinmiyor';
 
+                // Cast: İlk 5 oyuncunun adlarını al (billing order'a göre sıralı)
+                $castNames = collect($data['credits']['cast'] ?? [])
+                    ->take(5)
+                    ->pluck('name')
+                    ->toArray();
+
                 $user->movies()->create([
                     'tmdb_id' => $data['id'],
                     'media_type' => 'movie',
                     'title' => $data['title'],
                     'director' => $director,
+                    'cast' => $castNames,
                     'genres' => $genres,
                     'poster_path' => $data['poster_path'],
                     'rating' => $data['vote_average'],
@@ -440,9 +447,9 @@ class MovieController extends Controller
         $this->authorize('view', $movie);
 
         // Global yorumları yükle (TMDB ID'ye göre, tüm kullanıcıların yorumları)
-        // 
+        //
         // @KAVRAM: Eager Loading (N+1 Sorunu Önleme)
-        // 
+        //
         // Kötü yöntem:
         //   foreach ($comments as $comment) {
         //       echo $comment->user->name; // Her comment için 1 query!
@@ -475,7 +482,7 @@ class MovieController extends Controller
                 ->whereIn('comment_id', $globalComments->pluck('id'))
                 ->get()
                 ->keyBy('comment_id');
-            
+
             // Her comment'e user'ın reaction'ını ekle
             $globalComments->each(function ($comment) use ($userReactions) {
                 $comment->user_reaction = $userReactions->get($comment->id);
