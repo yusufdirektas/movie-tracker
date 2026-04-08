@@ -29,7 +29,7 @@
             <i class="fas fa-arrow-left mr-2"></i>Profile Dön
         </a>
 
-        <div class="flex items-center justify-center gap-8 mb-8">
+        <div class="flex items-center justify-center gap-6 mb-8">
             <div class="text-center">
                 <div class="relative w-20 h-20 mx-auto">
                     <img src="{{ auth()->user()->avatar_url }}"
@@ -45,15 +45,27 @@
 
             {{-- Uyum Skoru — Animasyonlu Ring --}}
             <div class="text-center">
-                <div class="relative w-28 h-28 mx-auto" x-data="{ shown: false }" x-init="setTimeout(() => shown = true, 300)">
+                @php
+                    $scoreColor = match(true) {
+                        $stats['similarity'] >= 70 => 'text-emerald-400',
+                        $stats['similarity'] >= 40 => 'text-indigo-400',
+                        default => 'text-orange-400',
+                    };
+                    $scoreLabel = match(true) {
+                        $stats['similarity'] >= 70 => 'Mükemmel',
+                        $stats['similarity'] >= 40 => 'İyi',
+                        default => 'Keşfet',
+                    };
+                @endphp
+                <div class="relative w-20 h-20 mx-auto" x-data="{ shown: false }" x-init="setTimeout(() => shown = true, 300)">
                     <svg class="w-full h-full transform -rotate-90">
-                        <circle cx="56" cy="56" r="48"
-                                stroke="currentColor" stroke-width="8" fill="transparent"
+                        <circle cx="40" cy="40" r="34"
+                                stroke="currentColor" stroke-width="6" fill="transparent"
                                 class="text-slate-700/50"/>
-                        <circle cx="56" cy="56" r="48"
-                                stroke="url(#score-gradient)" stroke-width="8" fill="transparent"
-                                stroke-dasharray="301"
-                                :stroke-dashoffset="shown ? {{ 301 - (301 * $stats['similarity'] / 100) }} : 301"
+                        <circle cx="40" cy="40" r="34"
+                                stroke="url(#score-gradient)" stroke-width="6" fill="transparent"
+                                stroke-dasharray="214"
+                                :stroke-dashoffset="shown ? {{ 214 - (214 * $stats['similarity'] / 100) }} : 214"
                                 stroke-linecap="round"
                                 class="transition-all duration-[2000ms] ease-out"/>
                         <defs>
@@ -71,20 +83,10 @@
                             </linearGradient>
                         </defs>
                     </svg>
-                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span class="text-3xl font-black text-white">%{{ $stats['similarity'] }}</span>
-                        <span class="text-[10px] font-bold uppercase tracking-widest
-                            @if($stats['similarity'] >= 70) text-emerald-400
-                            @elseif($stats['similarity'] >= 40) text-indigo-400
-                            @else text-orange-400 @endif
-                        ">
-                            @if($stats['similarity'] >= 70) Mükemmel
-                            @elseif($stats['similarity'] >= 40) İyi
-                            @else Keşfet @endif
-                        </span>
-                    </div>
                 </div>
-                <p class="text-xs text-slate-500 mt-1 font-medium">6 Boyutlu Uyum</p>
+                <p class="text-2xl font-black text-white mt-2">%{{ $stats['similarity'] }}</p>
+                <p class="text-[10px] font-bold uppercase tracking-widest {{ $scoreColor }}">{{ $scoreLabel }}</p>
+                <p class="text-[10px] text-slate-500 mt-1">6 Boyutlu Uyum</p>
             </div>
 
             <div class="text-center">

@@ -68,24 +68,23 @@ class TasteAnalysisService
             ->whereNotNull('tmdb_id')
             ->get();
 
-        // Her boyutu ayrı ayrı hesapla
+        // Referans kullanıcıyı belirle (az film olan)
+        $reference = $this->determineReferenceUser($userA, $userB, $moviesA, $moviesB);
+        $refMovies = $reference['user']->id === $userA->id ? $moviesA : $moviesB;
+        $otherMovies = $reference['user']->id === $userA->id ? $moviesB : $moviesA;
+
+        // Her boyutu ayrı ayrı hesapla (referans kullanıcı bazlı)
         $movieAnalysis    = $this->analyzeMovies($moviesA, $moviesB);
-        $genreAnalysis    = $this->analyzeGenres($moviesA, $moviesB);
-        $directorAnalysis = $this->analyzeDirectors($moviesA, $moviesB);
-        $castAnalysis     = $this->analyzeCast($moviesA, $moviesB);
-        $decadeAnalysis   = $this->analyzeDecades($moviesA, $moviesB);
+        $genreAnalysis    = $this->analyzeGenres($refMovies, $otherMovies);
+        $directorAnalysis = $this->analyzeDirectors($refMovies, $otherMovies);
+        $castAnalysis     = $this->analyzeCast($refMovies, $otherMovies);
+        $decadeAnalysis   = $this->analyzeDecades($refMovies, $otherMovies);
         $ratingAnalysis   = $this->analyzeRatings($moviesA, $moviesB);
 
         /**
          * 📚 AĞIRLIKLI ORTALAMA (Weighted Average)
          *
          * Her boyutun score'u × ağırlığı = toplam skor
-         *
-         * Örnek:
-         *   Film: 0.50 × 0.25 = 0.125
-         *   Tür:  0.80 × 0.25 = 0.200
-         *   ...
-         *   Toplam = 0.125 + 0.200 + ... = 0.XX → %XX
          */
         $overallScore = round(
             ($movieAnalysis['score']    * self::WEIGHTS['movies']) +
@@ -96,8 +95,18 @@ class TasteAnalysisService
             ($ratingAnalysis['score']   * self::WEIGHTS['ratings'])
         );
 
+        // Güven skorunu hesapla
+        $confidence = $this->calculateConfidence(
+            $movieAnalysis['common_count'],
+            min($moviesA->count(), $moviesB->count()),
+            $movieAnalysis['score']
+        );
+
         return [
             'overall_score' => $overallScore,
+            'confidence'    => $confidence,
+            'reference_user_id'   => $reference['user']->id,
+            'reference_user_name' => $reference['user']->name,
             'weights'       => self::WEIGHTS,
             'dimensions'    => [
                 'movies'    => $movieAnalysis,
@@ -109,6 +118,70 @@ class TasteAnalysisService
             ],
             'my_total'    => $moviesA->count(),
             'their_total' => $moviesB->count(),
+        ];
+    }
+
+    /**
+     * 📚 REFERANS KULLANICI BELİRLEME
+     *
+     * Az film izleyen kullanıcıyı "referans" olarak belirle.
+     * Tüm analizler bu kullanıcının perspektifinden yapılır.
+     *
+     * Neden? 500 vs 200 film durumunda, 200 filmi olan kişinin
+     * zevklerinin ne kadar karşılandığını ölçmek daha anlamlı.
+     */
+    private function determineReferenceUser(User $userA, User $userB, Collection $moviesA, Collection $moviesB): array
+    {
+        $countA = $moviesA->count();
+        $countB = $moviesB->count();
+
+        if ($countA <= $countB) {
+            return ['user' => $userA, 'count' => $countA];
+        }
+
+        return ['user' => $userB, 'count' => $countB];
+    }
+
+    /**
+     * 📚 GÜVEN SKORU HESAPLAMA
+     *
+     * Analiz sonucunun ne kadar güvenilir olduğunu belirler.
+     *
+     * Faktörler:
+     * - Ortak film sayısı (10 film = düşük, 50+ = yüksek)
+     * - Örtüşme oranı
+     *
+     * @return array ['score' => 0-100, 'level' => 'low'|'medium'|'high', 'label' => string]
+     */
+    private function calculateConfidence(int $commonCount, int $minMovieCount, int $overlapScore): array
+    {
+        // Ortak film faktörü: 20 ortak film = %50 katkı, 40+ = %100 katkı
+        $commonFactor = min(100, ($commonCount / 20) * 50);
+
+        // Örtüşme faktörü: Overlap score'un yarısı kadar katkı
+        $overlapFactor = $overlapScore / 2;
+
+        $score = (int) min(100, $commonFactor + $overlapFactor);
+
+        // Seviye belirleme
+        if ($score <= 30) {
+            return [
+                'score' => $score,
+                'level' => 'low',
+                'label' => 'Az veri, tahmini sonuç'
+            ];
+        } elseif ($score <= 60) {
+            return [
+                'score' => $score,
+                'level' => 'medium',
+                'label' => 'Makul güvenilirlik'
+            ];
+        }
+
+        return [
+            'score' => $score,
+            'level' => 'high',
+            'label' => 'Güvenilir sonuç'
         ];
     }
 
@@ -187,7 +260,7 @@ class TasteAnalysisService
         // Top common enriched
         $enrichedCommonGenres = [];
         $slicedCommon = array_slice($topCommon, 0, 18, true);
-        
+
         foreach ($slicedCommon as $genre => $countA) {
             $enrichedCommonGenres[] = [
                 'name' => $genre,
@@ -235,10 +308,10 @@ class TasteAnalysisService
             $topCommon[$director] = $countA + $directorsB[$director];
         }
         arsort($topCommon);
-        
+
         $topDirectorsSlice = array_slice($topCommon, 0, 15, true);
         $enrichedTopDirectors = [];
-        
+
         if (!empty($topDirectorsSlice)) {
             $tmdbService = app(\App\Services\TmdbService::class);
             foreach ($topDirectorsSlice as $director => $totalFilms) {
@@ -254,7 +327,7 @@ class TasteAnalysisService
                     }
                     return null;
                 });
-                
+
                 $enrichedTopDirectors[] = [
                     'name' => $director,
                     'total_films' => $totalFilms,
@@ -296,10 +369,10 @@ class TasteAnalysisService
             $topCommon[$actor] = $countA + $castB[$actor];
         }
         arsort($topCommon);
-        
+
         $topActorsSlice = array_slice($topCommon, 0, 15, true);
         $enrichedTopActors = [];
-        
+
         if (!empty($topActorsSlice)) {
             $tmdbService = app(\App\Services\TmdbService::class);
             foreach ($topActorsSlice as $actor => $totalFilms) {
@@ -314,7 +387,7 @@ class TasteAnalysisService
                     }
                     return null;
                 });
-                
+
                 $enrichedTopActors[] = [
                     'name' => $actor,
                     'total_films' => $totalFilms,
