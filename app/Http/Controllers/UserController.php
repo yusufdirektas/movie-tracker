@@ -317,6 +317,8 @@ class UserController extends Controller
             'my_total'         => $analysis['my_total'],
             'their_total'      => $analysis['their_total'],
             'similarity'       => $analysis['overall_score'],
+            'confidence'       => $analysis['confidence'] ?? null,
+            'reference_user'   => $analysis['reference_user_name'] ?? null,
         ];
 
         return view('users.compare', compact(

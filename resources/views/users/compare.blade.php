@@ -87,6 +87,27 @@
                 <p class="text-2xl font-black text-white mt-2">%{{ $stats['similarity'] }}</p>
                 <p class="text-[10px] font-bold uppercase tracking-widest {{ $scoreColor }}">{{ $scoreLabel }}</p>
                 <p class="text-[10px] text-slate-500 mt-1">6 Boyutlu Uyum</p>
+                
+                {{-- Güven Skoru --}}
+                @if(isset($stats['confidence']))
+                    @php
+                        $confLevel = $stats['confidence']['level'];
+                        $confColor = match($confLevel) {
+                            'high' => 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30',
+                            'medium' => 'text-amber-400 bg-amber-500/20 border-amber-500/30',
+                            default => 'text-red-400 bg-red-500/20 border-red-500/30',
+                        };
+                        $confIcon = match($confLevel) {
+                            'high' => 'fa-check-circle',
+                            'medium' => 'fa-info-circle',
+                            default => 'fa-exclamation-triangle',
+                        };
+                    @endphp
+                    <div class="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] {{ $confColor }}">
+                        <i class="fas {{ $confIcon }}"></i>
+                        <span>{{ $stats['confidence']['label'] }}</span>
+                    </div>
+                @endif
             </div>
 
             <div class="text-center">
@@ -405,24 +426,24 @@
                         <span class="ml-auto text-2xl font-black text-amber-400">%{{ $analysis['dimensions']['decades']['score'] }}</span>
                     </div>
 
-                    @if(!empty($analysis['dimensions']['decades']['my_decades']) || !empty($analysis['dimensions']['decades']['their_decades']))
+                    @if(!empty($analysis['dimensions']['decades']['ref_decades']) || !empty($analysis['dimensions']['decades']['other_decades']))
                         @php
                             $allDecades = array_unique(array_merge(
-                                array_keys($analysis['dimensions']['decades']['my_decades'] ?? []),
-                                array_keys($analysis['dimensions']['decades']['their_decades'] ?? [])
+                                array_keys($analysis['dimensions']['decades']['ref_decades'] ?? []),
+                                array_keys($analysis['dimensions']['decades']['other_decades'] ?? [])
                             ));
                             sort($allDecades);
                             $globalMax = max(
-                                !empty($analysis['dimensions']['decades']['my_decades']) ? max($analysis['dimensions']['decades']['my_decades']) : 1,
-                                !empty($analysis['dimensions']['decades']['their_decades']) ? max($analysis['dimensions']['decades']['their_decades']) : 1
+                                !empty($analysis['dimensions']['decades']['ref_decades']) ? max($analysis['dimensions']['decades']['ref_decades']) : 1,
+                                !empty($analysis['dimensions']['decades']['other_decades']) ? max($analysis['dimensions']['decades']['other_decades']) : 1
                             );
                         @endphp
                         <div class="mt-3 border-t border-slate-800/50 pt-3">
                             <div class="grid grid-cols-3 gap-2">
                                 @foreach($allDecades as $decade)
                                     @php
-                                        $myCount = $analysis['dimensions']['decades']['my_decades'][$decade] ?? 0;
-                                        $theirCount = $analysis['dimensions']['decades']['their_decades'][$decade] ?? 0;
+                                        $myCount = $analysis['dimensions']['decades']['ref_decades'][$decade] ?? 0;
+                                        $theirCount = $analysis['dimensions']['decades']['other_decades'][$decade] ?? 0;
                                         $total = $myCount + $theirCount;
                                     @endphp
                                     <div class="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 rounded-xl p-3 text-center transition-all duration-200 group cursor-default">
@@ -474,42 +495,48 @@
                             @if(!empty($analysis['dimensions']['ratings']['insufficient']))
                                 <div class="col-span-2 text-center py-6">
                                     <i class="fas fa-exclamation-triangle text-yellow-500/50 text-3xl mb-2"></i>
-                                    <p class="text-slate-400 text-sm">Karşılaştırma için iki tarafın da puanlı filmi olmalı.</p>
+                                    <p class="text-slate-400 text-sm">{{ $analysis['dimensions']['ratings']['insufficient_reason'] ?? 'Karşılaştırma için ortak puanlanmış film gerekli.' }}</p>
                                 </div>
                             @else
-                            {{-- Benim Puanım --}}
-                            <div class="flex flex-col text-center">
-                                <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5 flex flex-col h-full">
-                                    <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">Senin Ortalaman</p>
-                                    <p class="text-4xl font-black text-indigo-400">{{ $analysis['dimensions']['ratings']['my_avg'] }}</p>
-                                    <p class="text-xs text-slate-600 mt-1 mb-auto">/ 10 TMDB</p>
-
-                                    <div class="mt-4 pt-4 border-t border-slate-800">
-                                        <p class="text-xs text-slate-500 mb-1">Kişisel</p>
-                                        @if($analysis['dimensions']['ratings']['my_personal'] > 0)
-                                            <p class="text-xl font-bold text-indigo-300">{{ $analysis['dimensions']['ratings']['my_personal'] }} <span class="text-xs text-slate-600 font-normal">/ 5</span></p>
-                                        @else
-                                            <p class="text-sm font-medium text-slate-600">—</p>
-                                        @endif
+                            {{-- Ortak Film Puanları --}}
+                            <div class="col-span-2 bg-gradient-to-br from-yellow-500/10 to-amber-500/5 border border-yellow-500/20 rounded-2xl p-5">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="text-center flex-1">
+                                        <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">Senin Ort.</p>
+                                        <p class="text-3xl font-black text-indigo-400">{{ $analysis['dimensions']['ratings']['my_avg'] }}</p>
+                                        <p class="text-xs text-slate-600">/ 10</p>
+                                    </div>
+                                    <div class="text-center px-4">
+                                        <div class="w-16 h-16 rounded-full bg-slate-800/80 flex items-center justify-center border-2 border-yellow-500/30">
+                                            <div class="text-center">
+                                                <p class="text-lg font-black {{ $analysis['dimensions']['ratings']['correlation'] >= 0.5 ? 'text-emerald-400' : ($analysis['dimensions']['ratings']['correlation'] >= 0 ? 'text-amber-400' : 'text-red-400') }}">
+                                                    {{ $analysis['dimensions']['ratings']['correlation'] >= 0 ? '+' : '' }}{{ $analysis['dimensions']['ratings']['correlation'] }}
+                                                </p>
+                                                <p class="text-[8px] text-slate-500 uppercase">Korelasyon</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center flex-1">
+                                        <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">{{ Str::limit($user->name, 8) }} Ort.</p>
+                                        <p class="text-3xl font-black text-purple-400">{{ $analysis['dimensions']['ratings']['their_avg'] }}</p>
+                                        <p class="text-xs text-slate-600">/ 10</p>
                                     </div>
                                 </div>
-                            </div>
-
-                            {{-- Onun Puanı --}}
-                            <div class="flex flex-col text-center">
-                                <div class="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-5 flex flex-col h-full">
-                                    <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">{{ Str::limit($user->name, 10) }}</p>
-                                    <p class="text-4xl font-black text-purple-400">{{ $analysis['dimensions']['ratings']['their_avg'] }}</p>
-                                    <p class="text-xs text-slate-600 mt-1 mb-auto">/ 10 TMDB</p>
-
-                                    <div class="mt-4 pt-4 border-t border-slate-800">
-                                        <p class="text-xs text-slate-500 mb-1">Kişisel</p>
-                                        @if($analysis['dimensions']['ratings']['their_personal'] > 0)
-                                            <p class="text-xl font-bold text-purple-300">{{ $analysis['dimensions']['ratings']['their_personal'] }} <span class="text-xs text-slate-600 font-normal">/ 5</span></p>
+                                <div class="text-center pt-3 border-t border-slate-800/50">
+                                    <p class="text-xs text-slate-400">
+                                        <span class="text-yellow-400 font-bold">{{ $analysis['dimensions']['ratings']['common_rated'] }}</span> ortak film üzerinden hesaplandı
+                                    </p>
+                                    <p class="text-[10px] text-slate-500 mt-1">
+                                        @if($analysis['dimensions']['ratings']['correlation'] >= 0.7)
+                                            🎯 Çok benzer zevkler!
+                                        @elseif($analysis['dimensions']['ratings']['correlation'] >= 0.3)
+                                            👍 Benzer eğilimler
+                                        @elseif($analysis['dimensions']['ratings']['correlation'] >= 0)
+                                            🤷 Farklı bakış açıları
                                         @else
-                                            <p class="text-sm font-medium text-slate-600">—</p>
+                                            🔄 Zıt görüşler
                                         @endif
-                                    </div>
+                                    </p>
                                 </div>
                             </div>
                             @endif
