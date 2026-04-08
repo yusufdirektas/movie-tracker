@@ -230,82 +230,85 @@ class TasteAnalysisService
     }
 
     /**
-     * 2. TÜR UYUMU ANALİZİ (Cosine Similarity)
+     * 2. TÜR UYUMU ANALİZİ (Referans Bazlı Cosine Similarity)
      *
-     * 📚 COSINE SIMILARITY NEDİR?
+     * 📚 REFERANS YAKLAŞIMI
      *
-     * İki vektörün açısını ölçer. Vektörlerin büyüklüğü önemsiz,
-     * yönleri (oranları) önemli.
+     * moviesA = referans kullanıcının filmleri (az film olan)
+     * moviesB = diğer kullanıcının filmleri
      *
-     * Kullanıcı A: Drama %40, Aksiyon %30, Komedi %20, Korku %10
-     * Kullanıcı B: Drama %35, Aksiyon %35, Komedi %20, Korku %10
-     * → Çok benzer dağılım = yüksek cosine similarity
+     * Soru: "Referansın sevdiği türleri diğer kullanıcı ne kadar izlemiş?"
      *
-     * Cosine zaten film sayısı farkından etkilenmez (oranlarla çalışır).
+     * Cosine similarity oranlarla çalıştığı için film sayısı farkından
+     * zaten etkilenmez, ama referans perspektifi sonuçları daha anlamlı kılar.
      */
-    private function analyzeGenres(Collection $moviesA, Collection $moviesB): array
+    private function analyzeGenres(Collection $refMovies, Collection $otherMovies): array
     {
-        $genresA = $this->buildDistribution($moviesA, 'genres');
-        $genresB = $this->buildDistribution($moviesB, 'genres');
+        $genresRef = $this->buildDistribution($refMovies, 'genres');
+        $genresOther = $this->buildDistribution($otherMovies, 'genres');
 
         // Ortak türler (ikisi de izlemiş)
-        $commonGenres = array_intersect_key($genresA, $genresB);
+        $commonGenres = array_intersect_key($genresRef, $genresOther);
 
         // En çok ortaklaşa izlenen türler (sıralı)
         $topCommon = [];
-        foreach ($commonGenres as $genre => $countA) {
-            $topCommon[$genre] = min($countA, $genresB[$genre]);
+        foreach ($commonGenres as $genre => $countRef) {
+            $topCommon[$genre] = min($countRef, $genresOther[$genre]);
         }
         arsort($topCommon);
+        
         // Top common enriched
         $enrichedCommonGenres = [];
         $slicedCommon = array_slice($topCommon, 0, 18, true);
 
-        foreach ($slicedCommon as $genre => $countA) {
+        foreach ($slicedCommon as $genre => $countRef) {
             $enrichedCommonGenres[] = [
                 'name' => $genre,
-                'count' => min($countA, $genresB[$genre])
+                'count' => min($countRef, $genresOther[$genre])
             ];
         }
 
-        $score = round($this->cosineSimilarity($genresA, $genresB) * 100);
+        $score = round($this->cosineSimilarity($genresRef, $genresOther) * 100);
 
         return [
-            'score'       => $score,
-            'my_genres'   => $genresA,
-            'their_genres' => $genresB,
-            'common'      => $topCommon,
-            'top_common'  => $enrichedCommonGenres,
+            'score'        => $score,
+            'ref_genres'   => $genresRef,
+            'other_genres' => $genresOther,
+            'common'       => $topCommon,
+            'top_common'   => $enrichedCommonGenres,
         ];
     }
 
     /**
-     * 3. YÖNETMEN UYUMU ANALİZİ (Overlap Coefficient)
+     * 3. YÖNETMEN UYUMU ANALİZİ (Referans Bazlı Overlap)
      *
-     * Overlap Coefficient kullanıyoruz çünkü 700 film izleyen kişi
-     * doğal olarak çok daha fazla yönetmen tanıyacak.
-     * min() ile küçük seti baz alıyoruz → adil karşılaştırma.
+     * 📚 REFERANS YAKLAŞIMI
+     *
+     * refMovies = referans kullanıcının filmleri (az film olan)
+     * otherMovies = diğer kullanıcının filmleri
+     *
+     * Soru: "Referansın izlediği yönetmenleri diğeri ne kadar izlemiş?"
      */
-    private function analyzeDirectors(Collection $moviesA, Collection $moviesB): array
+    private function analyzeDirectors(Collection $refMovies, Collection $otherMovies): array
     {
-        $directorsA = $this->buildDistribution($moviesA, 'director');
-        $directorsB = $this->buildDistribution($moviesB, 'director');
+        $directorsRef = $this->buildDistribution($refMovies, 'director');
+        $directorsOther = $this->buildDistribution($otherMovies, 'director');
 
         // 'Bilinmiyor' yönetmeni hariç tut
-        unset($directorsA['Bilinmiyor'], $directorsB['Bilinmiyor']);
+        unset($directorsRef['Bilinmiyor'], $directorsOther['Bilinmiyor']);
 
-        $commonDirectors = array_intersect_key($directorsA, $directorsB);
+        $commonDirectors = array_intersect_key($directorsRef, $directorsOther);
 
-        // Overlap Coefficient
-        $minUniqueCount = min(count($directorsA), count($directorsB));
-        $score = $minUniqueCount > 0
-            ? round((count($commonDirectors) / $minUniqueCount) * 100)
+        // Referans kullanıcının yönetmenlerinin yüzde kaçı diğerinde var?
+        $refCount = count($directorsRef);
+        $score = $refCount > 0
+            ? round((count($commonDirectors) / $refCount) * 100)
             : 0;
 
         // En çok birlikte izlenen yönetmenler
         $topCommon = [];
-        foreach ($commonDirectors as $director => $countA) {
-            $topCommon[$director] = $countA + $directorsB[$director];
+        foreach ($commonDirectors as $director => $countRef) {
+            $topCommon[$director] = $countRef + $directorsOther[$director];
         }
         arsort($topCommon);
 
@@ -315,7 +318,6 @@ class TasteAnalysisService
         if (!empty($topDirectorsSlice)) {
             $tmdbService = app(\App\Services\TmdbService::class);
             foreach ($topDirectorsSlice as $director => $totalFilms) {
-                // Same caching and search logic used for actors
                 $cacheKey = 'director_image_' . md5($director);
                 $profilePath = \Illuminate\Support\Facades\Cache::rememberForever($cacheKey, function() use ($tmdbService, $director) {
                     $response = $tmdbService->searchPerson($director);
@@ -339,34 +341,38 @@ class TasteAnalysisService
         return [
             'score'         => min($score, 100),
             'common_count'  => count($commonDirectors),
-            'my_unique'     => count($directorsA),
-            'their_unique'  => count($directorsB),
+            'ref_unique'    => count($directorsRef),
+            'other_unique'  => count($directorsOther),
             'top_common'    => $enrichedTopDirectors,
-            'my_top'        => array_slice($directorsA, 0, 5, true),
-            'their_top'     => array_slice($directorsB, 0, 5, true),
+            'ref_top'       => array_slice($directorsRef, 0, 5, true),
+            'other_top'     => array_slice($directorsOther, 0, 5, true),
         ];
     }
 
     /**
-     * 4. OYUNCU UYUMU ANALİZİ (Overlap Coefficient)
+     * 4. OYUNCU UYUMU ANALİZİ (Referans Bazlı Overlap)
+     *
+     * 📚 REFERANS YAKLAŞIMI
+     *
+     * Soru: "Referansın izlediği oyuncuları diğeri ne kadar izlemiş?"
      */
-    private function analyzeCast(Collection $moviesA, Collection $moviesB): array
+    private function analyzeCast(Collection $refMovies, Collection $otherMovies): array
     {
-        $castA = $this->buildDistribution($moviesA, 'cast');
-        $castB = $this->buildDistribution($moviesB, 'cast');
+        $castRef = $this->buildDistribution($refMovies, 'cast');
+        $castOther = $this->buildDistribution($otherMovies, 'cast');
 
-        $commonCast = array_intersect_key($castA, $castB);
+        $commonCast = array_intersect_key($castRef, $castOther);
 
-        // Overlap Coefficient
-        $minUnique = min(count($castA), count($castB));
-        $score = $minUnique > 0
-            ? round((count($commonCast) / $minUnique) * 100)
+        // Referans kullanıcının oyuncularının yüzde kaçı diğerinde var?
+        $refCount = count($castRef);
+        $score = $refCount > 0
+            ? round((count($commonCast) / $refCount) * 100)
             : 0;
 
         // En çok birlikte izlenen oyuncular
         $topCommon = [];
-        foreach ($commonCast as $actor => $countA) {
-            $topCommon[$actor] = $countA + $castB[$actor];
+        foreach ($commonCast as $actor => $countRef) {
+            $topCommon[$actor] = $countRef + $castOther[$actor];
         }
         arsort($topCommon);
 
@@ -399,88 +405,152 @@ class TasteAnalysisService
         return [
             'score'         => min($score, 100),
             'common_count'  => count($commonCast),
-            'my_unique'     => count($castA),
-            'their_unique'  => count($castB),
+            'ref_unique'    => count($castRef),
+            'other_unique'  => count($castOther),
             'top_common'    => $enrichedTopActors,
-            'my_top'        => array_slice($castA, 0, 5, true),
-            'their_top'     => array_slice($castB, 0, 5, true),
+            'ref_top'       => array_slice($castRef, 0, 5, true),
+            'other_top'     => array_slice($castOther, 0, 5, true),
         ];
     }
 
     /**
-     * 5. DÖNEM UYUMU ANALİZİ (Cosine Similarity)
+     * 5. DÖNEM UYUMU ANALİZİ (Referans Bazlı Cosine Similarity)
      *
-     * Filmlerin çıkış yıllarını 10'ar yıllık dönemlere ayırıp
-     * iki kullanıcının dönem tercihlerini karşılaştırır.
+     * 📚 REFERANS YAKLAŞIMI
      *
-     * Cosine zaten oran bazlı çalıştığı için film sayısı farkından
-     * etkilenmez. 700 vs 100 film olsa bile dağılım benzerliğini ölçer.
+     * refMovies = referans kullanıcının filmleri
+     * Dönem dağılımları cosine similarity ile karşılaştırılır.
      */
-    private function analyzeDecades(Collection $moviesA, Collection $moviesB): array
+    private function analyzeDecades(Collection $refMovies, Collection $otherMovies): array
     {
-        $decadesA = $this->buildDecadeDistribution($moviesA);
-        $decadesB = $this->buildDecadeDistribution($moviesB);
+        $decadesRef = $this->buildDecadeDistribution($refMovies);
+        $decadesOther = $this->buildDecadeDistribution($otherMovies);
 
-        $commonDecades = array_intersect_key($decadesA, $decadesB);
+        $commonDecades = array_intersect_key($decadesRef, $decadesOther);
 
-        $score = round($this->cosineSimilarity($decadesA, $decadesB) * 100);
+        $score = round($this->cosineSimilarity($decadesRef, $decadesOther) * 100);
 
         return [
-            'score'       => $score,
-            'my_decades'  => $decadesA,
-            'their_decades' => $decadesB,
-            'common'      => $commonDecades,
+            'score'         => $score,
+            'ref_decades'   => $decadesRef,
+            'other_decades' => $decadesOther,
+            'common'        => $commonDecades,
         ];
     }
 
     /**
-     * 6. PUAN EĞİLİMİ ANALİZİ
+     * 6. PUAN EĞİLİMİ ANALİZİ (Ortak Filmler Bazlı)
      *
-     * 📚 EDGE CASE: Bir tarafın hiç filmi yoksa
+     * 📚 YENİ YAKLAŞIM: SADECE ORTAK FİLMLER
      *
-     * Eski problem: A ortalaması 6.8, B ortalaması 0.0 (film yok)
-     * → Fark = 6.8 → Score = %32 → Bu yanıltıcı!
+     * Eski problem: A'nın 500 filminin ortalaması vs B'nin 100 filminin ortalaması
+     * → Farklı filmler izlemişler, karşılaştırma anlamsız!
      *
-     * Çözüm: İki tarafın da en az 1 filmi yoksa skor 0 dönder.
-     * Böylece "veri yetersiz" durumunda sahte uyum gösterilmez.
+     * Yeni yaklaşım: Sadece ikisinin de izlediği filmlerdeki puanları karşılaştır.
+     * → "Aynı filmlere benzer puanlar mı verdiler?"
+     *
+     * Korelasyon: Puanlar arasındaki ilişkiyi ölçer.
+     * +1 = Mükemmel uyum (aynı filmlere aynı puanlar)
+     *  0 = İlişki yok
+     * -1 = Ters uyum (birinin sevdiğini diğeri sevmiyor)
      */
     private function analyzeRatings(Collection $moviesA, Collection $moviesB): array
     {
-        $ratedA = $moviesA->whereNotNull('rating')->where('rating', '>', 0);
-        $ratedB = $moviesB->whereNotNull('rating')->where('rating', '>', 0);
+        // Ortak filmleri bul (tmdb_id bazlı)
+        $idsA = $moviesA->pluck('tmdb_id')->toArray();
+        $idsB = $moviesB->pluck('tmdb_id')->toArray();
+        $commonIds = array_intersect($idsA, $idsB);
 
-        $avgA = $ratedA->count() > 0 ? $ratedA->avg('rating') : 0;
-        $avgB = $ratedB->count() > 0 ? $ratedB->avg('rating') : 0;
+        // Ortak filmlerde puan verilerini eşleştir
+        $ratingsA = [];
+        $ratingsB = [];
 
-        $personalAvgA = $moviesA->whereNotNull('personal_rating')->avg('personal_rating') ?? 0;
-        $personalAvgB = $moviesB->whereNotNull('personal_rating')->avg('personal_rating') ?? 0;
+        foreach ($commonIds as $tmdbId) {
+            $movieA = $moviesA->firstWhere('tmdb_id', $tmdbId);
+            $movieB = $moviesB->firstWhere('tmdb_id', $tmdbId);
 
-        // İki tarafın da puanlı filmi olmalı, yoksa karşılaştırma anlamsız
-        if ($ratedA->count() === 0 || $ratedB->count() === 0) {
+            // Her ikisinin de puan verdiği filmler
+            $ratingA = $movieA->personal_rating ?? $movieA->rating ?? null;
+            $ratingB = $movieB->personal_rating ?? $movieB->rating ?? null;
+
+            if ($ratingA !== null && $ratingB !== null && $ratingA > 0 && $ratingB > 0) {
+                $ratingsA[] = $ratingA;
+                $ratingsB[] = $ratingB;
+            }
+        }
+
+        // Yeterli veri yoksa
+        if (count($ratingsA) < 3) {
             return [
-                'score'          => 0,
-                'my_avg'         => round($avgA, 1),
-                'their_avg'      => round($avgB, 1),
-                'my_personal'    => round($personalAvgA, 1),
-                'their_personal' => round($personalAvgB, 1),
-                'difference'     => 0,
-                'insufficient'   => true, // UI bunu kontrol edecek
+                'score'           => 0,
+                'common_rated'    => count($ratingsA),
+                'my_avg'          => 0,
+                'their_avg'       => 0,
+                'correlation'     => 0,
+                'difference'      => 0,
+                'insufficient'    => true,
+                'insufficient_reason' => 'En az 3 ortak puanlanmış film gerekli'
             ];
         }
 
-        // Puan farkı ne kadar küçükse uyum o kadar yüksek
-        $diff  = abs($avgA - $avgB);
-        $score = round((1 - ($diff / 10)) * 100);
+        // Ortalamalar
+        $avgA = array_sum($ratingsA) / count($ratingsA);
+        $avgB = array_sum($ratingsB) / count($ratingsB);
+
+        // Pearson korelasyonu hesapla
+        $correlation = $this->pearsonCorrelation($ratingsA, $ratingsB);
+
+        // Korelasyonu 0-100 skora çevir
+        // -1 → 0, 0 → 50, +1 → 100
+        $score = (int) round(($correlation + 1) * 50);
+
+        // Ortalama puan farkı (bilgilendirme amaçlı)
+        $diff = abs($avgA - $avgB);
 
         return [
-            'score'          => max(0, $score),
-            'my_avg'         => round($avgA, 1),
-            'their_avg'      => round($avgB, 1),
-            'my_personal'    => round($personalAvgA, 1),
-            'their_personal' => round($personalAvgB, 1),
-            'difference'     => round($diff, 1),
-            'insufficient'   => false,
+            'score'           => max(0, min(100, $score)),
+            'common_rated'    => count($ratingsA),
+            'my_avg'          => round($avgA, 1),
+            'their_avg'       => round($avgB, 1),
+            'correlation'     => round($correlation, 2),
+            'difference'      => round($diff, 1),
+            'insufficient'    => false,
         ];
+    }
+
+    /**
+     * 📚 PEARSON KORELASYON KATSAYISI
+     *
+     * İki dizi arasındaki doğrusal ilişkiyi ölçer (-1 ile +1 arası).
+     * Film puanları için ideal: "Benzer zevkler mi?"
+     */
+    private function pearsonCorrelation(array $x, array $y): float
+    {
+        $n = count($x);
+        if ($n !== count($y) || $n === 0) {
+            return 0.0;
+        }
+
+        $sumX = array_sum($x);
+        $sumY = array_sum($y);
+        $sumXY = 0;
+        $sumX2 = 0;
+        $sumY2 = 0;
+
+        for ($i = 0; $i < $n; $i++) {
+            $sumXY += $x[$i] * $y[$i];
+            $sumX2 += $x[$i] * $x[$i];
+            $sumY2 += $y[$i] * $y[$i];
+        }
+
+        $numerator = ($n * $sumXY) - ($sumX * $sumY);
+        $denominator = sqrt((($n * $sumX2) - ($sumX * $sumX)) * (($n * $sumY2) - ($sumY * $sumY)));
+
+        if ($denominator == 0) {
+            return 0.0;
+        }
+
+        return $numerator / $denominator;
     }
 
     // =========================================================================
