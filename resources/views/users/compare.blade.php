@@ -323,7 +323,7 @@
                                         {{-- Metin Alanı --}}
                                         <div class="absolute bottom-0 inset-x-0 p-2 text-center transform translate-y-0.5 group-hover:-translate-y-0.5 transition-transform duration-300">
                                             <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $director['name'] }}">{{ $director['name'] }}</span>
-                                            <span class="text-[9px] text-purple-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $director['total_films'] }} FILM</span>
+                                            <span class="text-[9px] text-purple-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $director['common_films'] }} ORTAK</span>
                                         </div>
                                     </div>
                                 @endforeach
@@ -390,7 +390,7 @@
                                         {{-- Metin Alanı --}}
                                         <div class="absolute bottom-0 inset-x-0 p-2 text-center transform translate-y-0.5 group-hover:-translate-y-0.5 transition-transform duration-300">
                                             <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $actor['name'] }}">{{ $actor['name'] }}</span>
-                                            <span class="text-[9px] text-pink-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $actor['total_films'] }} FILM</span>
+                                            <span class="text-[9px] text-pink-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $actor['common_films'] }} ORTAK</span>
                                         </div>
                                     </div>
                                 @endforeach
@@ -484,63 +484,38 @@
                         <div class="bg-yellow-500/10 w-10 h-10 rounded-xl flex items-center justify-center">
                             <i class="fas fa-star text-yellow-400"></i>
                         </div>
-                        <div>
-                            <h3 class="text-white font-bold">Puan Eğilimi</h3>
-                            <p class="text-xs text-slate-500">TMDB puan ortalamalarınızın karşılaştırması</p>
-                        </div>
+                        <h3 class="text-white font-bold">Puan Eğilimi</h3>
                         <span class="ml-auto text-2xl font-black text-yellow-400">%{{ $analysis['dimensions']['ratings']['score'] }}</span>
                     </div>
 
-                        <div class="grid grid-cols-2 gap-6">
-                            @if(!empty($analysis['dimensions']['ratings']['insufficient']))
-                                <div class="col-span-2 text-center py-6">
-                                    <i class="fas fa-exclamation-triangle text-yellow-500/50 text-3xl mb-2"></i>
-                                    <p class="text-slate-400 text-sm">{{ $analysis['dimensions']['ratings']['insufficient_reason'] ?? 'Karşılaştırma için ortak puanlanmış film gerekli.' }}</p>
-                                </div>
-                            @else
-                            {{-- Ortak Film Puanları --}}
-                            <div class="col-span-2 bg-gradient-to-br from-yellow-500/10 to-amber-500/5 border border-yellow-500/20 rounded-2xl p-5">
-                                <div class="flex items-center justify-between mb-4">
-                                    <div class="text-center flex-1">
-                                        <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">Senin Ort.</p>
-                                        <p class="text-3xl font-black text-indigo-400">{{ $analysis['dimensions']['ratings']['my_avg'] }}</p>
-                                        <p class="text-xs text-slate-600">/ 10</p>
-                                    </div>
-                                    <div class="text-center px-4">
-                                        <div class="w-16 h-16 rounded-full bg-slate-800/80 flex items-center justify-center border-2 border-yellow-500/30">
-                                            <div class="text-center">
-                                                <p class="text-lg font-black {{ $analysis['dimensions']['ratings']['correlation'] >= 0.5 ? 'text-emerald-400' : ($analysis['dimensions']['ratings']['correlation'] >= 0 ? 'text-amber-400' : 'text-red-400') }}">
-                                                    {{ $analysis['dimensions']['ratings']['correlation'] >= 0 ? '+' : '' }}{{ $analysis['dimensions']['ratings']['correlation'] }}
-                                                </p>
-                                                <p class="text-[8px] text-slate-500 uppercase">Korelasyon</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="text-center flex-1">
-                                        <p class="text-xs text-slate-500 mb-1 uppercase font-bold tracking-wider">{{ Str::limit($user->name, 8) }} Ort.</p>
-                                        <p class="text-3xl font-black text-purple-400">{{ $analysis['dimensions']['ratings']['their_avg'] }}</p>
-                                        <p class="text-xs text-slate-600">/ 10</p>
-                                    </div>
-                                </div>
-                                <div class="text-center pt-3 border-t border-slate-800/50">
-                                    <p class="text-xs text-slate-400">
-                                        <span class="text-yellow-400 font-bold">{{ $analysis['dimensions']['ratings']['common_rated'] }}</span> ortak film üzerinden hesaplandı
-                                    </p>
-                                    <p class="text-[10px] text-slate-500 mt-1">
-                                        @if($analysis['dimensions']['ratings']['correlation'] >= 0.7)
-                                            🎯 Çok benzer zevkler!
-                                        @elseif($analysis['dimensions']['ratings']['correlation'] >= 0.3)
-                                            👍 Benzer eğilimler
-                                        @elseif($analysis['dimensions']['ratings']['correlation'] >= 0)
-                                            🤷 Farklı bakış açıları
-                                        @else
-                                            🔄 Zıt görüşler
-                                        @endif
+                        @if(!empty($analysis['dimensions']['ratings']['insufficient']))
+                            <div class="text-center py-6">
+                                <i class="fas fa-exclamation-triangle text-yellow-500/50 text-3xl mb-2"></i>
+                                <p class="text-slate-400 text-sm">{{ $analysis['dimensions']['ratings']['insufficient_reason'] ?? 'Karşılaştırma için ortak puanlanmış film gerekli.' }}</p>
+                            </div>
+                        @else
+                        <div class="grid grid-cols-3 gap-4 items-center">
+                            <div class="text-center">
+                                <p class="text-3xl font-black text-indigo-400">{{ $analysis['dimensions']['ratings']['my_avg'] }}</p>
+                            </div>
+                            
+                            <div class="text-center">
+                                <div class="w-14 h-14 mx-auto rounded-full bg-slate-800/80 flex items-center justify-center border-2 border-yellow-500/30">
+                                    <p class="text-sm font-black {{ $analysis['dimensions']['ratings']['correlation'] >= 0.5 ? 'text-emerald-400' : ($analysis['dimensions']['ratings']['correlation'] >= 0 ? 'text-amber-400' : 'text-red-400') }}">
+                                        {{ $analysis['dimensions']['ratings']['correlation'] >= 0 ? '+' : '' }}{{ $analysis['dimensions']['ratings']['correlation'] }}
                                     </p>
                                 </div>
                             </div>
-                            @endif
+                            
+                            <div class="text-center">
+                                <p class="text-3xl font-black text-purple-400">{{ $analysis['dimensions']['ratings']['their_avg'] }}</p>
+                            </div>
                         </div>
+                        
+                        <p class="text-center text-xs text-slate-500 mt-3">
+                            <span class="text-yellow-400 font-bold">{{ $analysis['dimensions']['ratings']['common_rated'] }}</span> ortak film
+                        </p>
+                        @endif
                 </div>
 
             </div>

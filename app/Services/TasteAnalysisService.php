@@ -73,9 +73,14 @@ class TasteAnalysisService
         $refMovies = $reference['user']->id === $userA->id ? $moviesA : $moviesB;
         $otherMovies = $reference['user']->id === $userA->id ? $moviesB : $moviesA;
 
-        // Her boyutu ayrı ayrı hesapla (referans kullanıcı bazlı)
+        // Ortak filmleri bul
+        $commonTmdbIds = $moviesA->pluck('tmdb_id')->intersect($moviesB->pluck('tmdb_id'));
+        $commonMoviesA = $moviesA->whereIn('tmdb_id', $commonTmdbIds);
+        $commonMoviesB = $moviesB->whereIn('tmdb_id', $commonTmdbIds);
+
+        // Her boyutu ayrı ayrı hesapla
         $movieAnalysis    = $this->analyzeMovies($moviesA, $moviesB);
-        $genreAnalysis    = $this->analyzeGenres($refMovies, $otherMovies);
+        $genreAnalysis    = $this->analyzeGenres($commonMoviesA, $commonMoviesB);
         $directorAnalysis = $this->analyzeDirectors($refMovies, $otherMovies);
         $castAnalysis     = $this->analyzeCast($refMovies, $otherMovies);
         $decadeAnalysis   = $this->analyzeDecades($refMovies, $otherMovies);
@@ -230,30 +235,28 @@ class TasteAnalysisService
     }
 
     /**
-     * 2. TÜR UYUMU ANALİZİ (Referans Bazlı Cosine Similarity)
+     * 2. TÜR UYUMU ANALİZİ (Sadece Ortak Filmler)
      *
-     * 📚 REFERANS YAKLAŞIMI
+     * 📚 YENİ YAKLAŞIM: SADECE ORTAK FİLMLER
      *
-     * moviesA = referans kullanıcının filmleri (az film olan)
-     * moviesB = diğer kullanıcının filmleri
+     * Sadece iki kullanıcının da izlediği filmlerin türlerini karşılaştır.
+     * Bu şekilde gerçek zevk uyumu ölçülür.
      *
-     * Soru: "Referansın sevdiği türleri diğer kullanıcı ne kadar izlemiş?"
-     *
-     * Cosine similarity oranlarla çalıştığı için film sayısı farkından
-     * zaten etkilenmez, ama referans perspektifi sonuçları daha anlamlı kılar.
+     * Soru: "Ortak izlediğimiz filmlerde hangi türler öne çıkıyor?"
      */
-    private function analyzeGenres(Collection $refMovies, Collection $otherMovies): array
+    private function analyzeGenres(Collection $commonMoviesA, Collection $commonMoviesB): array
     {
-        $genresRef = $this->buildDistribution($refMovies, 'genres');
-        $genresOther = $this->buildDistribution($otherMovies, 'genres');
+        // Ortak filmlerin türlerini topla (her iki kullanıcının versiyonundan)
+        $genresA = $this->buildDistribution($commonMoviesA, 'genres');
+        $genresB = $this->buildDistribution($commonMoviesB, 'genres');
 
-        // Ortak türler (ikisi de izlemiş)
-        $commonGenres = array_intersect_key($genresRef, $genresOther);
+        // Ortak türler ve sayıları
+        $commonGenres = array_intersect_key($genresA, $genresB);
 
-        // En çok ortaklaşa izlenen türler (sıralı)
+        // Ortak tür sayıları (min ile)
         $topCommon = [];
-        foreach ($commonGenres as $genre => $countRef) {
-            $topCommon[$genre] = min($countRef, $genresOther[$genre]);
+        foreach ($commonGenres as $genre => $countA) {
+            $topCommon[$genre] = min($countA, $genresB[$genre]);
         }
         arsort($topCommon);
         
@@ -261,19 +264,19 @@ class TasteAnalysisService
         $enrichedCommonGenres = [];
         $slicedCommon = array_slice($topCommon, 0, 18, true);
 
-        foreach ($slicedCommon as $genre => $countRef) {
+        foreach ($slicedCommon as $genre => $count) {
             $enrichedCommonGenres[] = [
                 'name' => $genre,
-                'count' => min($countRef, $genresOther[$genre])
+                'count' => $count
             ];
         }
 
-        $score = round($this->cosineSimilarity($genresRef, $genresOther) * 100);
+        // Cosine similarity - ortak filmlerin tür dağılımı
+        $score = round($this->cosineSimilarity($genresA, $genresB) * 100);
 
         return [
             'score'        => $score,
-            'ref_genres'   => $genresRef,
-            'other_genres' => $genresOther,
+            'common_film_count' => $commonMoviesA->count(),
             'common'       => $topCommon,
             'top_common'   => $enrichedCommonGenres,
         ];
@@ -305,10 +308,11 @@ class TasteAnalysisService
             ? round((count($commonDirectors) / $refCount) * 100)
             : 0;
 
-        // En çok birlikte izlenen yönetmenler
+        // En çok birlikte izlenen yönetmenler - sadece ortak film sayısı
         $topCommon = [];
         foreach ($commonDirectors as $director => $countRef) {
-            $topCommon[$director] = $countRef + $directorsOther[$director];
+            // min() ile ortak izlenen film sayısını al
+            $topCommon[$director] = min($countRef, $directorsOther[$director]);
         }
         arsort($topCommon);
 
@@ -317,7 +321,7 @@ class TasteAnalysisService
 
         if (!empty($topDirectorsSlice)) {
             $tmdbService = app(\App\Services\TmdbService::class);
-            foreach ($topDirectorsSlice as $director => $totalFilms) {
+            foreach ($topDirectorsSlice as $director => $commonFilmCount) {
                 $cacheKey = 'director_image_' . md5($director);
                 $profilePath = \Illuminate\Support\Facades\Cache::rememberForever($cacheKey, function() use ($tmdbService, $director) {
                     $response = $tmdbService->searchPerson($director);
@@ -332,7 +336,7 @@ class TasteAnalysisService
 
                 $enrichedTopDirectors[] = [
                     'name' => $director,
-                    'total_films' => $totalFilms,
+                    'common_films' => $commonFilmCount,
                     'profile_path' => $profilePath
                 ];
             }
@@ -369,10 +373,11 @@ class TasteAnalysisService
             ? round((count($commonCast) / $refCount) * 100)
             : 0;
 
-        // En çok birlikte izlenen oyuncular
+        // En çok birlikte izlenen oyuncular - sadece ortak film sayısı
         $topCommon = [];
         foreach ($commonCast as $actor => $countRef) {
-            $topCommon[$actor] = $countRef + $castOther[$actor];
+            // min() ile ortak izlenen film sayısını al
+            $topCommon[$actor] = min($countRef, $castOther[$actor]);
         }
         arsort($topCommon);
 
@@ -381,7 +386,7 @@ class TasteAnalysisService
 
         if (!empty($topActorsSlice)) {
             $tmdbService = app(\App\Services\TmdbService::class);
-            foreach ($topActorsSlice as $actor => $totalFilms) {
+            foreach ($topActorsSlice as $actor => $commonFilmCount) {
                 $cacheKey = 'actor_image_' . md5($actor);
                 $profilePath = \Illuminate\Support\Facades\Cache::rememberForever($cacheKey, function() use ($tmdbService, $actor) {
                     $response = $tmdbService->searchPerson($actor);
@@ -396,7 +401,7 @@ class TasteAnalysisService
 
                 $enrichedTopActors[] = [
                     'name' => $actor,
-                    'total_films' => $totalFilms,
+                    'common_films' => $commonFilmCount,
                     'profile_path' => $profilePath
                 ];
             }
