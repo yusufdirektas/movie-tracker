@@ -273,12 +273,14 @@ class TasteAnalysisService
 
         // Cosine similarity - ortak filmlerin tür dağılımı
         $score = round($this->cosineSimilarity($genresA, $genresB) * 100);
+        $genreMovies = $this->buildGenreMovieMap($commonMoviesA);
 
         return [
             'score'        => $score,
             'common_film_count' => $commonMoviesA->count(),
             'common'       => $topCommon,
             'top_common'   => $enrichedCommonGenres,
+            'genre_movies' => $genreMovies,
         ];
     }
 
@@ -614,6 +616,39 @@ class TasteAnalysisService
             ->countBy()
             ->sortKeys()
             ->toArray();
+    }
+
+    /**
+     * Ortak filmleri tür bazında grupla.
+     *
+     * @return array<string, array<int, array{id:int,title:string,poster_path:?string,release_year:?string}>>
+     */
+    private function buildGenreMovieMap(Collection $movies): array
+    {
+        $genreMovies = [];
+
+        foreach ($movies as $movie) {
+            if (empty($movie->genres) || !is_array($movie->genres)) {
+                continue;
+            }
+
+            $moviePayload = [
+                'id' => $movie->id,
+                'title' => $movie->title,
+                'poster_path' => $movie->poster_path,
+                'release_year' => $movie->release_date?->format('Y'),
+            ];
+
+            foreach ($movie->genres as $genre) {
+                if (!$genre) {
+                    continue;
+                }
+
+                $genreMovies[$genre][] = $moviePayload;
+            }
+        }
+
+        return $genreMovies;
     }
 
     /**

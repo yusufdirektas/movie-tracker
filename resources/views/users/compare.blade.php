@@ -217,7 +217,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {{-- TÜR UYUMU KARTI --}}
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6" x-data="{ selectedGenre: null }">
                     <div class="flex items-center gap-3 mb-5">
                         <div class="bg-indigo-500/10 w-10 h-10 rounded-xl flex items-center justify-center">
                             <i class="fas fa-masks-theater text-indigo-400"></i>
@@ -260,17 +260,65 @@
                                     @php
                                         $style = $genreStyles[$genreObj['name']] ?? ['color' => 'text-indigo-400', 'border' => 'group-hover:border-indigo-400/50', 'icon' => 'fa-film'];
                                     @endphp
-                                    <div class="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 rounded-xl p-3 text-center transition-all duration-200 group cursor-default">
+                                    <button type="button"
+                                            @click="selectedGenre = selectedGenre === '{{ addslashes($genreObj['name']) }}' ? null : '{{ addslashes($genreObj['name']) }}'"
+                                            :class="selectedGenre === '{{ addslashes($genreObj['name']) }}' ? 'bg-slate-800 border-indigo-500/70 ring-1 ring-indigo-500/40' : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'"
+                                            class="w-full border rounded-xl p-3 text-center transition-all duration-200 group">
                                         <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-slate-900/80 flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <i class="fas {{ $style['icon'] }} {{ $style['color'] }} text-lg"></i>
                                         </div>
                                         <p class="text-white text-xs font-semibold truncate">{{ $genreObj['name'] }}</p>
                                         <p class="text-slate-500 text-[10px] mt-0.5">{{ $genreObj['count'] }} film</p>
-                                    </div>
+                                    </button>
                                 @endforeach
                                 </div>
                             </div>
                         </div>
+                        @if(!empty($analysis['dimensions']['genres']['genre_movies']))
+                            <div x-show="selectedGenre" x-transition class="mt-4 border-t border-slate-800/50 pt-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <p class="text-xs text-slate-400 uppercase tracking-wider">
+                                        Seçili Tür:
+                                        <span class="text-indigo-300 font-bold" x-text="selectedGenre"></span>
+                                    </p>
+                                    <button type="button" @click="selectedGenre = null" class="text-xs text-slate-500 hover:text-slate-300">
+                                        Kapat
+                                    </button>
+                                </div>
+
+                                <div class="max-h-[280px] overflow-y-auto pr-1 custom-scrollbar space-y-3">
+                                    @foreach(($analysis['dimensions']['genres']['genre_movies'] ?? []) as $genreName => $genreMovies)
+                                        <div x-show="selectedGenre === '{{ addslashes($genreName) }}'" x-transition>
+                                            @if(!empty($genreMovies))
+                                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                    @foreach($genreMovies as $genreMovie)
+                                                        <a href="{{ route('movies.show', $genreMovie['id']) }}" class="group bg-slate-800/40 border border-slate-700/50 rounded-xl overflow-hidden hover:border-indigo-500/40 transition-colors">
+                                                            <div class="aspect-[2/3] bg-slate-800">
+                                                                @if(!empty($genreMovie['poster_path']))
+                                                                    <img src="https://image.tmdb.org/t/p/w300{{ $genreMovie['poster_path'] }}"
+                                                                         alt="{{ $genreMovie['title'] }}"
+                                                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                                                                @else
+                                                                    <div class="w-full h-full flex items-center justify-center">
+                                                                        <i class="fas fa-film text-slate-600 text-2xl"></i>
+                                                                    </div>
+                                                                @endif
+                                                            </div>
+                                                            <div class="p-2">
+                                                                <p class="text-xs text-white font-semibold truncate">{{ $genreMovie['title'] }}</p>
+                                                                <p class="text-[10px] text-slate-500">{{ $genreMovie['release_year'] ?? '—' }}</p>
+                                                            </div>
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <p class="text-xs text-slate-500">Bu türde gösterilecek ortak içerik yok.</p>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     @else
                         <div class="text-center py-6">
                             <i class="fas fa-ghost text-slate-700 text-3xl mb-2"></i>
