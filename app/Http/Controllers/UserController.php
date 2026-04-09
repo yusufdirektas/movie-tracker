@@ -279,6 +279,33 @@ class UserController extends Controller
          */
         $analysis = $this->tasteAnalysis->analyze($currentUser, $user);
 
+        if (request()->ajax()) {
+            $selectedGenre = request()->query('genre');
+
+            if (!is_string($selectedGenre) || $selectedGenre === '') {
+                return response()->json([
+                    'message' => 'Tür parametresi gerekli.',
+                    'movies' => [],
+                ], 422);
+            }
+
+            $genreMovies = $analysis['dimensions']['genres']['genre_movies'] ?? [];
+            $movies = collect($genreMovies[$selectedGenre] ?? [])->map(function ($movie) {
+                return [
+                    'id' => $movie['id'] ?? null,
+                    'title' => $movie['title'] ?? '',
+                    'poster_path' => $movie['poster_path'] ?? null,
+                    'release_year' => $movie['release_year'] ?? null,
+                    'url' => !empty($movie['id']) ? route('movies.show', $movie['id']) : null,
+                ];
+            })->values();
+
+            return response()->json([
+                'genre' => $selectedGenre,
+                'movies' => $movies,
+            ]);
+        }
+
         // Film listelerini göstermek için asıl movie nesnelerini çek
         $movieDimension = $analysis['dimensions']['movies'];
 
