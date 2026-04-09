@@ -19,7 +19,49 @@
         }
     </style>
 
-<div class="container mx-auto" x-data="{ activeTab: 'analysis' }">
+<div class="container mx-auto"
+     x-data="{
+        activeTab: 'analysis',
+        genreModalOpen: false,
+        selectedGenre: null,
+        genreMovies: [],
+        genreLoading: false,
+        genreError: null,
+        async openGenreModal(genreName) {
+            this.selectedGenre = genreName;
+            this.genreModalOpen = true;
+            document.body.classList.add('overflow-hidden');
+            this.genreLoading = true;
+            this.genreError = null;
+            this.genreMovies = [];
+
+            try {
+                const response = await fetch(`{{ route('users.compare', $user) }}?genre=${encodeURIComponent(genreName)}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const payload = await response.json();
+
+                if (!response.ok) {
+                    this.genreError = payload.message || 'İçerikler yüklenemedi.';
+                    return;
+                }
+
+                this.genreMovies = payload.movies || [];
+            } catch (e) {
+                this.genreError = 'Bağlantı hatası oluştu. Tekrar deneyin.';
+            } finally {
+                this.genreLoading = false;
+            }
+        },
+        closeGenreModal() {
+            this.genreModalOpen = false;
+            document.body.classList.remove('overflow-hidden');
+        }
+     }">
 
     {{-- ═══════════════════════════════════════════════════════════
          HERO BÖLÜMÜ — İki profil + Genel Uyum Skoru
@@ -141,6 +183,150 @@
         </div>
     </div>
 
+    {{-- Tür İçerik Modalı (Teleport to body to fix z-index issues) --}}
+    <template x-teleport="body">
+        <div x-show="genreModalOpen"
+             style="display:none; z-index: 9999;"
+             class="fixed inset-0 flex items-center justify-center p-4 sm:p-6"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="modal-title">
+            
+            {{-- Backdrop --}}
+        <div x-show="genreModalOpen"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+             @click="closeGenreModal()"></div>
+
+        {{-- Modal Panel --}}
+        <div x-show="genreModalOpen"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             @keydown.escape.window="closeGenreModal()"
+             class="relative w-full max-w-5xl max-h-[90vh] bg-slate-900 border border-slate-700/50 rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden ring-1 ring-white/10">
+            
+            {{-- Header --}}
+            <div class="flex-none bg-slate-800/80 border-b border-slate-700/50 px-6 py-5 flex items-center justify-between backdrop-blur-md">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                        <i class="fas fa-masks-theater text-indigo-400 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 id="modal-title" class="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                            <span x-text="selectedGenre"></span> 
+                        </h3>
+                        <p class="text-sm text-slate-400 mt-0.5">
+                            <template x-if="!genreLoading && !genreError && genreMovies.length > 0">
+                                <span><strong class="text-indigo-400" x-text="genreMovies.length"></strong> ortak film bulundu</span>
+                            </template>
+                            <template x-if="genreLoading">
+                                <span>Filmler yükleniyor...</span>
+                            </template>
+                            <template x-if="!genreLoading && !genreError && genreMovies.length === 0">
+                                <span>Ortak film bulunamadı.</span>
+                            </template>
+                        </p>
+                    </div>
+                </div>
+                <button type="button" @click="closeGenreModal()" class="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors border border-slate-700">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+
+            {{-- Content / Scrollable Area --}}
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
+                <!-- Loading State -->
+                <template x-if="genreLoading">
+                    <div class="flex flex-col items-center justify-center py-24">
+                        <div class="relative w-16 h-16 mb-6">
+                            <div class="absolute inset-0 rounded-full border-t-2 border-indigo-500 animate-spin"></div>
+                            <div class="absolute inset-2 rounded-full border-r-2 border-purple-500 animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+                            <i class="fas fa-film absolute inset-0 flex items-center justify-center text-slate-500 text-xl"></i>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Error State -->
+                <template x-if="genreError && !genreLoading">
+                    <div class="flex flex-col items-center justify-center py-20 px-4 text-center">
+                        <div class="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-5">
+                            <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
+                        </div>
+                        <h4 class="text-xl font-bold text-white mb-2">Eyvah, bir sorun var!</h4>
+                        <p class="text-slate-400 mb-6" x-text="genreError"></p>
+                        <button @click="openGenreModal(selectedGenre)" class="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-colors font-medium border border-slate-600 hover:border-slate-500 flex items-center gap-2">
+                            <i class="fas fa-rotate-right"></i> Tekrar Dene
+                        </button>
+                    </div>
+                </template>
+
+                <!-- Empty State -->
+                <template x-if="!genreLoading && !genreError && genreMovies.length === 0">
+                    <div class="flex flex-col items-center justify-center py-20 px-4 text-center">
+                        <div class="w-24 h-24 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center mb-6">
+                            <i class="fas fa-ghost text-slate-500 text-4xl hover:text-slate-400 transition-colors"></i>
+                        </div>
+                        <h4 class="text-xl font-bold text-white mb-2">Buralar Çok Issız</h4>
+                        <p class="text-slate-400 max-w-sm mx-auto">Görünüşe göre bu türde henüz ortak izlediğiniz bir film yok.</p>
+                    </div>
+                </template>
+
+                <!-- Movies Grid -->
+                <template x-if="!genreLoading && !genreError && genreMovies.length > 0">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-5">
+                        <template x-for="movie in genreMovies" :key="movie.id">
+                            <a :href="movie.url" class="group block relative rounded-xl sm:rounded-2xl overflow-hidden bg-slate-800 shadow-lg ring-1 ring-slate-700 hover:ring-indigo-500/60 transition-all duration-300">
+                                <div class="aspect-[2/3] w-full relative bg-slate-900 overflow-hidden">
+                                    <template x-if="movie.poster_path">
+                                        <img :src="'https://image.tmdb.org/t/p/w300' + movie.poster_path"
+                                             :alt="movie.title"
+                                             class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                             loading="lazy">
+                                    </template>
+                                    <template x-if="!movie.poster_path">
+                                        <div class="absolute inset-0 w-full h-full flex flex-col items-center justify-center text-slate-600 bg-slate-800 border-b border-slate-700/50">
+                                            <i class="fas fa-film text-4xl mb-3 opacity-40"></i>
+                                            <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Afiş Yok</span>
+                                        </div>
+                                    </template>
+                                    
+                                    <!-- Gradient Overlay -->
+                                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                    
+                                    <!-- Content -->
+                                    <div class="absolute inset-0 p-3 sm:p-4 flex flex-col justify-end">
+                                        <div class="transform translate-y-3 group-hover:translate-y-0 transition-transform duration-300">
+                                            <h4 class="text-sm sm:text-base font-bold text-white line-clamp-2 leading-tight drop-shadow-lg mb-1.5" x-text="movie.title"></h4>
+                                            
+                                            <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
+                                                <template x-if="movie.release_year">
+                                                    <span class="inline-flex items-center text-[10px] font-bold text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded-md backdrop-blur-sm border border-slate-600/50">
+                                                        <span x-text="movie.release_year"></span>
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </template>
+                    </div>
+                </template>
+            </div>
+            
+        </div>
+        </div>
+    </template>
+
     {{-- ═══════════════════════════════════════════════════════════
          TAB NAVİGASYON
          ═══════════════════════════════════════════════════════════ --}}
@@ -217,7 +403,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {{-- TÜR UYUMU KARTI --}}
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6" x-data="{ selectedGenre: null }">
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
                     <div class="flex items-center gap-3 mb-5">
                         <div class="bg-indigo-500/10 w-10 h-10 rounded-xl flex items-center justify-center">
                             <i class="fas fa-masks-theater text-indigo-400"></i>
@@ -261,9 +447,8 @@
                                         $style = $genreStyles[$genreObj['name']] ?? ['color' => 'text-indigo-400', 'border' => 'group-hover:border-indigo-400/50', 'icon' => 'fa-film'];
                                     @endphp
                                     <button type="button"
-                                            @click="selectedGenre = selectedGenre === '{{ addslashes($genreObj['name']) }}' ? null : '{{ addslashes($genreObj['name']) }}'"
-                                            :class="selectedGenre === '{{ addslashes($genreObj['name']) }}' ? 'bg-slate-800 border-indigo-500/70 ring-1 ring-indigo-500/40' : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'"
-                                            class="w-full border rounded-xl p-3 text-center transition-all duration-200 group">
+                                            @click="openGenreModal('{{ addslashes($genreObj['name']) }}')"
+                                            class="w-full rounded-xl p-3 text-center transition-all duration-200 group bg-slate-800/30 hover:bg-slate-800/60 border border-transparent">
                                         <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-slate-900/80 flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <i class="fas {{ $style['icon'] }} {{ $style['color'] }} text-lg"></i>
                                         </div>
@@ -274,51 +459,6 @@
                                 </div>
                             </div>
                         </div>
-                        @if(!empty($analysis['dimensions']['genres']['genre_movies']))
-                            <div x-show="selectedGenre" x-transition class="mt-4 border-t border-slate-800/50 pt-4">
-                                <div class="flex items-center justify-between mb-3">
-                                    <p class="text-xs text-slate-400 uppercase tracking-wider">
-                                        Seçili Tür:
-                                        <span class="text-indigo-300 font-bold" x-text="selectedGenre"></span>
-                                    </p>
-                                    <button type="button" @click="selectedGenre = null" class="text-xs text-slate-500 hover:text-slate-300">
-                                        Kapat
-                                    </button>
-                                </div>
-
-                                <div class="max-h-[280px] overflow-y-auto pr-1 custom-scrollbar space-y-3">
-                                    @foreach(($analysis['dimensions']['genres']['genre_movies'] ?? []) as $genreName => $genreMovies)
-                                        <div x-show="selectedGenre === '{{ addslashes($genreName) }}'" x-transition>
-                                            @if(!empty($genreMovies))
-                                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                                    @foreach($genreMovies as $genreMovie)
-                                                        <a href="{{ route('movies.show', $genreMovie['id']) }}" class="group bg-slate-800/40 border border-slate-700/50 rounded-xl overflow-hidden hover:border-indigo-500/40 transition-colors">
-                                                            <div class="aspect-[2/3] bg-slate-800">
-                                                                @if(!empty($genreMovie['poster_path']))
-                                                                    <img src="https://image.tmdb.org/t/p/w300{{ $genreMovie['poster_path'] }}"
-                                                                         alt="{{ $genreMovie['title'] }}"
-                                                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                                                                @else
-                                                                    <div class="w-full h-full flex items-center justify-center">
-                                                                        <i class="fas fa-film text-slate-600 text-2xl"></i>
-                                                                    </div>
-                                                                @endif
-                                                            </div>
-                                                            <div class="p-2">
-                                                                <p class="text-xs text-white font-semibold truncate">{{ $genreMovie['title'] }}</p>
-                                                                <p class="text-[10px] text-slate-500">{{ $genreMovie['release_year'] ?? '—' }}</p>
-                                                            </div>
-                                                        </a>
-                                                    @endforeach
-                                                </div>
-                                            @else
-                                                <p class="text-xs text-slate-500">Bu türde gösterilecek ortak içerik yok.</p>
-                                            @endif
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
                     @else
                         <div class="text-center py-6">
                             <i class="fas fa-ghost text-slate-700 text-3xl mb-2"></i>
