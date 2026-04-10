@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\TasteAnalysisService;
+use App\Services\TmdbService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -25,7 +27,8 @@ class UserController extends Controller
      * Controller'da sadece $this->tasteAnalysis->analyze() diye çağırırız.
      */
     public function __construct(
-        protected TasteAnalysisService $tasteAnalysis
+        protected TasteAnalysisService $tasteAnalysis,
+        protected TmdbService $tmdbService
     ) {}
     /**
      * Kullanıcı arama sayfası / keşfet
@@ -281,6 +284,52 @@ class UserController extends Controller
 
         if (request()->ajax()) {
             $selectedGenre = request()->query('genre');
+            $selectedDirector = request()->query('director');
+            $selectedActor = request()->query('actor');
+
+            if (is_string($selectedDirector) && $selectedDirector !== '') {
+                $directors = $analysis['dimensions']['directors']['top_common'] ?? [];
+                $directorEntry = collect($directors)->firstWhere('name', $selectedDirector);
+
+                if (!$directorEntry) {
+                    return response()->json([
+                        'message' => 'Yönetmen bulunamadı.',
+                        'common_movies' => [],
+                        'famous_movies' => [],
+                    ], 404);
+                }
+
+                $commonMovies = $this->buildCommonDirectorMovies($currentUser, $user, $selectedDirector);
+                $famousMovies = $this->getDirectorFamousMovies($selectedDirector, 10);
+
+                return response()->json([
+                    'director' => $selectedDirector,
+                    'common_movies' => $commonMovies,
+                    'famous_movies' => $famousMovies,
+                ]);
+            }
+
+            if (is_string($selectedActor) && $selectedActor !== '') {
+                $actors = $analysis['dimensions']['cast']['top_common'] ?? [];
+                $actorEntry = collect($actors)->firstWhere('name', $selectedActor);
+
+                if (!$actorEntry) {
+                    return response()->json([
+                        'message' => 'Oyuncu bulunamadı.',
+                        'common_movies' => [],
+                        'famous_movies' => [],
+                    ], 404);
+                }
+
+                $commonMovies = $this->buildCommonActorMovies($currentUser, $user, $selectedActor);
+                $famousMovies = $this->getActorFamousMovies($selectedActor, 10);
+
+                return response()->json([
+                    'actor' => $selectedActor,
+                    'common_movies' => $commonMovies,
+                    'famous_movies' => $famousMovies,
+                ]);
+            }
 
             if (!is_string($selectedGenre) || $selectedGenre === '') {
                 return response()->json([
@@ -356,5 +405,154 @@ class UserController extends Controller
             'stats',
             'analysis'
         ));
+    }
+
+    private function buildCommonDirectorMovies(User $currentUser, User $comparedUser, string $director): array
+    {
+        $myMovies = $currentUser->movies()
+            ->where('is_watched', true)
+            ->whereNotNull('tmdb_id')
+            ->where('director', $director)
+            ->get()
+            ->keyBy('tmdb_id');
+
+        $theirMovies = $comparedUser->movies()
+            ->where('is_watched', true)
+            ->whereNotNull('tmdb_id')
+            ->where('director', $director)
+            ->get()
+            ->keyBy('tmdb_id');
+
+        $commonTmdbIds = $myMovies->keys()->intersect($theirMovies->keys());
+
+        return $commonTmdbIds
+            ->map(function ($tmdbId) use ($myMovies) {
+                $movie = $myMovies->get($tmdbId);
+                return [
+                    'id' => $movie->id,
+                    'title' => $movie->title,
+                    'poster_path' => $movie->poster_path,
+                    'release_year' => $movie->release_date?->format('Y'),
+                    'url' => route('movies.show', $movie->id),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function getDirectorFamousMovies(string $directorName, int $limit = 10): array
+    {
+        $cacheKey = 'director_famous_movies_' . md5($directorName);
+
+        return Cache::remember($cacheKey, now()->addDays(7), function () use ($directorName, $limit) {
+            $personResponse = $this->tmdbService->searchPerson($directorName);
+            if (!$personResponse?->successful()) {
+                return [];
+            }
+
+            $person = collect($personResponse->json('results', []))
+                ->first(fn($p) => (($p['known_for_department'] ?? '') === 'Directing') || str_contains(strtolower((string)($p['name'] ?? '')), strtolower($directorName)));
+
+            if (!$person || empty($person['id'])) {
+                return [];
+            }
+
+            $creditsResponse = $this->tmdbService->getPersonMovieCredits((int) $person['id']);
+            if (!$creditsResponse?->successful()) {
+                return [];
+            }
+
+            $directedMovies = collect($creditsResponse->json('crew', []))
+                ->filter(fn($credit) => ($credit['job'] ?? '') === 'Director')
+                ->sortByDesc(fn($movie) => (float)($movie['popularity'] ?? 0))
+                ->unique('id')
+                ->take($limit)
+                ->map(function ($movie) {
+                    return [
+                        'tmdb_id' => $movie['id'] ?? null,
+                        'title' => $movie['title'] ?? $movie['original_title'] ?? 'Bilinmeyen',
+                        'poster_path' => $movie['poster_path'] ?? null,
+                        'release_year' => !empty($movie['release_date']) ? substr($movie['release_date'], 0, 4) : null,
+                        'url' => !empty($movie['id']) ? "https://www.themoviedb.org/movie/{$movie['id']}" : null,
+                    ];
+                })
+                ->values();
+
+            return $directedMovies->all();
+        });
+    }
+
+    private function buildCommonActorMovies(User $currentUser, User $comparedUser, string $actor): array
+    {
+        $myMovies = $currentUser->movies()
+            ->where('is_watched', true)
+            ->whereNotNull('tmdb_id')
+            ->whereJsonContains('cast', $actor)
+            ->get()
+            ->keyBy('tmdb_id');
+
+        $theirMovies = $comparedUser->movies()
+            ->where('is_watched', true)
+            ->whereNotNull('tmdb_id')
+            ->whereJsonContains('cast', $actor)
+            ->get()
+            ->keyBy('tmdb_id');
+
+        $commonTmdbIds = $myMovies->keys()->intersect($theirMovies->keys());
+
+        return $commonTmdbIds
+            ->map(function ($tmdbId) use ($myMovies) {
+                $movie = $myMovies->get($tmdbId);
+                return [
+                    'id' => $movie->id,
+                    'title' => $movie->title,
+                    'poster_path' => $movie->poster_path,
+                    'release_year' => $movie->release_date?->format('Y'),
+                    'url' => route('movies.show', $movie->id),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function getActorFamousMovies(string $actorName, int $limit = 10): array
+    {
+        $cacheKey = 'actor_famous_movies_' . md5($actorName);
+
+        return Cache::remember($cacheKey, now()->addDays(7), function () use ($actorName, $limit) {
+            $personResponse = $this->tmdbService->searchPerson($actorName);
+            if (!$personResponse?->successful()) {
+                return [];
+            }
+
+            $person = collect($personResponse->json('results', []))
+                ->first(fn($p) => (($p['known_for_department'] ?? '') === 'Acting') || str_contains(strtolower((string)($p['name'] ?? '')), strtolower($actorName)));
+
+            if (!$person || empty($person['id'])) {
+                return [];
+            }
+
+            $creditsResponse = $this->tmdbService->getPersonMovieCredits((int) $person['id']);
+            if (!$creditsResponse?->successful()) {
+                return [];
+            }
+
+            $actorMovies = collect($creditsResponse->json('cast', []))
+                ->sortByDesc(fn($movie) => (float)($movie['popularity'] ?? 0))
+                ->unique('id')
+                ->take($limit)
+                ->map(function ($movie) {
+                    return [
+                        'tmdb_id' => $movie['id'] ?? null,
+                        'title' => $movie['title'] ?? $movie['original_title'] ?? 'Bilinmeyen',
+                        'poster_path' => $movie['poster_path'] ?? null,
+                        'release_year' => !empty($movie['release_date']) ? substr($movie['release_date'], 0, 4) : null,
+                        'url' => !empty($movie['id']) ? "https://www.themoviedb.org/movie/{$movie['id']}" : null,
+                    ];
+                })
+                ->values();
+
+            return $actorMovies->all();
+        });
     }
 }
