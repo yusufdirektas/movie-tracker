@@ -894,4 +894,17 @@ class TmdbService
             'query' => $query,
         ]);
     }
+
+    /**
+     * 7. Kişinin film kredilerini getir (yönetmen filmografisi için)
+     *
+     * @param int|string $personId TMDB kişi ID
+     * @return \Illuminate\Http\Client\Response|null
+     */
+    public function getPersonMovieCredits(int|string $personId)
+    {
+        return $this->request("/person/{$personId}/movie_credits", [
+            'language' => 'en-US',
+        ]);
+    }
 }
