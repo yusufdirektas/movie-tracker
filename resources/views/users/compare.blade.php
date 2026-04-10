@@ -27,6 +27,18 @@
         genreMovies: [],
         genreLoading: false,
         genreError: null,
+        directorModalOpen: false,
+        selectedDirector: null,
+        directorCommonMovies: [],
+        directorFamousMovies: [],
+        directorLoading: false,
+        directorError: null,
+        actorModalOpen: false,
+        selectedActor: null,
+        actorCommonMovies: [],
+        actorFamousMovies: [],
+        actorLoading: false,
+        actorError: null,
         async openGenreModal(genreName) {
             this.selectedGenre = genreName;
             this.genreModalOpen = true;
@@ -59,6 +71,76 @@
         },
         closeGenreModal() {
             this.genreModalOpen = false;
+            document.body.classList.remove('overflow-hidden');
+        },
+        async openDirectorModal(directorName) {
+            this.selectedDirector = directorName;
+            this.directorModalOpen = true;
+            document.body.classList.add('overflow-hidden');
+            this.directorLoading = true;
+            this.directorError = null;
+            this.directorCommonMovies = [];
+            this.directorFamousMovies = [];
+
+            try {
+                const response = await fetch(`{{ route('users.compare', $user) }}?director=${encodeURIComponent(directorName)}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const payload = await response.json();
+                if (!response.ok) {
+                    this.directorError = payload.message || 'Yönetmen verileri yüklenemedi.';
+                    return;
+                }
+
+                this.directorCommonMovies = payload.common_movies || [];
+                this.directorFamousMovies = payload.famous_movies || [];
+            } catch (e) {
+                this.directorError = 'Bağlantı hatası oluştu. Tekrar deneyin.';
+            } finally {
+                this.directorLoading = false;
+            }
+        },
+        closeDirectorModal() {
+            this.directorModalOpen = false;
+            document.body.classList.remove('overflow-hidden');
+        },
+        async openActorModal(actorName) {
+            this.selectedActor = actorName;
+            this.actorModalOpen = true;
+            document.body.classList.add('overflow-hidden');
+            this.actorLoading = true;
+            this.actorError = null;
+            this.actorCommonMovies = [];
+            this.actorFamousMovies = [];
+
+            try {
+                const response = await fetch(`{{ route('users.compare', $user) }}?actor=${encodeURIComponent(actorName)}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const payload = await response.json();
+                if (!response.ok) {
+                    this.actorError = payload.message || 'Oyuncu verileri yüklenemedi.';
+                    return;
+                }
+
+                this.actorCommonMovies = payload.common_movies || [];
+                this.actorFamousMovies = payload.famous_movies || [];
+            } catch (e) {
+                this.actorError = 'Bağlantı hatası oluştu. Tekrar deneyin.';
+            } finally {
+                this.actorLoading = false;
+            }
+        },
+        closeActorModal() {
+            this.actorModalOpen = false;
             document.body.classList.remove('overflow-hidden');
         }
      }">
@@ -327,6 +409,272 @@
         </div>
     </template>
 
+    {{-- Yönetmen Detay Modalı --}}
+    <template x-teleport="body">
+        <div x-show="directorModalOpen"
+             style="display:none; z-index: 9999;"
+             class="fixed inset-0 flex items-center justify-center p-4 sm:p-6"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="director-modal-title">
+
+            <div x-show="directorModalOpen"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+                 @click="closeDirectorModal()"></div>
+
+            <div x-show="directorModalOpen"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 @keydown.escape.window="closeDirectorModal()"
+                 class="relative w-full max-w-6xl max-h-[90vh] bg-slate-900 border border-slate-700/50 rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden ring-1 ring-white/10">
+
+                <div class="flex-none bg-slate-800/80 border-b border-slate-700/50 px-6 py-5 flex items-center justify-between backdrop-blur-md">
+                    <div>
+                        <h3 id="director-modal-title" class="text-xl font-black text-white tracking-tight" x-text="selectedDirector"></h3>
+                        <p class="text-sm text-slate-400 mt-0.5">Ortak filmler + yönetmenin popüler 10 filmi</p>
+                    </div>
+                    <button type="button" @click="closeDirectorModal()" class="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors border border-slate-700">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
+                    <template x-if="directorLoading">
+                        <div class="flex flex-col items-center justify-center py-24">
+                            <div class="relative w-16 h-16 mb-6">
+                                <div class="absolute inset-0 rounded-full border-t-2 border-purple-500 animate-spin"></div>
+                                <div class="absolute inset-2 rounded-full border-r-2 border-indigo-500 animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+                            </div>
+                            <p class="text-slate-400">Yönetmen verileri yükleniyor...</p>
+                        </div>
+                    </template>
+
+                    <template x-if="directorError && !directorLoading">
+                        <div class="flex flex-col items-center justify-center py-20 px-4 text-center">
+                            <div class="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-5">
+                                <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
+                            </div>
+                            <p class="text-slate-300" x-text="directorError"></p>
+                        </div>
+                    </template>
+
+                    <template x-if="!directorLoading && !directorError">
+                        <div class="space-y-8">
+                            <section>
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="text-white font-bold text-lg">Ortak Filmler</h4>
+                                    <span class="text-xs text-purple-300 bg-purple-500/10 border border-purple-500/30 px-2.5 py-1 rounded-full" x-text="`${directorCommonMovies.length} film`"></span>
+                                </div>
+                                <template x-if="directorCommonMovies.length === 0">
+                                    <p class="text-sm text-slate-500">Bu yönetmende ortak film bulunamadı.</p>
+                                </template>
+                                <template x-if="directorCommonMovies.length > 0">
+                                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                        <template x-for="movie in directorCommonMovies" :key="`common-${movie.id}`">
+                                            <a :href="movie.url" class="group block relative rounded-xl overflow-hidden bg-slate-800 shadow-lg ring-1 ring-slate-700 hover:ring-purple-500/60 transition-all duration-300">
+                                                <div class="aspect-[2/3] w-full relative bg-slate-900 overflow-hidden">
+                                                    <template x-if="movie.poster_path">
+                                                        <img :src="'https://image.tmdb.org/t/p/w300' + movie.poster_path" :alt="movie.title" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                                                    </template>
+                                                    <template x-if="!movie.poster_path">
+                                                        <div class="absolute inset-0 w-full h-full flex items-center justify-center text-slate-600 bg-slate-800">
+                                                            <i class="fas fa-film text-4xl opacity-40"></i>
+                                                        </div>
+                                                    </template>
+                                                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent opacity-90"></div>
+                                                    <div class="absolute inset-x-0 bottom-0 p-3">
+                                                        <h5 class="text-sm font-bold text-white line-clamp-2" x-text="movie.title"></h5>
+                                                        <p class="text-[10px] text-slate-300" x-text="movie.release_year || '—'"></p>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+                            </section>
+
+                            <section>
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="text-white font-bold text-lg">En Meşhur 10 Film</h4>
+                                    <span class="text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-1 rounded-full" x-text="`${directorFamousMovies.length} film`"></span>
+                                </div>
+                                <template x-if="directorFamousMovies.length === 0">
+                                    <p class="text-sm text-slate-500">TMDB'den popüler film listesi alınamadı.</p>
+                                </template>
+                                <template x-if="directorFamousMovies.length > 0">
+                                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                        <template x-for="movie in directorFamousMovies" :key="`famous-${movie.tmdb_id}`">
+                                            <a :href="movie.url" target="_blank" rel="noopener noreferrer" class="group block relative rounded-xl overflow-hidden bg-slate-800 shadow-lg ring-1 ring-slate-700 hover:ring-indigo-500/60 transition-all duration-300">
+                                                <div class="aspect-[2/3] w-full relative bg-slate-900 overflow-hidden">
+                                                    <template x-if="movie.poster_path">
+                                                        <img :src="'https://image.tmdb.org/t/p/w300' + movie.poster_path" :alt="movie.title" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                                                    </template>
+                                                    <template x-if="!movie.poster_path">
+                                                        <div class="absolute inset-0 w-full h-full flex items-center justify-center text-slate-600 bg-slate-800">
+                                                            <i class="fas fa-film text-4xl opacity-40"></i>
+                                                        </div>
+                                                    </template>
+                                                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent opacity-90"></div>
+                                                    <div class="absolute inset-x-0 bottom-0 p-3">
+                                                        <h5 class="text-sm font-bold text-white line-clamp-2" x-text="movie.title"></h5>
+                                                        <p class="text-[10px] text-slate-300" x-text="movie.release_year || '—'"></p>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+                            </section>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    {{-- Oyuncu Detay Modalı --}}
+    <template x-teleport="body">
+        <div x-show="actorModalOpen"
+             style="display:none; z-index: 9999;"
+             class="fixed inset-0 flex items-center justify-center p-4 sm:p-6"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="actor-modal-title">
+
+            <div x-show="actorModalOpen"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+                 @click="closeActorModal()"></div>
+
+            <div x-show="actorModalOpen"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 @keydown.escape.window="closeActorModal()"
+                 class="relative w-full max-w-6xl max-h-[90vh] bg-slate-900 border border-slate-700/50 rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden ring-1 ring-white/10">
+
+                <div class="flex-none bg-slate-800/80 border-b border-slate-700/50 px-6 py-5 flex items-center justify-between backdrop-blur-md">
+                    <div>
+                        <h3 id="actor-modal-title" class="text-xl font-black text-white tracking-tight" x-text="selectedActor"></h3>
+                        <p class="text-sm text-slate-400 mt-0.5">Ortak filmler + oyuncunun popüler 10 filmi</p>
+                    </div>
+                    <button type="button" @click="closeActorModal()" class="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors border border-slate-700">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
+                    <template x-if="actorLoading">
+                        <div class="flex flex-col items-center justify-center py-24">
+                            <div class="relative w-16 h-16 mb-6">
+                                <div class="absolute inset-0 rounded-full border-t-2 border-pink-500 animate-spin"></div>
+                                <div class="absolute inset-2 rounded-full border-r-2 border-indigo-500 animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+                            </div>
+                            <p class="text-slate-400">Oyuncu verileri yükleniyor...</p>
+                        </div>
+                    </template>
+
+                    <template x-if="actorError && !actorLoading">
+                        <div class="flex flex-col items-center justify-center py-20 px-4 text-center">
+                            <div class="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-5">
+                                <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
+                            </div>
+                            <p class="text-slate-300" x-text="actorError"></p>
+                        </div>
+                    </template>
+
+                    <template x-if="!actorLoading && !actorError">
+                        <div class="space-y-8">
+                            <section>
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="text-white font-bold text-lg">Ortak Filmler</h4>
+                                    <span class="text-xs text-pink-300 bg-pink-500/10 border border-pink-500/30 px-2.5 py-1 rounded-full" x-text="`${actorCommonMovies.length} film`"></span>
+                                </div>
+                                <template x-if="actorCommonMovies.length === 0">
+                                    <p class="text-sm text-slate-500">Bu oyuncuda ortak film bulunamadı.</p>
+                                </template>
+                                <template x-if="actorCommonMovies.length > 0">
+                                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                        <template x-for="movie in actorCommonMovies" :key="`common-actor-${movie.id}`">
+                                            <a :href="movie.url" class="group block relative rounded-xl overflow-hidden bg-slate-800 shadow-lg ring-1 ring-slate-700 hover:ring-pink-500/60 transition-all duration-300">
+                                                <div class="aspect-[2/3] w-full relative bg-slate-900 overflow-hidden">
+                                                    <template x-if="movie.poster_path">
+                                                        <img :src="'https://image.tmdb.org/t/p/w300' + movie.poster_path" :alt="movie.title" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                                                    </template>
+                                                    <template x-if="!movie.poster_path">
+                                                        <div class="absolute inset-0 w-full h-full flex items-center justify-center text-slate-600 bg-slate-800">
+                                                            <i class="fas fa-film text-4xl opacity-40"></i>
+                                                        </div>
+                                                    </template>
+                                                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent opacity-90"></div>
+                                                    <div class="absolute inset-x-0 bottom-0 p-3">
+                                                        <h5 class="text-sm font-bold text-white line-clamp-2" x-text="movie.title"></h5>
+                                                        <p class="text-[10px] text-slate-300" x-text="movie.release_year || '—'"></p>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+                            </section>
+
+                            <section>
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="text-white font-bold text-lg">En Meşhur 10 Film</h4>
+                                    <span class="text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-1 rounded-full" x-text="`${actorFamousMovies.length} film`"></span>
+                                </div>
+                                <template x-if="actorFamousMovies.length === 0">
+                                    <p class="text-sm text-slate-500">TMDB'den popüler film listesi alınamadı.</p>
+                                </template>
+                                <template x-if="actorFamousMovies.length > 0">
+                                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                        <template x-for="movie in actorFamousMovies" :key="`famous-actor-${movie.tmdb_id}`">
+                                            <a :href="movie.url" target="_blank" rel="noopener noreferrer" class="group block relative rounded-xl overflow-hidden bg-slate-800 shadow-lg ring-1 ring-slate-700 hover:ring-indigo-500/60 transition-all duration-300">
+                                                <div class="aspect-[2/3] w-full relative bg-slate-900 overflow-hidden">
+                                                    <template x-if="movie.poster_path">
+                                                        <img :src="'https://image.tmdb.org/t/p/w300' + movie.poster_path" :alt="movie.title" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                                                    </template>
+                                                    <template x-if="!movie.poster_path">
+                                                        <div class="absolute inset-0 w-full h-full flex items-center justify-center text-slate-600 bg-slate-800">
+                                                            <i class="fas fa-film text-4xl opacity-40"></i>
+                                                        </div>
+                                                    </template>
+                                                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent opacity-90"></div>
+                                                    <div class="absolute inset-x-0 bottom-0 p-3">
+                                                        <h5 class="text-sm font-bold text-white line-clamp-2" x-text="movie.title"></h5>
+                                                        <p class="text-[10px] text-slate-300" x-text="movie.release_year || '—'"></p>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+                            </section>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </template>
+
     {{-- ═══════════════════════════════════════════════════════════
          TAB NAVİGASYON
          ═══════════════════════════════════════════════════════════ --}}
@@ -487,7 +835,9 @@
                             <div :class="expanded ? 'max-h-[310px] overflow-y-auto custom-scrollbar' : ''" class="pr-1 pb-1">
                                 <div class="grid grid-cols-3 gap-2">
                                     @foreach($analysis['dimensions']['directors']['top_common'] as $index => $director)
-                                    <div class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default"
+                                    <button type="button"
+                                         @click="openDirectorModal('{{ addslashes($director['name']) }}')"
+                                         class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-pointer text-left"
                                          x-show="expanded || {{ $index }} < 6"
                                          x-transition:enter="transition ease-out duration-200"
                                          x-transition:enter-start="opacity-0 scale-95"
@@ -513,7 +863,7 @@
                                             <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $director['name'] }}">{{ $director['name'] }}</span>
                                             <span class="text-[9px] text-purple-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $director['common_films'] }} ORTAK</span>
                                         </div>
-                                    </div>
+                                    </button>
                                 @endforeach
                                 </div>
                             </div>
@@ -554,7 +904,9 @@
                             <div :class="expanded ? 'max-h-[310px] overflow-y-auto custom-scrollbar' : ''" class="pr-1 pb-1">
                                 <div class="grid grid-cols-3 gap-2">
                                     @foreach($analysis['dimensions']['cast']['top_common'] as $index => $actor)
-                                    <div class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-default"
+                                    <button type="button"
+                                         @click="openActorModal('{{ addslashes($actor['name']) }}')"
+                                         class="relative w-full overflow-hidden rounded-xl aspect-[2/3] bg-slate-900 border border-slate-800 group shadow-lg cursor-pointer text-left"
                                          x-show="expanded || {{ $index }} < 6"
                                          x-transition:enter="transition ease-out duration-200"
                                          x-transition:enter-start="opacity-0 scale-95"
@@ -580,7 +932,7 @@
                                             <span class="text-xs text-white font-bold block truncate drop-shadow-md" title="{{ $actor['name'] }}">{{ $actor['name'] }}</span>
                                             <span class="text-[9px] text-pink-400 font-bold uppercase tracking-wider block mt-0.5 drop-shadow-md">{{ $actor['common_films'] }} ORTAK</span>
                                         </div>
-                                    </div>
+                                    </button>
                                 @endforeach
                                 </div>
                             </div>
